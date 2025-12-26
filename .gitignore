@@ -57,3 +57,4 @@ crashlytics-build.properties
 # 临时自动生成的 Android 资源
 /[Aa]ssets/[Ss]treamingAssets/aa.meta
 /[Aa]ssets/[Ss]treamingAssets/aa/*
+/Assets/Asaki/Generated/
