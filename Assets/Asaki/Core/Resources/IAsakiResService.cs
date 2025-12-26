@@ -1,0 +1,49 @@
+﻿using Asaki.Core.Context;
+using System;
+using System.Collections.Generic;
+using System.Threading;
+using System.Threading.Tasks;
+
+namespace Asaki.Core.Resources
+{
+	public class ResHandle<T> : IDisposable where T : class
+	{
+		private readonly IAsakiResService _service;
+		public readonly string Location;
+		public readonly T Asset;
+
+		public bool IsValid => Asset != null;
+
+		public ResHandle(string location, T asset, IAsakiResService service)
+		{
+			Location = location;
+			Asset = asset;
+			_service = service;
+		}
+
+		public void Dispose()
+		{
+			if (IsValid)
+			{
+				_service?.Release(Location);
+			}
+		}
+
+		public static implicit operator T(ResHandle<T> handle)
+		{
+			return handle.Asset;
+		}
+	}
+	public interface IAsakiResService : IAsakiModule
+	{
+		Task<ResHandle<T>> LoadAsync<T>(string location, Action<float> onProgress, CancellationToken token) where T : class;
+		Task<ResHandle<T>> LoadAsync<T>(string location, CancellationToken token) where T : class;
+		void Release(string location);
+
+		Task<List<ResHandle<T>>> LoadBatchAsync<T>(IEnumerable<string> locations, Action<float> onProgress, CancellationToken token) where T : class;
+		Task<List<ResHandle<T>>> LoadBatchAsync<T>(IEnumerable<string> locations, CancellationToken token) where T : class;
+		public void ReleaseBatch(IEnumerable<string> locations);
+
+		public void SetTimeoutSeconds(int timeoutSeconds);
+	}
+}

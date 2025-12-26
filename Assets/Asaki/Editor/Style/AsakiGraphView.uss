@@ -1,0 +1,13 @@
+﻿GridBackground {
+    /* 背景色：深灰 */
+    --grid-background-color: #2b2b2b;
+
+    /* 细网格线颜色：稍微亮一点的灰 */
+    --line-color: rgba(51, 51, 51, 0.4);
+
+    /* 粗网格线颜色：更明显的黑 */
+    --thick-line-color: rgba(0, 0, 0, 0.5);
+
+    /* 网格间距 */
+    --spacing: 15;
+}

@@ -1,0 +1,906 @@
+﻿using System;
+using UnityEngine;
+
+namespace Asaki.Core.Graphs
+{
+	public enum AsakiBlackboardPropertyType
+	{
+		Int,
+		Float,
+		Bool,
+		String,
+		Vector3,
+		Vector2,
+		Vector2Int,
+		Vector3Int,
+		Color,
+	}
+	
+	[Serializable]
+	public class AsakiVariableDef
+	{
+		public string Name;
+		public AsakiBlackboardPropertyType Type;
+		public bool IsExposed = true;
+		
+		public int IntVal;
+		public float FloatVal;
+		public bool BoolVal;
+		public string StringVal;
+		public Vector3 Vector3Val;
+		public Vector2 Vector2Val;
+		public Vector3Int Vector3IntVal;
+		public Vector2Int Vector2IntVal;
+		public Color ColorVal;
+	}
+}
+
+using System;
+
+namespace Asaki.Editor.GraphEditors
+{
+	[AttributeUsage(AttributeTargets.Class, Inherited = false, AllowMultiple = false)]
+	public sealed class AsakiCustomGraphEditorAttribute : Attribute
+	{
+		public Type GraphType { get; }
+
+		public AsakiCustomGraphEditorAttribute(Type graphType)
+		{
+			GraphType = graphType;
+		}
+	}
+}
+
+using System;
+using UnityEngine;
+
+namespace Asaki.Core.Graphs
+{
+
+	[Serializable]
+	public abstract class AsakiNodeBase
+	{
+		[HideInInspector] public Vector2 Position;
+		[HideInInspector] public string GUID;
+		[HideInInspector] public int ExecutionOrder;
+		// 获取标题的虚方法，默认返回类名
+		public virtual string Title => this.GetType().Name;
+		public virtual void OnCreated() { }
+	}
+
+	[System.Serializable]
+	public class AsakiEdgeData
+	{
+		public string BaseNodeGUID;   // 输出节点 GUID
+		public string BasePortName;   // 输出端口名
+		public string TargetNodeGUID; // 输入节点 GUID
+		public string TargetPortName; // 输入端口名
+	}
+
+}
+
+
+using System.Collections.Generic;
+using UnityEngine;
+
+namespace Asaki.Core.Graphs
+{
+	public abstract class AsakiGraphBase : ScriptableObject
+	{
+		[SerializeReference]
+		public List<AsakiNodeBase> Nodes = new List<AsakiNodeBase>();
+		public List<AsakiEdgeData> Edges = new List<AsakiEdgeData>();
+		[Header("Blackboard")]
+		[SerializeReference] // 支持多态，虽然目前是 List<T>
+		public List<AsakiVariableDef> Variables = new List<AsakiVariableDef>();
+
+		// 缓存：快速通过 GUID 找到节点实例
+		private Dictionary<string, AsakiNodeBase> _nodeLookup;
+		private Dictionary<AsakiNodeBase, Dictionary<string, AsakiEdgeData>> _incomingCache;
+		// 缓存：快速查找连线关系
+		// Key: 源节点, Value: { 端口名 -> 目标节点列表 }
+		private Dictionary<AsakiNodeBase, Dictionary<string, List<AsakiNodeBase>>> _outgoingCache;
+		[System.NonSerialized]
+		private bool _isInitialized = false;
+
+		private void EnsureRuntimeInitialized()
+		{
+			if (!_isInitialized || _outgoingCache == null || _nodeLookup == null)
+			{
+				InitializeRuntime();
+			}
+		}
+		
+		/// <summary>
+		/// 运行时初始化。建议在 Runner 的 Start() 中调用。
+		/// 会构建拓扑缓存，将查找复杂度从 O(N) 降为 O(1)。
+		/// </summary>
+		public void InitializeRuntime()
+		{
+			if (_isInitialized && _outgoingCache != null && _nodeLookup != null) return;
+
+			// 1. 构建节点查找表
+			_nodeLookup = new Dictionary<string, AsakiNodeBase>();
+			foreach (var node in Nodes)
+			{
+				if (node != null) _nodeLookup[node.GUID] = node;
+			}
+
+			// 2. 构建连线关系缓存
+			_outgoingCache = new Dictionary<AsakiNodeBase, Dictionary<string, List<AsakiNodeBase>>>();
+			_incomingCache = new Dictionary<AsakiNodeBase, Dictionary<string, AsakiEdgeData>>();
+			foreach (var edge in Edges)
+			{
+				if (!_nodeLookup.TryGetValue(edge.BaseNodeGUID, out var source)) continue;
+				if (!_nodeLookup.TryGetValue(edge.TargetNodeGUID, out var target)) continue;
+
+				// 1. 构建 Outgoing (正向)
+				if (!_outgoingCache.ContainsKey(source))
+					_outgoingCache[source] = new Dictionary<string, List<AsakiNodeBase>>();
+				if (!_outgoingCache[source].ContainsKey(edge.BasePortName))
+					_outgoingCache[source][edge.BasePortName] = new List<AsakiNodeBase>();
+				_outgoingCache[source][edge.BasePortName].Add(target);
+
+				// 2. [New] 构建 Incoming (反向) - 用于数据回溯
+				if (!_incomingCache.ContainsKey(target))
+					_incomingCache[target] = new Dictionary<string, AsakiEdgeData>();
+                
+				// 记录哪条线连到了 target 的哪个端口
+				_incomingCache[target][edge.TargetPortName] = edge;
+			}
+
+			_isInitialized = true;
+		}
+
+		// --------------------------------------------------------
+		// ★ 常用 API (Helper Methods)
+		// --------------------------------------------------------
+
+		/// <summary>
+		/// 获取图的入口节点（默认返回第一个添加的节点，也可以按名字查找）
+		/// </summary>
+		public T GetEntryNode<T>() where T : AsakiNodeBase
+		{
+			if (Nodes.Count == 0) return null;
+			return Nodes[0] as T; // 简单粗暴，返回第一个
+		}
+
+		public AsakiEdgeData GetInputConnection(AsakiNodeBase targetNode, string inputPortName)
+		{
+			EnsureRuntimeInitialized();
+			if (_incomingCache.TryGetValue(targetNode, out var portMap))
+			{
+				if (portMap.TryGetValue(inputPortName, out var edge))
+				{
+					return edge;
+				}
+			}
+			return null;
+		}
+		
+		public AsakiNodeBase GetNodeByGUID(string guid)
+		{
+			return _nodeLookup.GetValueOrDefault(guid);
+		}
+		
+		/// <summary>
+		/// 获取指定端口连接的【单个】下一个节点。
+		/// 适用于单输出端口（如 "Next"）。
+		/// </summary>
+		public AsakiNodeBase GetNextNode(AsakiNodeBase current, string portName = "Out")
+		{
+			EnsureRuntimeInitialized();
+
+			if (_outgoingCache.TryGetValue(current, out var portMap))
+			{
+				if (portMap.TryGetValue(portName, out var targets) && targets.Count > 0)
+				{
+					return targets[0];
+				}
+			}
+			return null;
+		}
+
+		/// <summary>
+		/// 获取指定端口连接的【所有】下一个节点。
+		/// 适用于多输出端口（如 "BroadCast"）。
+		/// </summary>
+		public List<AsakiNodeBase> GetNextNodes(AsakiNodeBase current, string portName = "Out")
+		{
+			EnsureRuntimeInitialized();
+
+			if (_outgoingCache.TryGetValue(current, out var portMap))
+			{
+				if (portMap.TryGetValue(portName, out var targets))
+				{
+					return targets;
+				}
+			}
+			return new List<AsakiNodeBase>(); // 返回空列表防止 NullReference
+		}
+
+		/// <summary>
+		/// 泛型版本，自动转换类型
+		/// </summary>
+		public T GetNextNode<T>(AsakiNodeBase current, string portName = "Out") where T : AsakiNodeBase
+		{
+			return GetNextNode(current, portName) as T;
+		}
+		
+		public void OnBeforeSerialize()
+		{
+			// 序列化前无需操作，数据都在 List 中
+		}
+
+		public void OnAfterDeserialize()
+		{
+			// 反序列化后（如 Ctrl+Z，或资源加载），缓存表是空的
+			// 我们标记为未初始化，下次访问时会自动重建 (Lazy Load)
+			// 或者更激进地：如果已经在运行中，强制刷新
+            
+			_isInitialized = false; 
+			_nodeLookup = null;
+			_outgoingCache = null;
+			_incomingCache = null;
+            
+			// 注意：不要在这里直接调用 InitializeRuntime()
+			// 因为 Unity 反序列化是在非主线程或受限环境下进行的，
+			// 复杂的字典操作可能不安全。
+			// 我们通过置空标志位，让 GetInputConnection 等方法在下次调用时自动重建。
+		}
+	}
+}
+
+using Asaki.Core.Blackboard;
+using Asaki.Core.Context;
+using System;
+using UnityEngine;
+
+namespace Asaki.Core.Graphs
+{
+	public abstract class AsakiGraphRunner<TGraph> : MonoBehaviour
+		where TGraph : AsakiGraphBase
+	{
+		[Header("Graphs Data")]
+		public TGraph GraphAsset;
+
+		protected AsakiGraphRuntimeContext _context;
+
+		protected virtual void Start()
+		{
+			if (GraphAsset == null)
+			{
+				Debug.LogWarning($"[AsakiGraphRunner] GraphAsset is null on {name}");
+				return;
+			}
+
+			// 1. 初始化图结构缓存 (O(1) Lookup)
+			GraphAsset.InitializeRuntime();
+
+			// 2. 构建运行时上下文
+			InitializeContext();
+	
+			// 3. 将 Asset 中配置的变量初值填入 Runtime 黑板
+			InitializeBlackboardValues();
+			
+			OnGraphInitialized();
+		}
+
+		private void InitializeContext()
+		{
+			_context = new AsakiGraphRuntimeContext();
+			_context.Owner = this.gameObject;
+
+			// --- 作用域链构建 (Scope Chain Integration) ---
+
+			// A. 尝试获取全局黑板 (Global Scope)
+			// AsakiContext 是线程安全的，可以直接访问
+			IAsakiBlackboard globalScope = null;
+			if (AsakiContext.TryGet<IAsakiBlackboard>(out var globalBB))
+			{
+				globalScope = globalBB;
+			}
+
+			// B. 创建本地黑板 (Local Scope)
+			// 将全局黑板设为 Parent，实现 "Local -> Global" 的查找链
+			// 依据 v2 设计：对本地黑板的修改绝不会污染 globalScope
+			_context.Blackboard = new AsakiBlackboard(globalScope);
+		}
+
+		private void InitializeBlackboardValues()
+		{
+			if (GraphAsset == null || _context.Blackboard == null) return;
+
+			// 遍历 ScriptableObject 中的变量定义
+			foreach (var variable in GraphAsset.Variables)
+			{
+		
+				switch (variable.Type)
+				{
+					case AsakiBlackboardPropertyType.Int:
+						_context.Blackboard.SetValue(variable.Name, variable.IntVal);
+						break;
+					case AsakiBlackboardPropertyType.Float:
+						_context.Blackboard.SetValue(variable.Name, variable.FloatVal);
+						break;
+					case AsakiBlackboardPropertyType.Bool:
+						_context.Blackboard.SetValue(variable.Name, variable.BoolVal);
+						break;
+					case AsakiBlackboardPropertyType.String:
+						_context.Blackboard.SetValue(variable.Name, variable.StringVal);
+						break;
+					case AsakiBlackboardPropertyType.Vector3:
+						_context.Blackboard.SetValue(variable.Name, variable.Vector3Val);
+						break;
+					case AsakiBlackboardPropertyType.Vector2Int:
+						_context.Blackboard.SetValue(variable.Name, variable.Vector2IntVal);
+						break;
+					case AsakiBlackboardPropertyType.Vector3Int:
+						_context.Blackboard.SetValue(variable.Name, variable.Vector3IntVal);
+						break;
+					case AsakiBlackboardPropertyType.Color:
+						_context.Blackboard.SetValue(variable.Name, variable.ColorVal);
+						break;
+				}
+			}
+		}
+		
+		// 子类可以在这里做额外的初始化（比如绑定 UI、注册特定服务）
+		protected virtual void OnGraphInitialized() { }
+
+		// --- 生命周期管理 (New) ---
+
+		protected virtual void OnDestroy()
+		{
+			// 必须清理，否则 Blackboard 中的 AsakiProperty 可能会残留 UI 订阅，导致内存泄漏
+			if (_context != null)
+			{
+				_context.Dispose();
+				_context = null;
+			}
+			OnNodeExecuted = null;
+		}
+
+		// --- 辅助 API (Helpers) ---
+
+		/// <summary>
+		/// 获取变量 (支持 Key 字符串自动转 Hash)
+		/// </summary>
+		public T GetVariable<T>(string key)
+		{
+			if (_context?.Blackboard == null) return default;
+			// 隐式转换: string -> AsakiBlackboardKey (FNV-1a)
+			return _context.Blackboard.GetValue<T>(key);
+		}
+
+		/// <summary>
+		/// 设置变量 (Shadowing: 只修改本地)
+		/// </summary>
+		public void SetVariable<T>(string key, T value)
+		{
+			if (_context?.Blackboard == null) return;
+			// 隐式转换: string -> AsakiBlackboardKey (FNV-1a)
+			_context.Blackboard.SetValue<T>(key, value);
+		}
+
+		/// <summary>
+		/// 获取当前节点某个输入端口的值。
+		/// 如果有连线，则回溯上游节点并计算返回值；
+		/// 如果无连线，则返回默认值。
+		/// </summary>
+		protected T GetInputValue<T>(AsakiNodeBase currentNode, string inputPortName, T fallback = default)
+		{
+			// 1. 查找连接到该端口的线
+			var edge = GraphAsset.GetInputConnection(currentNode, inputPortName);
+			if (edge == null) return fallback;
+
+			// 2. 找到上游节点
+			var sourceNode = GraphAsset.GetNodeByGUID(edge.BaseNodeGUID);
+			if (sourceNode == null) return fallback;
+
+			// 3. 计算上游节点的值 (Resolve)
+			// 这里我们实现一个简易的求值分发器
+			return ResolveNodeValue<T>(sourceNode, edge.BasePortName);
+		}
+
+		/// <summary>
+		/// 解析节点的值 (当节点被当作数据源连接时调用)
+		/// </summary>
+		protected virtual T ResolveNodeValue<T>(AsakiNodeBase node, string outputPortName)
+		{
+			// --- Case A: Get Variable Node (从黑板取值) ---
+			if (node is AsakiGetVariableNode getVarNode)
+			{
+				if (_context.Blackboard == null) return default;
+
+				// 核心：直接从 Blackboard 读
+				// 利用隐式转换 string -> AsakiBlackboardKey
+				return _context.Blackboard.GetValue<T>(getVarNode.VariableName);
+			}
+
+			// --- Case B: 其他数据节点 (如 Math, Logic 等，未来扩展) ---
+			// e.g. if (node is AsakiAddNode addNode) return addNode.Execute(this);
+
+			Debug.LogWarning($"[AsakiRunner] Cannot resolve value from node type: {node.GetType().Name}");
+			return default;
+		}
+
+		
+		
+		// ================================================================
+		// ★ 核心驱动逻辑 2: 执行流 (Execution Flow)
+		// ================================================================
+        
+		// 节点执行事件 (Editor Only)
+		public event Action<AsakiNodeBase> OnNodeExecuted;
+		
+		/// <summary>
+		/// 执行单个节点逻辑
+		/// </summary>
+		protected virtual void ExecuteNode(AsakiNodeBase node)
+		{
+			if (node == null) return;
+
+			#if UNITY_EDITOR
+			// 触发调试事件
+			OnNodeExecuted?.Invoke(node);
+			#endif
+			
+			// --- Case A: Set Variable Node (写入黑板) ---
+			if (node is AsakiSetVariableNode setVarNode)
+			{
+				if (_context.Blackboard == null) return;
+
+				// 1. 获取要写入的值
+				// 注意：这里需要根据变量类型动态获取值，比较棘手因为 T 未知
+				// 但在 SetValue<T> 中我们需要泛型。
+				// 策略：使用 object 重载或根据 VariableType switch
+
+				object valueToWrite = GetInputValue<object>(setVarNode, "Value");
+
+				// 2. 写入黑板 (需要处理类型分发)
+				// 这里为了演示简单，我们假设 Blackboard 有 Object 重载，或者我们手动 switch
+				WriteToBlackboard(setVarNode.VariableName, setVarNode.VariableType, valueToWrite);
+
+				// 3. 继续执行后续节点
+				var nextNode = GraphAsset.GetNextNode(node, "Out");
+				if (nextNode != null) ExecuteNode(nextNode);
+				return;
+			}
+
+			// --- Case B: 其他执行节点 ---
+			// 子类可以 override 这个方法处理自己的业务节点
+			OnExecuteCustomNode(node);
+		}
+
+		// 辅助：处理类型写入
+		private void WriteToBlackboard(string key, AsakiBlackboardPropertyType type, object value)
+		{
+			// 这里的 value 可能是 null，或者类型不匹配，需要安全转换
+			try
+			{
+				switch (type)
+				{
+					case AsakiBlackboardPropertyType.Int:
+						_context.Blackboard.SetValue(key, Convert.ToInt32(value));
+						break;
+					case AsakiBlackboardPropertyType.Float:
+						_context.Blackboard.SetValue(key, Convert.ToSingle(value));
+						break;
+					case AsakiBlackboardPropertyType.Bool:
+						_context.Blackboard.SetValue(key, Convert.ToBoolean(value));
+						break;
+					case AsakiBlackboardPropertyType.String:
+						_context.Blackboard.SetValue(key, Convert.ToString(value));
+						break;
+					case AsakiBlackboardPropertyType.Vector3:
+						_context.Blackboard.SetValue(key, (Vector3)value);
+						break;
+					case AsakiBlackboardPropertyType.Vector2:
+						_context.Blackboard.SetValue(key, (Vector2)value);
+						break;
+					case AsakiBlackboardPropertyType.Vector3Int:
+						_context.Blackboard.SetValue(key, (Vector3Int)value);
+						break;
+					case AsakiBlackboardPropertyType.Vector2Int:
+						_context.Blackboard.SetValue(key, (Vector2Int)value);
+						break;
+					case AsakiBlackboardPropertyType.Color:
+						_context.Blackboard.SetValue(key, (Color)value);
+						break;
+				}
+			}
+			catch (Exception e)
+			{
+				Debug.LogError($"[AsakiRunner] SetVariable Failed: Key={key}, Type={type}, Value={value}. Error: {e.Message}");
+			}
+		}
+
+		/// <summary>
+		/// 子类重写此方法处理特定业务节点 (如 PlaySound, MoveTo)
+		/// </summary>
+		protected virtual void OnExecuteCustomNode(AsakiNodeBase node) { }
+		
+	}
+}
+
+using Asaki.Core.Blackboard;
+using System;
+using System.Collections.Generic;
+using UnityEngine;
+
+namespace Asaki.Core.Graphs
+{
+	public class AsakiGraphRuntimeContext : IDisposable
+	{
+		public IAsakiBlackboard Blackboard;
+        
+		public GameObject Owner;
+
+		public void Dispose()
+		{
+			// M-01: 级联释放，断开所有属性订阅
+			Blackboard?.Dispose();
+			Blackboard = null;
+			Owner = null;
+		}
+	}
+}
+
+using System;
+
+namespace Asaki.Core.Graphs
+{
+	[Serializable]
+	[AsakiGraphContext(typeof(AsakiGraphBase), "Variable/Get")] // 适配所有图
+	public class AsakiGetVariableNode : AsakiNodeBase
+	{
+		public override string Title => $"Get {VariableName}";
+        
+		// 存储变量名 (Key)
+		public string VariableName;
+        
+		// 存储类型 (用于运行时优化和 Editor 端口着色)
+		public AsakiBlackboardPropertyType VariableType;
+
+		// 输出端口 (名字固定为 Value，但在 Editor 下我们会动态修改它的显示类型)
+		[AsakiNodeOutput("Value")] 
+		public object Value; 
+	}
+	
+	[Serializable]
+	[AsakiGraphContext(typeof(AsakiGraphBase), "Variable/Set")]
+	public class AsakiSetVariableNode : AsakiNodeBase
+	{
+		public override string Title => $"Set {VariableName}";
+
+		public string VariableName;
+		public AsakiBlackboardPropertyType VariableType;
+
+		// 执行流输入
+		[AsakiNodeInput("In")] 
+		public AsakiFlowPort InputFlow;
+        
+		// 值输入
+		[AsakiNodeInput("Value")] 
+		public object NewValue;
+
+		// 执行流输出
+		[AsakiNodeOutput("Out")]
+		public AsakiFlowPort OutputFlow;
+	}
+	
+	[Serializable] public struct AsakiFlowPort { }
+}
+
+using System;
+using System.Collections.Generic;
+using Asaki.Core.Graphs;
+using UnityEditor;
+using UnityEditor.Experimental.GraphView;
+using UnityEditor.UIElements;
+using UnityEngine;
+using UnityEngine.UIElements;
+
+namespace Asaki.Editor.GraphEditors
+{
+    /// <summary>
+    /// 负责管理 GraphView 中的 Blackboard 面板 (UI Toolkit)
+    /// </summary>
+    public class AsakiBlackboardProvider
+    {
+        public Blackboard Blackboard { get; private set; }
+        
+        private readonly AsakiGraphView _graphView;
+        private readonly AsakiGraphBase _graphAsset;
+        private readonly SerializedObject _serializedGraph;
+
+        public AsakiBlackboardProvider(AsakiGraphView graphView, AsakiGraphBase graphAsset, SerializedObject serializedGraph)
+        {
+            _graphView = graphView;
+            _graphAsset = graphAsset;
+            _serializedGraph = serializedGraph;
+
+            InitializeBlackboard();
+            RefreshBlackboard();
+        }
+
+        private void InitializeBlackboard()
+        {
+            // 1. 创建 Blackboard UI 控件
+            Blackboard = new Blackboard(_graphView)
+            {
+                title = "Blackboard",
+                subTitle = "Variables"
+            };
+
+            // 2. 配置添加按钮 (Add Item)
+            Blackboard.addItemRequested = _ =>
+            {
+                var menu = new GenericMenu();
+                foreach (AsakiBlackboardPropertyType type in Enum.GetValues(typeof(AsakiBlackboardPropertyType)))
+                {
+                    menu.AddItem(new GUIContent(type.ToString()), false, () => AddVariable(type));
+                }
+                menu.ShowAsContext();
+            };
+
+            // 3. 配置重命名与移动
+            Blackboard.editTextRequested = (bb, element, newName) =>
+            {
+                var field = (BlackboardField)element;
+                var variable = (AsakiVariableDef)field.userData;
+                
+                if (string.IsNullOrEmpty(newName) || newName == variable.Name) return;
+
+                // 简单的重名检查
+                if (_graphAsset.Variables.Exists(v => v.Name == newName))
+                {
+                    EditorUtility.DisplayDialog("Error", "Variable name already exists!", "OK");
+                    return;
+                }
+
+                Undo.RecordObject(_graphAsset, "Rename Variable");
+                variable.Name = newName;
+                field.text = newName;
+                EditorUtility.SetDirty(_graphAsset);
+            };
+
+            // 4. 设置位置 (默认左上角，稍微偏移)
+            Blackboard.SetPosition(new Rect(10, 30, 200, 300));
+            
+            // 5. 添加到 GraphView
+            _graphView.Add(Blackboard);
+            
+            // 6. 开启 Scrollable
+            Blackboard.scrollable = true;
+            
+            Blackboard.RegisterCallback<KeyDownEvent>(evt =>
+            {
+                if (evt.keyCode == KeyCode.Delete || evt.keyCode == KeyCode.Backspace)
+                {
+                    DeleteSelectedVariables();
+                    evt.StopImmediatePropagation();
+                }
+            });
+        }
+        
+        private void DeleteSelectedVariables()
+        {
+            // 1. 获取当前选中的黑板元素
+            var selection = Blackboard.selection;
+            if (selection == null || selection.Count == 0) return;
+
+            // 2. 记录 Undo (支持撤销)
+            Undo.RecordObject(_graphAsset, "Delete Variables");
+
+            bool changed = false;
+            
+            // 3. 倒序遍历删除（防止索引错位，虽然这里是 foreach，但在 List Remove 时需小心）
+            // 这里我们先收集要删除的变量，再统一移除
+            var varsToRemove = new List<AsakiVariableDef>();
+
+            foreach (var element in selection)
+            {
+                // 只有选中的是 BlackboardField (具体变量行) 时才删除
+                if (element is BlackboardField field && field.userData is AsakiVariableDef def)
+                {
+                    varsToRemove.Add(def);
+                }
+            }
+
+            foreach (var def in varsToRemove)
+            {
+                _graphAsset.Variables.Remove(def);
+                changed = true;
+            }
+
+            // 4. 如果有数据变动，刷新 UI 并标记 Dirty
+            if (changed)
+            {
+                // 刷新黑板 UI
+                RefreshBlackboard();
+                
+                // 标记 Asset 已修改
+                EditorUtility.SetDirty(_graphAsset);
+            }
+        }
+
+        private void AddVariable(AsakiBlackboardPropertyType type)
+        {
+            Undo.RecordObject(_graphAsset, "Add Variable");
+            
+            // 生成唯一名字
+            string name = "New" + type;
+            int i = 1;
+            while (_graphAsset.Variables.Exists(v => v.Name == name))
+                name = $"New{type}_{i++}";
+
+            var newVar = new AsakiVariableDef { Name = name, Type = type };
+            _graphAsset.Variables.Add(newVar);
+            
+            EditorUtility.SetDirty(_graphAsset);
+            
+            // 刷新 UI
+            RefreshBlackboard();
+        }
+
+        public void RefreshBlackboard()
+        {
+            Blackboard.Clear();
+            var section = new BlackboardSection { title = "Exposed Properties" };
+            Blackboard.Add(section);
+
+            foreach (var variable in _graphAsset.Variables)
+            {
+                var field = new BlackboardField
+                {
+                    text = variable.Name,
+                    typeText = variable.Type.ToString(),
+                    userData = variable // ★ 关键：将数据绑定到 VisualElement
+                };
+
+                // ★ [New] 注册拖拽事件
+                EnableDrag(field, variable);
+
+                var row = new BlackboardRow(field, CreateValueView(variable));
+                section.Add(row);
+            }
+        }
+        
+        private void EnableDrag(VisualElement element, AsakiVariableDef variable)
+        {
+            Vector2 _mouseDownPos = Vector2.zero;
+            bool _readyToDrag = false;
+
+            element.RegisterCallback<MouseDownEvent>(evt =>
+            {
+                if (evt.button == 0)
+                {
+                    _mouseDownPos = evt.localMousePosition;
+                    _readyToDrag = true;
+                }
+            });
+
+            element.RegisterCallback<MouseMoveEvent>(evt =>
+            {
+                // 1. 基础状态检查
+                if (!_readyToDrag || evt.pressedButtons != 1) return;
+
+            
+                if (DragAndDrop.GetGenericData("AsakiVariable") != null) 
+                {
+                    _readyToDrag = false;
+                    return;
+                }
+
+                // 3. 距离阈值检测
+                if (Vector2.Distance(evt.localMousePosition, _mouseDownPos) > 5f)
+                {
+                    _readyToDrag = false;
+                    
+                    DragAndDrop.PrepareStartDrag();
+                    DragAndDrop.SetGenericData("AsakiVariable", variable);
+                    DragAndDrop.StartDrag("Dragging " + variable.Name);
+                    
+                    evt.StopImmediatePropagation();
+                }
+            });
+
+            element.RegisterCallback<MouseUpEvent>(evt =>
+            {
+                _readyToDrag = false;
+            });
+            
+            element.RegisterCallback<MouseLeaveEvent>(evt => 
+            {
+                _readyToDrag = false; 
+            });
+        }
+
+        // 创建行内的小编辑器 (修改默认值)
+        private VisualElement CreateValueView(AsakiVariableDef variable)
+        {
+            // 这里我们使用简易的 IMGUIContainer 或者 UI Elements
+            // 为了简单，直接根据类型创建对应的 Field
+            VisualElement container = new VisualElement();
+            container.style.paddingLeft = 10;
+
+            switch (variable.Type)
+            {
+                case AsakiBlackboardPropertyType.Int:
+                    var intField = new IntegerField { value = variable.IntVal };
+                    intField.RegisterValueChangedCallback(evt => {
+                        variable.IntVal = evt.newValue;
+                        EditorUtility.SetDirty(_graphAsset);
+                    });
+                    container.Add(intField);
+                    break;
+                case AsakiBlackboardPropertyType.Float:
+                    var floatField = new FloatField { value = variable.FloatVal };
+                    floatField.RegisterValueChangedCallback(evt => {
+                        variable.FloatVal = evt.newValue;
+                        EditorUtility.SetDirty(_graphAsset);
+                    });
+                    container.Add(floatField);
+                    break;
+                case AsakiBlackboardPropertyType.Bool:
+                    var boolField = new Toggle { value = variable.BoolVal };
+                    boolField.RegisterValueChangedCallback(evt => {
+                        variable.BoolVal = evt.newValue;
+                        EditorUtility.SetDirty(_graphAsset);
+                    });
+                    container.Add(boolField);
+                    break;
+                case AsakiBlackboardPropertyType.String:
+                    var strField = new TextField { value = variable.StringVal };
+                    strField.RegisterValueChangedCallback(evt => {
+                        variable.StringVal = evt.newValue;
+                        EditorUtility.SetDirty(_graphAsset);
+                    });
+                    container.Add(strField);
+                    break;
+                case AsakiBlackboardPropertyType.Vector3:
+                    var vec3Field = new Vector3Field { value = variable.Vector3Val };
+                    vec3Field.RegisterValueChangedCallback(evt => {
+                        variable.Vector3Val = evt.newValue;
+                        EditorUtility.SetDirty(_graphAsset);
+                    });
+                    container.Add(vec3Field);
+                    break;
+                case AsakiBlackboardPropertyType.Vector2:
+                    var vec2Field = new Vector2Field { value = variable.Vector2Val };
+                    vec2Field.RegisterValueChangedCallback(evt => {
+                        variable.Vector2Val = evt.newValue;
+                        EditorUtility.SetDirty(_graphAsset);
+                    });
+                    break;
+                case AsakiBlackboardPropertyType.Vector3Int:
+                    var vec3IntField = new Vector3IntField { value = variable.Vector3IntVal };
+                    vec3IntField.RegisterValueChangedCallback(evt =>
+                    {
+                        variable.Vector3IntVal = evt.newValue;
+                        EditorUtility.SetDirty(_graphAsset);
+                    });
+                    break;
+                case AsakiBlackboardPropertyType.Vector2Int:
+                    var vec2IntField = new Vector2IntField { value = variable.Vector2IntVal };
+                    vec2IntField.RegisterValueChangedCallback(evt =>
+                    {
+                        variable.Vector2IntVal = evt.newValue;
+                        EditorUtility.SetDirty(_graphAsset);
+                    });
+                    break;
+                case AsakiBlackboardPropertyType.Color:
+                    var colorField = new ColorField { value = variable.ColorVal };
+                    colorField.RegisterValueChangedCallback(evt =>
+                    {
+                        variable.ColorVal = evt.newValue;
+                        EditorUtility.SetDirty(_graphAsset);
+                    });
+                    break;
+            }
+            return container;
+        }
+    }
+}

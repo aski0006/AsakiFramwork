@@ -1,0 +1,19 @@
+{
+  "name": "Asaki.Editor",
+  "rootNamespace": "",
+  "references": [
+    "Unity.Rider.Editor",
+    "Asaki.Core",
+    "Asaki.Unity",
+    "UnityEditor.UI"
+  ],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": true,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": false
+}

@@ -1,0 +1,252 @@
+﻿============================================================
+Directory Tree: E:/Projects/UnityGame/Asaki/Assets/Asaki
+Generated Time: 2025-12-26 17:43:07
+============================================================
+
+Asaki/
+├── CodeGen/
+├── Core/
+│   ├── Attributes/
+│   │   ├── AsakiBindAttribute.cs (274 B)
+│   │   ├── AsakiGraphContextAttribute.cs (1.0 KB)
+│   │   ├── AsakiModuleAttribute.cs (1.3 KB)
+│   │   ├── AsakiSerializationAttributes.cs (1.1 KB)
+│   │   └── AsakiUIBuilderAttribute.cs (1.2 KB)
+│   ├── Audio/
+│   │   ├── AsakiAudioEvents.cs (492 B)
+│   │   ├── AsakiAudioHandle.cs (1.2 KB)
+│   │   ├── AsakiAudioParams.cs (2.0 KB)
+│   │   └── IAsakiAudioService.cs (2.4 KB)
+│   ├── Blackboard/
+│   │   ├── AsakiBlackboard.cs (10.7 KB)
+│   │   ├── AsakiBlackboardKey.cs (2.5 KB)
+│   │   └── IAsakiBlackboard.cs (0.7 KB)
+│   ├── Broker/
+│   │   ├── AsakiBroker.cs (1.7 KB)
+│   │   ├── AsakiEventService.cs (5.8 KB)
+│   │   ├── IAsakiEvent.cs (166 B)
+│   │   └── IAsakiEventService.cs (345 B)
+│   ├── Configuration/
+│   │   ├── AsakiConfigReloadedEvent.cs (191 B)
+│   │   ├── IAsakiConfig.cs (276 B)
+│   │   └── IAsakiConfigService.cs (417 B)
+│   ├── Context/
+│   │   ├── AsakiContext.cs (9.6 KB)
+│   │   ├── IAsakiModule.cs (1.4 KB)
+│   │   ├── IAsakiModuleDiscovery.cs (0.5 KB)
+│   │   └── IAsakiService.cs (73 B)
+│   ├── Coroutines/
+│   │   └── IAsakiCoroutineService.cs (5.1 KB)
+│   ├── Graphs/
+│   │   ├── AsakiBlackboardData.cs (0.6 KB)
+│   │   ├── AsakiCustomGraphEditorAttribute.cs (353 B)
+│   │   ├── AsakiGraphAsset.cs (0.7 KB)
+│   │   ├── AsakiGraphBase.cs (5.6 KB)
+│   │   ├── AsakiGraphRunner.cs (8.7 KB)
+│   │   ├── AsakiGraphRuntimeContext.cs (437 B)
+│   │   └── AsakiVariableNode.cs (1.2 KB)
+│   ├── MVVM/
+│   │   ├── AsakiProperty.cs (4.9 KB)
+│   │   └── IAsakiObserver.cs (113 B)
+│   ├── Network/
+│   │   ├── AsakiWebException.cs (299 B)
+│   │   ├── IAsakiDownloadService.cs (0.8 KB)
+│   │   └── IAsakiWebService.cs (1.1 KB)
+│   ├── Pooling/
+│   │   ├── AsakiPoolService.cs (11.6 KB)
+│   │   ├── AsakiSmartPool.cs (2.5 KB)
+│   │   ├── IAsakiPoolable.cs (121 B)
+│   │   ├── IAsakiPoolService.cs (1.8 KB)
+│   │   ├── PoolData.cs (1.7 KB)
+│   │   └── PoolItem.cs (0.9 KB)
+│   ├── Resources/
+│   │   ├── IAsakiResDependencyLookup.cs (0.9 KB)
+│   │   ├── IAsakiResService.cs (1.4 KB)
+│   │   └── IAsakiResStrategy.cs (0.6 KB)
+│   ├── Serialization/
+│   │   ├── AsakiSerializationEvents.cs (432 B)
+│   │   ├── IAsakiSaveService.cs (0.8 KB)
+│   │   └── IAsakiSerialization.cs (2.5 KB)
+│   ├── Simulation/
+│   │   ├── AsakiSimulationManager.cs (2.4 KB)
+│   │   └── IAsakiTickable.cs (0.5 KB)
+│   ├── UI/
+│   │   ├── AsakiUILayer.cs (122 B)
+│   │   ├── AsakiUIResourceHandleAdapter.cs (0.7 KB)
+│   │   ├── AsakiUIWidgetType.cs (408 B)
+│   │   ├── IAsakiUIResourceHandler.cs (135 B)
+│   │   ├── IAsakiUIService.cs (417 B)
+│   │   └── IAsakiWindow.cs (277 B)
+│   ├── Asaki.Core.asmdef (396 B)
+│   └── code.txt (29.5 KB)
+├── Docs/
+│   ├── 01-Core/
+│   └── 02-Services/
+├── Editor/
+│   ├── Configuration/
+│   │   ├── AsakiConfigBaker.cs (2.9 KB)
+│   │   ├── AsakiConfigDashboardWindow.cs (23.0 KB)
+│   │   └── AsakiConfigDebugger.cs (15.3 KB)
+│   ├── Debugging/
+│   │   ├── AsakiEventDebuggerWindow.cs (28.5 KB)
+│   │   ├── AsakiResDebuggerWindow.cs (27.6 KB)
+│   │   ├── AsakiSaveInspector.cs (10.3 KB)
+│   │   └── AsakiSmartPoolDebuggerWindow.cs (11.0 KB)
+│   ├── GraphEditors/
+│   │   ├── Impl/
+│   │   │   └── GenericAsakiGraphController.cs (0.7 KB)
+│   │   ├── AsakiBlackboardProvider.cs (11.9 KB)
+│   │   ├── AsakiGraphDebugger.cs (3.3 KB)
+│   │   ├── AsakiGraphIOUtils.cs (2.5 KB)
+│   │   ├── AsakiGraphTypeCache.cs (1.8 KB)
+│   │   ├── AsakiGraphView.cs (11.1 KB)
+│   │   ├── AsakiGraphWindow.cs (3.0 KB)
+│   │   ├── AsakiNodeSearchWindow.cs (3.0 KB)
+│   │   ├── AsakiNodeView.cs (7.3 KB)
+│   │   └── IAsakiGraphViewController.cs (442 B)
+│   ├── ModuleSystem/
+│   │   ├── Graph/
+│   │   │   ├── AsakiModuleGraphBuilder.cs (3.3 KB)
+│   │   │   ├── AsakiModuleGraphController.cs (0.6 KB)
+│   │   │   └── AsakiModuleNode.cs (0.9 KB)
+│   │   └── AsakiModuleDashboard.cs (14.1 KB)
+│   ├── PropertyDrawers/
+│   │   └── AsakiPropertyDrawer.cs (1.2 KB)
+│   ├── Style/
+│   ├── UI/
+│   │   ├── AsakiUIGeneratorWindow.cs (15.4 KB)
+│   │   ├── AsakiUIPanel.cs (2.1 KB)
+│   │   ├── AsakiUIScaffolder.cs (7.8 KB)
+│   │   ├── AsakiUITools.cs (4.4 KB)
+│   │   └── AsakiUIWindowEditor.cs (2.8 KB)
+│   ├── Utilities/
+│   │   ├── Extensions/
+│   │   │   ├── AsakiUIExtensions.cs (2.9 KB)
+│   │   │   ├── GUILayoutExtensions.cs (3.9 KB)
+│   │   │   └── PrefabUtilityExtensions.cs (2.5 KB)
+│   │   └── Tools/
+│   │       ├── AssetReplacer/
+│   │       │   ├── AsakiAssetReplacerLogic.cs (5.4 KB)
+│   │       │   └── AsakiAssetReplacerWindow.cs (4.7 KB)
+│   │       ├── AssetsExplore/
+│   │       │   ├── AssetCategory.cs (320 B)
+│   │       │   ├── AssetExplorerWindow.cs (30.4 KB)
+│   │       │   ├── AssetInfo.cs (1.6 KB)
+│   │       │   ├── AssetScanner.cs (13.9 KB)
+│   │       │   ├── CategoryManager.cs (2.4 KB)
+│   │       │   ├── SearchEngine.cs (3.4 KB)
+│   │       │   └── SettingsWindow.cs (2.4 KB)
+│   │       ├── BatchRename/
+│   │       │   ├── BatchRenameEditorWindow.cs (10.3 KB)
+│   │       │   ├── BatchRenameService.cs (5.7 KB)
+│   │       │   ├── RenameOperation.cs (2.8 KB)
+│   │       │   └── UndoScope.cs (1.2 KB)
+│   │       ├── DuplicateFinder/
+│   │       │   ├── AsakiDuplicateFinderWindow.cs (5.7 KB)
+│   │       │   └── DuplicateGroup.cs (3.3 KB)
+│   │       ├── GroundAligner/
+│   │       │   ├── AsakiGroundAlignerLogic.cs (4.3 KB)
+│   │       │   └── AsakiGroundAlignerWindow.cs (3.6 KB)
+│   │       ├── MissingFinder/
+│   │       │   └── AsakiMissingFinderWindow.cs (9.0 KB)
+│   │       ├── AsakiAudioGenerator.cs (19.8 KB)
+│   │       ├── AsakiFileTreeGenerator.cs (10.2 KB)
+│   │       └── AsakiScriptAggregation.cs (29.0 KB)
+│   └── Asaki.Editor.asmdef (450 B)
+├── Generated/
+│   ├── Asaki.Generated.asmdef (450 B)
+│   ├── AudioID.cs (0.6 KB)
+│   └── UIID.cs (309 B)
+└── Unity/
+    ├── Bootstrapper/
+    │   ├── Modules/
+    │   │   ├── AsakiAudioModule.cs (1.2 KB)
+    │   │   ├── AsakiConfigModule.cs (0.8 KB)
+    │   │   ├── AsakiDownloadModule.cs (0.9 KB)
+    │   │   ├── AsakiEventBusModule.cs (1.7 KB)
+    │   │   ├── AsakiPoolModule.cs (1.2 KB)
+    │   │   ├── AsakiResourcesModule.cs (1.3 KB)
+    │   │   ├── AsakiRoutineModule.cs (0.7 KB)
+    │   │   ├── AsakiSaveModule.cs (0.8 KB)
+    │   │   ├── AsakiUIModule.cs (1.4 KB)
+    │   │   └── AsakiWebModule.cs (0.9 KB)
+    │   ├── AsakiBootstrapper.cs (2.7 KB)
+    │   ├── AsakiModuleLoader.cs (5.5 KB)
+    │   └── AsakiStaticModuleDiscovery.cs (1.1 KB)
+    ├── Bridge/
+    │   ├── AsakiLifecycleTracker.cs (1.0 KB)
+    │   └── AsakiMonoDriver.cs (0.7 KB)
+    ├── Configuration/
+    │   ├── AsakiAudioConfig.cs (2.4 KB)
+    │   ├── AsakiConfig.cs (2.2 KB)
+    │   ├── AsakiUIConfig.cs (0.9 KB)
+    │   └── AsakiUITemplateConfig.cs (0.7 KB)
+    ├── Extensions/
+    │   ├── AsakiResFlowExtensions.cs (2.3 KB)
+    │   ├── AsakiSaveExtensions.cs (5.9 KB)
+    │   ├── AsakiTaskExtensions.cs (1.4 KB)
+    │   ├── AsakiUIExtensions.cs (6.1 KB)
+    │   └── AsakiUnityWebRequestExtensions.cs (0.6 KB)
+    ├── Services/
+    │   ├── Audio/
+    │   │   ├── AsakiAudioService.cs (9.2 KB)
+    │   │   └── AsakiSoundAgent.cs (6.8 KB)
+    │   ├── Configuration/
+    │   │   ├── AsakiConfigHotReloader.cs (5.3 KB)
+    │   │   ├── AsakiConfigRegistry.cs (1.1 KB)
+    │   │   ├── AsakiConfigService.cs (10.1 KB)
+    │   │   └── AsakiCsvSerialization.cs (5.2 KB)
+    │   ├── Coroutines/
+    │   │   ├── AsakiCoroutineRunner.cs (230 B)
+    │   │   ├── AsakiRoutineProvider.Bridge.cs (3.5 KB)
+    │   │   ├── AsakiRoutineProvider.Core.cs (3.0 KB)
+    │   │   ├── AsakiRoutineProvider.Tasks.cs (7.2 KB)
+    │   │   ├── AsakiRoutineProvider.Time.cs (7.8 KB)
+    │   │   └── AsakiTaskVoid.cs (3.2 KB)
+    │   ├── Network/
+    │   │   ├── Interceptors/
+    │   │   │   └── AsakiLogInterceptor.cs (465 B)
+    │   │   ├── AsakiDownloadService.cs (2.9 KB)
+    │   │   └── AsakiWebService.cs (4.5 KB)
+    │   ├── Resources/
+    │   │   ├── Lookup/
+    │   │   │   └── AsakiNullResDependencyLookup.cs (0.8 KB)
+    │   │   ├── Strategies/
+    │   │   │   ├── AsakiAddressablesStrategy.cs (4.9 KB)
+    │   │   │   └── AsakiResourcesStrategy.cs (1.7 KB)
+    │   │   ├── AsakiResKitFactory.cs (3.5 KB)
+    │   │   ├── AsakiResKitMode.cs (0.8 KB)
+    │   │   └── AsakiResService.cs (9.7 KB)
+    │   ├── Serialization/
+    │   │   ├── AsakiBinarySerialization.cs (6.4 KB)
+    │   │   ├── AsakiJsonSerializaton.cs (14.6 KB)
+    │   │   └── AsakiSaveService.cs (6.4 KB)
+    │   └── UI/
+    │       ├── Observers/
+    │       │   ├── AsakiActiveObserver.cs (0.7 KB)
+    │       │   ├── AsakiInputFieldObserver.cs (463 B)
+    │       │   ├── AsakiInteractableObserver.cs (0.5 KB)
+    │       │   ├── AsakiIntTextObserver.cs (1.6 KB)
+    │       │   ├── AsakiSliderObserver.cs (0.6 KB)
+    │       │   ├── AsakiTextMeshProFloatObserver.cs (1.1 KB)
+    │       │   ├── AsakiTextMeshProIntObserver.cs (0.9 KB)
+    │       │   ├── AsakiTMPTextFloatObserver.cs (1.1 KB)
+    │       │   ├── AsakiTMPTextIntObserver.cs (1.2 KB)
+    │       │   └── AsakiToggleObserver.cs (426 B)
+    │       ├── AsakiUIManager.cs (8.4 KB)
+    │       ├── AsakiUIRoot.cs (4.9 KB)
+    │       └── AsakiUIWindow.cs (6.7 KB)
+    ├── Utils/
+    │   ├── AsakiAudioAsyncBridge.cs (7.1 KB)
+    │   ├── AsakiCsvUtils.cs (1.2 KB)
+    │   ├── AsakiFlow.cs (4.3 KB)
+    │   ├── AsakiResKitAsyncBridge.cs (2.5 KB)
+    │   └── AsakiStringBuilderPool.cs (1.3 KB)
+    └── Asaki.Unity.asmdef (1.0 KB)
+
+============================================================
+Stats: 59 directories, 180 files
+Total Size: 0.7 MB
+Ignored: .meta files
+Whitelist: .cs, .asmdef, .txt, .shader, .json, .xml
+============================================================

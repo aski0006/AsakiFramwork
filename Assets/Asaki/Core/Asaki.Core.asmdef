@@ -1,0 +1,16 @@
+{
+  "name": "Asaki.Core",
+  "rootNamespace": "",
+  "references": [
+    "GUID:d528c8c98d269ca44a06cd9624a03945"
+  ],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": true,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": false
+}
