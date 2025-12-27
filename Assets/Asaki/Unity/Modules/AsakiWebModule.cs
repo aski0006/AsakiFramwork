@@ -5,7 +5,7 @@ using Asaki.Unity.Configuration;
 using Asaki.Unity.Services.Network;
 using System.Threading.Tasks;
 
-namespace Asaki.Unity.Bootstrapper.Modules
+namespace Asaki.Unity.Modules
 {
 	[AsakiModule(priority: 100)]
 	public class AsakiWebModule : IAsakiModule

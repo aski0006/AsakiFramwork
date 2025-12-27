@@ -4,11 +4,12 @@ using Asaki.Core.Context;
 using Asaki.Core.Coroutines;
 using Asaki.Core.Resources;
 using Asaki.Unity.Configuration;
+using Asaki.Unity.Services.Logging;
 using Asaki.Unity.Services.Resources;
 using System.Threading.Tasks;
 using UnityEngine;
 
-namespace Asaki.Unity.Bootstrapper.Modules
+namespace Asaki.Unity.Modules
 {
 	// 优先级 200，且显式依赖 RoutineModule
 	[AsakiModule(125,
@@ -31,7 +32,7 @@ namespace Asaki.Unity.Bootstrapper.Modules
 			// 3. 注册服务
 			AsakiContext.Register(_resService);
 
-			Debug.Log($"[Asaki] Resources initialized in {mode} mode.");
+			ALog.Info($"[Asaki] Resources initialized in {mode} mode.");
 		}
 
 		public async Task OnInitAsync()

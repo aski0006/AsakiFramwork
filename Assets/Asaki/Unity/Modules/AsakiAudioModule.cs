@@ -7,7 +7,7 @@ using Asaki.Unity.Configuration;
 using Asaki.Unity.Services.Audio;
 using System.Threading.Tasks;
 
-namespace Asaki.Unity.Bootstrapper.Modules
+namespace Asaki.Unity.Modules
 {
 	// 优先级 400，通常依赖 Resources 加载音频
 	[AsakiModule(400,

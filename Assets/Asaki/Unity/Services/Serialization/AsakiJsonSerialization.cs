@@ -265,14 +265,6 @@ namespace Asaki.Unity.Services.Serialization
 			// EndObject 会重置 flag
 		}
 
-		public void Reset(StringBuilder newSb)
-		{
-			_sb = newSb;
-			_indent = 0;
-			_skipNextComma = false;
-			_contextStack.Clear();
-			_contextStack.Push(new ContainerContext { IsArray = false });
-		}
 	}
 
 	// ==================================================================================

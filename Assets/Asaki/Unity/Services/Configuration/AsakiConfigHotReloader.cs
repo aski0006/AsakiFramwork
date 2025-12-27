@@ -2,6 +2,7 @@
 
 using Asaki.Core.Configuration;
 using Asaki.Core.Context;
+using Asaki.Unity.Services.Logging;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -42,7 +43,7 @@ namespace Asaki.Unity.Services.Configuration
 			if (!Directory.Exists(_watchPath)) return;
 
 			InitWatcher();
-			Debug.Log($"[AsakiConfig] Hot Reload Watcher Started: {_watchPath}");
+			ALog.Info($"[AsakiConfig] Hot Reload Watcher Started: {_watchPath}");
 		}
 
 		private void InitWatcher()

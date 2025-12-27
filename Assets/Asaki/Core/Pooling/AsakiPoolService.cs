@@ -281,8 +281,6 @@ namespace Asaki.Core.Pooling
 				else Object.DestroyImmediate(_globalRoot.gameObject);
 				_globalRoot = null;
 			}
-
-			Debug.Log("[AsakiPoolService] Service Disposed & Memory Released.");
 		}
 	}
 }

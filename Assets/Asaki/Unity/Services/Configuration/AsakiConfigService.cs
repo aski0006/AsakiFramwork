@@ -1,5 +1,6 @@
 using Asaki.Core.Broker;
 using Asaki.Core.Configuration;
+using Asaki.Unity.Services.Logging;
 using Asaki.Unity.Services.Serialization;
 using Asaki.Unity.Utils;
 using Cysharp.Threading.Tasks;
@@ -51,7 +52,7 @@ namespace Asaki.Unity.Services.Configuration
 		public async Task OnInitAsync()
 		{
 			await LoadAllAsync();
-			Debug.Log($"[AsakiConfig] Service Ready. Loaded {_configStore.Count} tables.");
+			ALog.Info($"[AsakiConfig] Service Ready. Loaded {_configStore.Count} tables.");
 		}
 
 		public void OnDispose()

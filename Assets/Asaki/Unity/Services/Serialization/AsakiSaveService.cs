@@ -123,17 +123,24 @@ namespace Asaki.Unity.Services.Serialization
 
 			try
 			{
-				// Step 1: [后台线程] 并行读取二进制和元数据
+				// Step 1: [后台线程] 并行读取
 				#if ASAKI_USE_UNITASK
 				await UniTask.SwitchToThreadPool();
 				#endif
-				byte[] dataBuffer = await File.ReadAllBytesAsync(GetDataPath(slotId));
-				string metaJson = await File.ReadAllTextAsync(GetMetaPath(slotId));
+        
+				// 并行读取 IO，进一步提升速度
+				var dataTask = File.ReadAllBytesAsync(GetDataPath(slotId));
+				var metaTask = File.ReadAllTextAsync(GetMetaPath(slotId));
+				await Task.WhenAll(dataTask, metaTask);
+        
+				byte[] dataBuffer = dataTask.Result;
+				string metaJson = metaTask.Result;
 
 				#if ASAKI_USE_UNITASK
 				await UniTask.SwitchToMainThread();
 				#endif
-				// Step 2: [主线程] 反序列化并触发 UI 绑定
+
+				// Step 2: [主线程] 反序列化 Data (Binary)
 				TData data = new TData();
 				using (MemoryStream ms = new MemoryStream(dataBuffer))
 				{
@@ -141,15 +148,23 @@ namespace Asaki.Unity.Services.Serialization
 					data.Deserialize(reader);
 				}
 
-				// Meta 加载 (此处示例简化，实际应使用 AsakiJsonReader)
+				// Step 3: [主线程] 反序列化 Meta (JSON) - [已修复]
 				TMeta meta = new TMeta();
-				// 暂时使用简单逻辑或 JsonReader 实现...
+				// 利用你实现的 FromJson 静态方法
+				AsakiJsonReader jsonReader = AsakiJsonReader.FromJson(metaJson);
+				// 因为 Meta 本身就是一个 Object，我们需要让 Reader 认为它处于 Root 上下文
+				// 你的 Generated Code 可能会调用 BeginObject("GameSlotMeta")
+				// 但 AsakiTinyJsonParser 解析出的 Root 是 Dictionary
+				// 所以直接调用 Deserialize 即可，Reader 的 GetValue 会在 Root 字典中查找
+				meta.Deserialize(jsonReader);
 
 				return (meta, data);
 			}
 			catch (Exception ex)
 			{
-				Debug.LogError($"[AsakiSave] Slot {slotId} Load Failed: {ex.Message}"); // TODO: [Asaki] -> Asaki.ALog.Error
+				// 建议集成 ALog
+				// ALog.Error($"[AsakiSave] Slot {slotId} Load Failed", ex);
+				Debug.LogError($"[AsakiSave] Slot {slotId} Load Failed: {ex.Message}");
 				throw;
 			}
 		}

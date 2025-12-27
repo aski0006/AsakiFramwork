@@ -4,7 +4,7 @@ using Asaki.Core.Context;
 using System.Threading.Tasks;
 using UnityEngine; //用于打Log
 
-namespace Asaki.Unity.Bootstrapper.Modules
+namespace Asaki.Unity.Modules
 {
 	// 确保优先级较高，尽早接管总线
 	[AsakiModule(75)]

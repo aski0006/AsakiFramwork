@@ -82,5 +82,23 @@ namespace Asaki.Editor.Utilities.Extensions
 			style.borderTopWidth = value;
 			style.borderBottomWidth = value;
 		}
+		
+		// =========================================================
+		// Border Color 拓展
+		// =========================================================
+
+		/// <summary>
+		/// 一键设置所有方向的 Border Color
+		/// </summary>
+		/// <param name="style">要设置的样式</param>
+		/// <param name="color">要设置的颜色</param>
+		public static void SetBorderColor(this IStyle style, UnityEngine.Color color)
+		{
+			
+			style.borderLeftColor = color;
+			style.borderRightColor = color;
+			style.borderTopColor = color;
+			style.borderBottomColor = color;
+		}
 	}
 }

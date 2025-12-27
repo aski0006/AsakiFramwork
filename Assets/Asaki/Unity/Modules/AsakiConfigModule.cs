@@ -5,7 +5,7 @@ using Asaki.Core.Context;
 using Asaki.Unity.Services.Configuration;
 using System.Threading.Tasks;
 
-namespace Asaki.Unity.Bootstrapper.Modules
+namespace Asaki.Unity.Modules
 {
 	[AsakiModule(150, typeof(AsakiEventBusModule))]
 	public class AsakiConfigModule : IAsakiModule

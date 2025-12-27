@@ -3,7 +3,7 @@ using Asaki.Core.Context;
 using Asaki.Core.Coroutines;
 using System.Threading.Tasks;
 
-namespace Asaki.Unity.Bootstrapper.Modules
+namespace Asaki.Unity.Modules
 {
 	[AsakiModule(100)]
 	public class AsakiRoutineModule : IAsakiModule

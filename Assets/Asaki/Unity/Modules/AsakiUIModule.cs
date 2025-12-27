@@ -8,7 +8,7 @@ using Asaki.Unity.Configuration;
 using Asaki.Unity.Services.UI;
 using System.Threading.Tasks;
 
-namespace Asaki.Unity.Bootstrapper.Modules
+namespace Asaki.Unity.Modules
 {
 	// 优先级 300，依赖 Resources 加载预制体
 	[AsakiModule(225,

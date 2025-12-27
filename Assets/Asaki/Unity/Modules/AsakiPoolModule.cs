@@ -4,13 +4,14 @@ using Asaki.Core.Context;
 using Asaki.Core.Coroutines;
 using Asaki.Core.Pooling;
 using Asaki.Core.Resources;
+using Asaki.Unity.Services.Logging;
 using Asaki.Unity.Services.Resources;
 using System.Threading.Tasks;
 using UnityEngine;
 
 // 引用 Pooling 的命名空间
 
-namespace Asaki.Unity.Bootstrapper.Modules
+namespace Asaki.Unity.Modules
 {
 	// 优先级 150：必须在 Coroutines(100) 之后，但在 Resources(200) 之前
 	// 因为 Resources 加载资源时可能需要从池中生成对象
@@ -31,7 +32,7 @@ namespace Asaki.Unity.Bootstrapper.Modules
 
 			AsakiContext.Register(_poolService);
 
-			Debug.Log("[Asaki] Pooling Service initialized (Async-Native Mode).");
+			ALog.Info("[Asaki] Pooling Service initialized (Async-Native Mode).");
 		}
 
 		public Task OnInitAsync()

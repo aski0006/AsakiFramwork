@@ -1,5 +1,6 @@
 using Asaki.Core;
 using Asaki.Core.Context;
+using Asaki.Unity.Services.Logging;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -18,14 +19,14 @@ namespace Asaki.Unity.Bootstrapper
 		{
 			// 1. 发现
 			var allModuleTypes = discovery.GetModuleTypes().ToList();
-			Debug.Log($"[Asaki] Discovered {allModuleTypes.Count} modules.");
+			ALog.Info($"[Asaki] Discovered {allModuleTypes.Count} modules.");
 
 			// 2. 排序 (DAG)
 			var sortedTypes = TopologicalSort(allModuleTypes);
 
 			// 3. 实例化与注册 (Phase 1: Sync Init)
 			var activeModules = new List<IAsakiModule>();
-			Debug.Log("== [Asaki] Phase 1: Registration & Sync Init ==");
+			ALog.Info("== [Asaki] Phase 1: Registration & Sync Init ==");
 			foreach (Type type in sortedTypes)
 			{
 				// 强制无参构造
@@ -40,17 +41,17 @@ namespace Asaki.Unity.Bootstrapper
 				module.OnInit();
 
 				activeModules.Add(module);
-				Debug.Log($" -> [OK] {type.Name}");
+				ALog.Info($" -> [OK] {type.Name}");
 			}
 
 			// 4. 异步初始化 (Phase 2: Async Init)
-			Debug.Log("== [Asaki] Phase 2: Async Initialization ==");
+			ALog.Info("== [Asaki] Phase 2: Async Initialization ==");
 			foreach (IAsakiModule module in activeModules)
 			{
 				await module.OnInitAsync();
 			}
 
-			Debug.Log("== [Asaki] Framework Ready ==");
+			ALog.Info("== [Asaki] Framework Ready ==");
 		}
 
 		/// <summary>
