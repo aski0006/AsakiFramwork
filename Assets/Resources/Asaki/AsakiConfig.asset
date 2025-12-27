@@ -24,9 +24,12 @@ MonoBehaviour:
   matchWidthOrHeight: 0.5
   baseUrl: 
   webTimeoutSeconds: 0
-  logLevel: 1
-  enableFullStackTrace: 0
-  maxFileSize: 10485760
-  maxHistoryFiles: 5
-  loggingDateFormat: yyyyMMdd_HHmmss
-  distinctLogIntervalMs: 100
+  logConfig:
+    MinLogLevel: 1
+    EnableConsoleSync: 1
+    MaxFileSizeKb: 2048
+    MaxHistorySessions: 10
+    WriteCallerInfoForLowLevel: 1
+    SampleIntervalFrames: 1000
+    HotPathInvocationThreshold: 100
+    EnableSamplingForLowLevels: 1

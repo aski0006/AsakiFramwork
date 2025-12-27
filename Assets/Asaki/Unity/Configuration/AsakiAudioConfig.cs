@@ -70,12 +70,6 @@ namespace Asaki.Unity.Configuration
 			if (_lookup == null) InitializeLookup();
 			return _lookup.TryGetValue(id, out item);
 		}
-
-		// 兼容旧接口，防止报错 (虽然逻辑变了，但先保留方法签名)
-		public string GetPath(int id)
-		{
-			if (TryGet(id, out AudioItem item)) return item.AssetPath;
-			return null;
-		}
+		
 	}
 }

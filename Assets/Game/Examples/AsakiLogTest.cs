@@ -149,7 +149,7 @@ namespace Asaki.Tests
                 ALog.Fatal("致命错误：系统核心崩溃！");
             }
         }
-
+        
         private void SimulateDeepCallStack()
         {
             CallLayer1();

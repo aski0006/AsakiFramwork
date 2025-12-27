@@ -17,7 +17,7 @@ namespace Asaki.Editor.Utilities.Tools.AssetsExplore
 	{
 		private const string WINDOW_TITLE = "Asset Explorer Pro";
 		private const string PREFS_FAVORITES = "AssetExplorer_Favorites";
-
+		private const float ROW_HEIGHT = 20f;
 		// 核心组件
 		private AssetScanner _scanner;
 		private SearchEngine _searchEngine;
@@ -303,29 +303,18 @@ namespace Asaki.Editor.Utilities.Tools.AssetsExplore
 		private void DrawAssetList()
 		{
 			GUILayout.BeginVertical();
-
 			// 标题栏
 			EditorGUILayout.BeginHorizontal(EditorStyles.toolbar);
-			EditorGUILayout.LabelField($"资产列表 ({_filteredAssets.Count})",
-				EditorStyles.boldLabel, GUILayout.Width(150));
-
+			EditorGUILayout.LabelField($"资产列表 ({_filteredAssets.Count})", EditorStyles.boldLabel, GUILayout.Width(150));
 			GUILayout.FlexibleSpace();
-
-			if (GUILayout.Button("导出列表", EditorStyles.toolbarButton, GUILayout.Width(80)))
-			{
-				ExportAssetList();
-			}
-
+			if (GUILayout.Button("导出列表", EditorStyles.toolbarButton, GUILayout.Width(80))) ExportAssetList();
 			EditorGUILayout.EndHorizontal();
 
-			// 滚动区域 - 使用固定样式确保正确测量
-			_assetScrollPos = EditorGUILayout.BeginScrollView(_assetScrollPos,
-				GUIStyle.none, GUI.skin.verticalScrollbar);
+			_assetScrollPos = EditorGUILayout.BeginScrollView(_assetScrollPos, GUIStyle.none, GUI.skin.verticalScrollbar);
 
-			// 确保内容在ScrollView内部绘制
 			if (_scanner.IsScanning && _filteredAssets.Count == 0)
 			{
-				EditorGUILayout.LabelField("扫描中...", EditorStyles.centeredGreyMiniLabel);
+				EditorGUILayout.LabelField("正在极速扫描...", EditorStyles.centeredGreyMiniLabel);
 			}
 			else if (_filteredAssets.Count == 0)
 			{
@@ -333,89 +322,90 @@ namespace Asaki.Editor.Utilities.Tools.AssetsExplore
 			}
 			else
 			{
-				DrawAssetRows();
+				// 2. 计算总内容高度：行数 * 行高
+				float totalHeight = _filteredAssets.Count * ROW_HEIGHT;
+
+				// 3. 在 ScrollView 内部保留一个巨大的空矩形占位
+				// 这样滚动条才会显示正确的大小
+				GUILayout.Label("", GUILayout.Height(totalHeight), GUILayout.ExpandWidth(true));
+
+				// 4. 计算当前视口可见区域
+				// position.height 是窗口总高度，减去 TopBar (约100像素) 得到列表可见高度
+				float visibleHeight = position.height - 100f;
+				float scrollY = _assetScrollPos.y;
+
+				// 5. 计算需要绘制的起始和结束索引
+				int startIndex = Mathf.FloorToInt(scrollY / ROW_HEIGHT);
+				int endIndex = Mathf.Min(_filteredAssets.Count, startIndex + Mathf.CeilToInt(visibleHeight / ROW_HEIGHT) + 2); // 多画2行做缓冲
+
+				// 边界安全检查
+				startIndex = Mathf.Max(0, startIndex);
+
+				// 6. 手动绘制可见行 (Manual Layout)
+				// 我们不再依赖 GUILayout 的自动堆叠，而是直接指定 Rect
+				Rect rowRect = new Rect(0, startIndex * ROW_HEIGHT, position.width, ROW_HEIGHT);
+
+				for (int i = startIndex; i < endIndex; i++)
+				{
+					AssetInfo asset = _filteredAssets[i];
+					DrawAssetRowManual(rowRect, asset, i);
+					rowRect.y += ROW_HEIGHT;
+				}
 			}
 
-			// 必须结束ScrollView
 			EditorGUILayout.EndScrollView();
-
 			GUILayout.EndVertical();
 		}
 
-		private void DrawAssetRows()
+		private void DrawAssetRowManual(Rect rect, AssetInfo asset, int index)
 		{
-			EventType eventType = Event.current.type;
+			// 背景条纹
+			if (index % 2 == 0)
+				EditorGUI.DrawRect(rect, new Color(0, 0, 0, 0.05f));
 
-			for (int i = 0; i < _filteredAssets.Count; i++)
+			// 选中高亮
+			if (asset == _selectedAsset)
+				EditorGUI.DrawRect(rect, new Color(0.3f, 0.5f, 1f, 0.3f));
+
+			// 鼠标事件处理
+			if (Event.current.type == EventType.MouseDown && rect.Contains(Event.current.mousePosition))
 			{
-				AssetInfo asset = _filteredAssets[i];
-
-				// FIX: Always start horizontal layout first
-				EditorGUILayout.BeginHorizontal(GUILayout.Height(20));
-
-				// Draw content first (this establishes the layout)
-				EditorGUI.BeginDisabledGroup(asset.category == AssetCategory.Others);
-
-				// Icon
-				Texture2D icon = GetAssetPreviewIcon(asset);
-				GUILayout.Label(new GUIContent(icon), GUILayout.Width(16), GUILayout.Height(16));
-
-				// Name
-				string displayName = asset.isFavorite ? "⭐ " + asset.name : asset.name;
-				GUILayout.Label(displayName, GUILayout.MinWidth(200), GUILayout.ExpandWidth(true));
-
-				// Size
-				GUILayout.Label(asset.GetFormattedSize(), EditorStyles.miniLabel, GUILayout.Width(80));
-
-				// Type
-				GUILayout.Label(asset.category.ToString(), EditorStyles.miniLabel, GUILayout.Width(60));
-
-				// Date
-				GUILayout.Label(asset.lastModified.ToString("MM-dd"), EditorStyles.miniLabel, GUILayout.Width(60));
-
-				EditorGUI.EndDisabledGroup();
-
-				// CLOSE the horizontal group BEFORE event handling
-				EditorGUILayout.EndHorizontal();
-
-				// FIX: Get rect AFTER layout is established
-				Rect rect = GUILayoutUtility.GetLastRect();
-
-				// FIX: Apply backgrounds using expanded rect
-				if (i % 2 == 0)
+				if (Event.current.button == 0)
 				{
-					Rect bgRect = rect;
-					bgRect.x = 0;
-					bgRect.width = position.width;
-					EditorGUI.DrawRect(bgRect, new Color(0, 0, 0, 0.05f));
+					_selectedAsset = asset;
+					if (Event.current.clickCount == 2) PingAsset(asset);
+					Repaint();
 				}
-
-				if (asset == _selectedAsset)
+				else if (Event.current.button == 1)
 				{
-					Rect selRect = rect;
-					selRect.x = 0;
-					selRect.width = position.width;
-					EditorGUI.DrawRect(selRect, new Color(0.3f, 0.5f, 1f, 0.3f));
+					ShowAssetContextMenu(asset);
 				}
-
-				// Event handling
-				if (eventType == EventType.MouseDown && rect.Contains(Event.current.mousePosition))
-				{
-					if (Event.current.button == 0)
-					{
-						_selectedAsset = asset;
-						if (Event.current.clickCount == 2)
-							PingAsset(asset);
-						Event.current.Use();
-						Repaint();
-					}
-					else if (Event.current.button == 1)
-					{
-						ShowAssetContextMenu(asset);
-						Event.current.Use();
-					}
-				}
+				Event.current.Use();
 			}
+
+			// --- 绘制内容 ---
+
+			// 1. Icon (延迟加载)
+			Rect iconRect = new Rect(rect.x + 4, rect.y + 3, 16, 16);
+			Texture2D icon = GetAssetPreviewIcon(asset);
+			if (icon != null) GUI.DrawTexture(iconRect, icon);
+
+			// 2. Name
+			Rect nameRect = new Rect(rect.x + 25, rect.y, rect.width - 240, rect.height);
+			string displayName = asset.isFavorite ? "★ " + asset.name : asset.name;
+			GUI.Label(nameRect, displayName, EditorStyles.label);
+
+			// 3. Size
+			Rect sizeRect = new Rect(rect.width - 200, rect.y, 70, rect.height);
+			GUI.Label(sizeRect, asset.GetFormattedSize(), EditorStyles.miniLabel);
+
+			// 4. Type
+			Rect typeRect = new Rect(rect.width - 120, rect.y, 60, rect.height);
+			GUI.Label(typeRect, asset.category.ToString(), EditorStyles.miniLabel);
+
+			// 5. Date
+			Rect dateRect = new Rect(rect.width - 50, rect.y, 40, rect.height);
+			GUI.Label(dateRect, asset.lastModified.ToString("MM-dd"), EditorStyles.miniLabel);
 		}
 
 		private void DrawDetailPanel()

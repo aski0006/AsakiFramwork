@@ -1,7 +1,5 @@
 ﻿using Asaki.Core.Context;
-using Asaki.Core.Logging;
 using Asaki.Unity.Services.Resources;
-using System;
 using UnityEngine;
 
 // [新增] 引用 UI 命名空间
@@ -56,22 +54,5 @@ namespace Asaki.Unity.Configuration
 		public AsakiLogConfig LogConfig => logConfig;
 		
 	}
-	
-	[Serializable]
-	public class AsakiLogConfig
-	{
-		[Header("Runtime Settings")]
-		public AsakiLogLevel MinLogLevel = AsakiLogLevel.Debug;
-		public bool EnableConsoleSync = true; // 是否同步输出到 Unity Console
 
-		[Header("Storage Settings")]
-		[Tooltip("单个日志文件最大尺寸 (KB)")]
-		public int MaxFileSizeKb = 2048;
-		[Tooltip("保留的历史 Session 数量")]
-		public int MaxHistorySessions = 10;
-        
-		[Header("Editor Integration")]
-		[Tooltip("是否为 Debug/Info 级别记录调用位置 (支持跳转)")]
-		public bool WriteCallerInfoForLowLevel = true; 
-	}
 }

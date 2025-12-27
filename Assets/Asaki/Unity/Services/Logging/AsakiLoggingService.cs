@@ -52,6 +52,7 @@ namespace Asaki.Unity.Services.Logging
             _maxHistorySessions = cfg.MaxHistorySessions;
             _writeCallerInfoForLowLevel = cfg.WriteCallerInfoForLowLevel;
             _currentLevel = cfg.MinLogLevel;
+            ALog.ConfigureSampling(cfg.SampleIntervalFrames, cfg.HotPathInvocationThreshold);
         }
 
         public void InitializeEarly()
@@ -96,8 +97,9 @@ namespace Asaki.Unity.Services.Logging
                 _isEarlyBootMode = false;
                 _signal.Set();
             }
-            
             EnqInternal(AsakiLogLevel.Info, "Log Service Fully Initialized - Writer thread started");
+            
+            
         }
 
         public void Dispose()

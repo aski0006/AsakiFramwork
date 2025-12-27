@@ -21,31 +21,87 @@ namespace Asaki.Unity.Services.Logging
         private static readonly ThreadLocal<StringBuilder> _tlsBuilder 
             = new ThreadLocal<StringBuilder>(() => new StringBuilder(1024));
 
-        internal static void RegisterBackend(IAsakiLoggingService backend) => _backend = backend;
+        internal static void RegisterBackend(IAsakiLoggingService backend) 
+            => _backend = backend;
+        
+        internal static void ConfigureSampling(int sampleInterval, int invocationThreshold) 
+            => AsakiHotPathDetector.Configure(sampleInterval, invocationThreshold);
         internal static void Reset() => _backend = null;
 
         // ========================================================================
         // 1. 开发期专用日志 (编辑器和开发构建)
         // ========================================================================
 
+        // ========================================================================
+        // 6. 热路径专用API（发布构建完全剥离）
+        // ========================================================================
+
+        #if UNITY_EDITOR || DEVELOPMENT_BUILD
+
+        /// <summary>
+        /// 高频采样日志：自动按配置间隔记录
+        /// <para>适用于Update/FixedUpdate等每帧调用场景</para>
+        /// </summary>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static void DebugSampled(string message, object payload = null,
+                                        [CallerFilePath] string file = "", [CallerLineNumber] int line = 0, [CallerMemberName] string member = "")
+        {
+            if (_backend == null) return;
+    
+            // 强制记录调用统计，但不立即序列化
+            AsakiHotPathDetector.RecordInvocation();
+            if (!AsakiHotPathDetector.ShouldSample()) return;
+    
+            // 惰性序列化：仅在通过采样后才执行
+            string pJson = payload != null ? FastSerialize(payload) : null;
+            _backend.Enqueue(AsakiLogLevel.Debug, $"[SAMPLED] {message}", default, pJson, null, file, line, member);
+        }
+
+        /// <summary>
+        /// 条件采样日志：仅在高频场景下按条件记录
+        /// </summary>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static void DebugSampledIf(bool condition, string message, object payload = null,
+                                          [CallerFilePath] string file = "", [CallerLineNumber] int line = 0, [CallerMemberName] string member = "")
+        {
+            if (!condition) return;
+            DebugSampled(message, payload, file, line, member);
+        }
+
+        #endif // UNITY_EDITOR || DEVELOPMENT_BUILD
+        
         #if UNITY_EDITOR || DEVELOPMENT_BUILD
         
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void Debug(string message, object payload = null,
             [CallerFilePath] string file = "", [CallerLineNumber] int line = 0, [CallerMemberName] string member = "")
         {
+            #if UNITY_EDITOR || DEVELOPMENT_BUILD
             if (_backend == null) return;
+    
+            // === 热路径优化：采样决策 ===
+            AsakiHotPathDetector.RecordInvocation();
+            if (!AsakiHotPathDetector.ShouldSample()) return; // 高频调用快速退出
+    
             string pJson = FastSerialize(payload);
             _backend.Enqueue(AsakiLogLevel.Debug, message, default, pJson, null, file, line, member);
+            #endif
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void Info(string message, object payload = null,
             [CallerFilePath] string file = "", [CallerLineNumber] int line = 0, [CallerMemberName] string member = "")
         {
+            #if UNITY_EDITOR || DEVELOPMENT_BUILD
             if (_backend == null) return;
+    
+            // === 热路径优化：采样决策 ===
+            AsakiHotPathDetector.RecordInvocation();
+            if (!AsakiHotPathDetector.ShouldSample()) return; // 高频调用快速退出
+    
             string pJson = FastSerialize(payload);
             _backend.Enqueue(AsakiLogLevel.Info, message, default, pJson, null, file, line, member);
+            #endif
         }
         
         #else
