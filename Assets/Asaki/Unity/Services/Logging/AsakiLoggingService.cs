@@ -1,6 +1,7 @@
 ﻿using System;
 using UnityEngine; // 仅用于 Update 驱动
-using Asaki.Core.Logging; // IAsakiLoggingService, LogAggregator
+using Asaki.Core.Logging;
+using Asaki.Unity.Configuration; // IAsakiLoggingService, LogAggregator
 
 namespace Asaki.Unity.Services.Logging
 {
@@ -21,9 +22,21 @@ namespace Asaki.Unity.Services.Logging
             _writer = new AsakiLogFileWriter(Aggregator);
             CreateDriver();
         }
+        
+        public void ApplyConfig(AsakiLogConfig config)
+        {
+            if (config == null) return;
 
-        public void SetLevel(AsakiLogLevel level) => _minLevel = level;
+            // 1. 设置运行时过滤等级
+            _minLevel = config?.MinLogLevel ?? AsakiLogLevel.Error;
 
+            // 2. 将配置下发给 Writer (处理轮转和前缀)
+            _writer?.ApplyConfig(config);
+            
+            // 3. 记录一条系统日志
+            ALog.Info($"[AsakiLog] Config Applied: Level={config.MinLogLevel}, MaxSize={config.MaxFileSizeKB}KB");
+        }
+        
         public void LogTrace(AsakiLogLevel level, string message, string payloadJson, string file, int line)
         {
             if (_isDisposed || level < _minLevel) return;

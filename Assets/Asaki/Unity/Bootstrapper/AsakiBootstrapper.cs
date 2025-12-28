@@ -53,7 +53,7 @@ namespace Asaki.Unity.Bootstrapper
 			// 3. 如果有配置，应用初始等级 (避免 Debug 刷屏)
 			if (_config != null)
 			{
-				_logService.SetLevel(_config.LogConfig.MinLogLevel);
+				_logService.ApplyConfig(_config.LogConfig);
 			}
 
 			// ============================================

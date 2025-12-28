@@ -26,10 +26,7 @@ namespace Asaki.Core.Logging
 		/// <para>强制捕获堆栈，适用于 try-catch 块</para>
 		/// </summary>
 		void LogException(string message, Exception ex, string file, int line);
-        
-		/// <summary>
-		/// 设置最小日志等级
-		/// </summary>
-		void SetLevel(AsakiLogLevel level);
+
+		void ApplyConfig(AsakiLogConfig serviceLogConfig);
 	}
 }

@@ -26,10 +26,6 @@ MonoBehaviour:
   webTimeoutSeconds: 0
   logConfig:
     MinLogLevel: 1
-    EnableConsoleSync: 1
-    MaxFileSizeKb: 2048
-    MaxHistorySessions: 10
-    WriteCallerInfoForLowLevel: 1
-    SampleIntervalFrames: 1000
-    HotPathInvocationThreshold: 100
-    EnableSamplingForLowLevels: 1
+    MaxFileSizeKB: 10240
+    MaxHistoryFiles: 10
+    FilePrefix: GameLog

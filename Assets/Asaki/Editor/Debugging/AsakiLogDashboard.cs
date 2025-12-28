@@ -11,367 +11,538 @@ using UnityEngine.UIElements;
 
 namespace Asaki.Editor.Debugging
 {
-	public class AsakiLogDashboard : EditorWindow
-	{
-		private enum DashboardMode { Live, Local }
+    public class AsakiLogDashboard : EditorWindow
+    {
+        private enum DashboardMode { Live, Local }
 
-		// UI Elements
-		private ListView _listView;
-		private ScrollView _stackScrollView;
-		private VisualElement _toolbar;
-		private Label _statusLabel;
+        // --- 现代化配色常量 ---
+        private static readonly Color ColorBgDark = new Color(0.16f, 0.17f, 0.20f); // VSCode 风格深色背景
+        private static readonly Color ColorBgLight = new Color(0.21f, 0.22f, 0.25f);
+        private static readonly Color ColorUserCode = new Color(0.30f, 0.62f, 1.0f); // 醒目的蓝色
+        private static readonly Color ColorSystemCode = new Color(0.5f, 0.5f, 0.5f);
+        private static readonly Color ColorAccentError = new Color(0.95f, 0.35f, 0.35f);
+        private static readonly Color ColorAccentWarn = new Color(1.0f, 0.8f, 0.2f);
+        private static readonly Color ColorBadgeBg = new Color(1f, 0.3f, 0.3f, 0.8f);
 
-		// Data
-		private AsakiLogAggregator _liveAggregator;
-		private List<AsakiLogModel> _localLogs = new List<AsakiLogModel>();
-		private DashboardMode _mode = DashboardMode.Local;
+        // UI Elements
+        private ListView _listView;
+        private ScrollView _stackScrollView;
+        private VisualElement _toolbar;
+        private Label _statusLabel;
 
-		// Logic
-		private double _lastRefreshTime;
-		private const double REFRESH_INTERVAL = 0.1f;
+        // Data
+        private AsakiLogAggregator _liveAggregator;
+        private List<AsakiLogModel> _localLogs = new List<AsakiLogModel>();
+        private DashboardMode _mode = DashboardMode.Local;
 
-		[MenuItem("Asaki/Log Dashboard V3", false, 0)]
-		public static void ShowWindow() => GetWindow<AsakiLogDashboard>("Asaki Logs").Show();
+        // Logic
+        private double _lastRefreshTime;
+        private const double REFRESH_INTERVAL = 0.1f;
 
-		private void OnEnable()
-		{
-			EditorApplication.update += OnEditorUpdate;
-			// 监听 PlayMode 变化，实现无缝衔接
-			EditorApplication.playModeStateChanged += OnPlayModeChanged;
-		}
+        [MenuItem("Asaki/Log Dashboard V3", false, 0)]
+        public static void ShowWindow()
+        {
+            var w = GetWindow<AsakiLogDashboard>("Asaki Logs");
+            w.minSize = new Vector2(600, 400);
+            w.Show();
+        }
 
-		private void OnDisable()
-		{
-			EditorApplication.update -= OnEditorUpdate;
-			EditorApplication.playModeStateChanged -= OnPlayModeChanged;
-		}
+        private void OnEnable()
+        {
+            EditorApplication.update += OnEditorUpdate;
+            EditorApplication.playModeStateChanged += OnPlayModeChanged;
+        }
 
-		// --- 核心逻辑：模式切换与数据保持 ---
+        private void OnDisable()
+        {
+            EditorApplication.update -= OnEditorUpdate;
+            EditorApplication.playModeStateChanged -= OnPlayModeChanged;
+        }
 
-		private void OnPlayModeChanged(PlayModeStateChange state)
-		{
-			// [修复] 核心防护：如果 UI 还没构建好 (CreateGUI 未执行)，直接跳过。
-			// 这通常发生在 Editor 刚启动或布局加载时。
-			if (_statusLabel == null || _listView == null) return;
+        // =========================================================
+        // UI 构建 (Modern UI Toolkit)
+        // =========================================================
 
-			if (state == PlayModeStateChange.ExitingPlayMode)
-			{
-				// 游戏即将停止：赶紧把内存里的日志"快照"下来
-				if (_liveAggregator != null)
-				{
-					// [优化] 安全地获取快照，避免 null 访问
-					var snapshot = _liveAggregator.GetSnapshot();
-					if (snapshot != null && snapshot.Count > 0)
-					{
-						SnapshotLiveLogs();
-					}
-				}
-				_mode = DashboardMode.Local;
-				_statusLabel.text = "Status: Local Snapshot (Play Stopped)";
-				_statusLabel.style.color = Color.yellow;
-			}
-			else if (state == PlayModeStateChange.EnteredPlayMode)
-			{
-				// 进入游戏：切回 Live 模式
-				_mode = DashboardMode.Live;
-				
-				// [修复] 确保 _localLogs 不为 null
-				if (_localLogs == null) _localLogs = new List<AsakiLogModel>();
-				_localLogs.Clear();
-				
-				_liveAggregator = null; // 等待重连
-				_statusLabel.text = "Status: Connecting...";
-				_statusLabel.style.color = Color.gray;
-			}
-		}
+        public void CreateGUI()
+        {
+            var root = rootVisualElement;
+            root.style.backgroundColor = ColorBgDark;
 
-		private void SnapshotLiveLogs()
-		{
-			if (_liveAggregator == null || _listView == null || _statusLabel == null) return;
+            // 1. Toolbar (Top)
+            DrawToolbar(root);
 
-			// 1. 获取线程安全的快照
-			List<AsakiLogModel> tempSnapshot = _liveAggregator.GetSnapshot();
+            // 2. Split View (Main Content)
+            var split = new TwoPaneSplitView(0, 350, TwoPaneSplitViewOrientation.Horizontal);
+            split.style.flexGrow = 1;
+            root.Add(split);
 
-			// 2. 序列化克隆 (Deep Copy)
-			_localLogs.Clear();
+            // --- Left Pane: Log List ---
+            _listView = new ListView();
+            _listView.style.flexGrow = 1;
+            _listView.style.backgroundColor = ColorBgLight;
+            _listView.fixedItemHeight = 28; // 稍微增高以容纳徽章
+            _listView.makeItem = MakeLogItem; // 使用自定义复合控件
+            _listView.bindItem = BindLogItem;
+            _listView.selectionChanged += OnLogSelected;
+            split.Add(_listView);
 
-			// 预分配容量优化性能
-			if (tempSnapshot.Count > 0)
-			{
-				var wrapper = new LogListWrapper { List = tempSnapshot };
-				string json = JsonUtility.ToJson(wrapper);
-				var deserialized = JsonUtility.FromJson<LogListWrapper>(json);
-				if (deserialized != null && deserialized.List != null)
-				{
-					_localLogs = deserialized.List;
-				}
-			}
+            // --- Right Pane: Details ---
+            var rightPane = new VisualElement { style = { flexGrow = 1, backgroundColor = ColorBgDark } };
+            // Detail Toolbar / Header area could go here
+            _stackScrollView = new ScrollView();
+            _stackScrollView.style.SetPadding(20);
+            rightPane.Add(_stackScrollView);
+            split.Add(rightPane);
 
-			_listView.itemsSource = _localLogs;
-			_listView.Rebuild();
+            // Initial State
+            if (Application.isPlaying) _mode = DashboardMode.Live;
+            else _mode = DashboardMode.Local;
+        }
 
-			_statusLabel.text = "Status: Local Snapshot (Safe)";
-			_statusLabel.style.color = Color.yellow;
-		}
+        private void DrawToolbar(VisualElement root)
+        {
+            _toolbar = new VisualElement
+            {
+                style =
+                {
+                    flexDirection = FlexDirection.Row,
+                    height = 32,
+                    backgroundColor = new Color(0.13f, 0.13f, 0.13f),
+                    alignItems = Align.Center,
+                    paddingLeft = 8,
+                    paddingRight = 8,
+                    borderBottomWidth = 1,
+                    borderBottomColor = new Color(0.1f, 0.1f, 0.1f)
+                }
+            };
 
-		// 用于 JsonUtility 序列化 List 的辅助类
-		[System.Serializable]
-		private class LogListWrapper
-		{
-			public List<AsakiLogModel> List;
-		}
+            // Helper to create styled buttons
+            Button CreateBtn(string text, System.Action onClick, float width)
+            {
+                var btn = new Button(onClick) { text = text };
+                btn.style.width = width;
+                btn.style.height = 22;
+                btn.style.backgroundColor = new Color(0.25f, 0.25f, 0.25f);
+                btn.style.SetBorderRadius(3);
+                btn.style.SetBorderWidth(0);
+                return btn;
+            }
 
-		private void OnEditorUpdate()
-		{
-			if (_mode == DashboardMode.Local) return; // 本地模式不需要刷新
+            _toolbar.Add(CreateBtn("Clear", () =>
+            {
+                _liveAggregator?.Clear();
+                _localLogs.Clear();
+                _listView.RefreshItems();
+                _stackScrollView.Clear();
+            }, 60));
 
-			// Live 模式连接逻辑
-			if (_liveAggregator == null)
-			{
-				var s = AsakiContext.Get<IAsakiLoggingService>() as AsakiLoggingService;
-				if (s != null)
-				{
-					_liveAggregator = s.Aggregator;
-					_listView.itemsSource = _liveAggregator.GetSnapshot();
-					_listView.Rebuild();
-					_statusLabel.text = "Status: ● Live Connected";
-					_statusLabel.style.color = new Color(0.4f, 1f, 0.4f);
-				}
-			}
+            _toolbar.Add(new VisualElement { style = { width = 10 } }); // Spacer
 
-			// 节流刷新
-			if (EditorApplication.timeSinceStartup - _lastRefreshTime > REFRESH_INTERVAL)
-			{
-				_lastRefreshTime = EditorApplication.timeSinceStartup;
-				if (_listView != null && _liveAggregator != null && _liveAggregator.GetSnapshot().Count > 0)
-				{
-					_listView.RefreshItems();
-				}
-			}
-		}
+            _toolbar.Add(CreateBtn("📂 History", OpenLogFile, 80));
+            _toolbar.Add(new VisualElement { style = { width = 5 } });
+            _toolbar.Add(CreateBtn("Show Folder", () => EditorUtility.RevealInFinder(Path.Combine(Application.persistentDataPath, "Logs")), 90));
 
-		// --- UI 构建 ---
+            // Status Label (Right aligned logic handled by spacer or flex)
+            _statusLabel = new Label("Status: Idle")
+            {
+                style =
+                {
+                    marginLeft = 15,
+                    unityFontStyleAndWeight = FontStyle.Bold,
+                    color = Color.gray
+                }
+            };
+            _toolbar.Add(_statusLabel);
 
-		public void CreateGUI()
-		{
-			var root = rootVisualElement;
+            root.Add(_toolbar);
+        }
 
-			// 1. Toolbar
-			DrawToolbar(root);
+        // =========================================================
+        // 列表渲染 (List Rendering) - 复合控件
+        // =========================================================
 
-			// 2. Split View
-			var split = new TwoPaneSplitView(0, 350, TwoPaneSplitViewOrientation.Horizontal);
-			root.Add(split);
+        // 创建复杂的列表项结构
+        private VisualElement MakeLogItem()
+        {
+            var root = new VisualElement();
+            root.style.flexDirection = FlexDirection.Row;
+            root.style.alignItems = Align.Center;
+            root.style.paddingLeft = 5;
 
-			// 3. Left: Log List
-			_listView = new ListView();
-			_listView.fixedItemHeight = 24;
-			_listView.makeItem = () => new Label { style = { paddingLeft = 6, unityTextAlign = TextAnchor.MiddleLeft, fontSize = 12 } };
-			_listView.bindItem = BindLogItem;
-			_listView.selectionChanged += OnLogSelected;
-			split.Add(_listView);
+            // 1. Color Strip (左侧色条指示等级)
+            var strip = new VisualElement { name = "level-strip" };
+            strip.style.width = 4;
+            strip.style.height = 18;
+            strip.style.marginRight = 6;
+            strip.style.SetBorderRadius(2);
+            root.Add(strip);
 
-			// 4. Right: Details
-			var rightPane = new VisualElement { style = { flexGrow = 1, backgroundColor = new Color(0.16f, 0.16f, 0.16f) } };
-			_stackScrollView = new ScrollView { style = { paddingLeft = 15, paddingTop = 15, paddingRight = 10 } };
-			rightPane.Add(_stackScrollView);
-			split.Add(rightPane);
+            // 2. Message Label
+            var label = new Label { name = "msg-label" };
+            label.style.flexGrow = 1;
+            label.style.fontSize = 12;
+            label.style.unityTextAlign = TextAnchor.MiddleLeft;
+            label.style.overflow = Overflow.Hidden; // 防止过长溢出
+            root.Add(label);
 
-			// Initial State
-			if (Application.isPlaying) _mode = DashboardMode.Live;
-			else _mode = DashboardMode.Local;
-		}
+            // 3. Count Badge (聚合计数徽章)
+            var badge = new Label { name = "count-badge" };
+            badge.style.backgroundColor = ColorBadgeBg;
+            badge.style.color = Color.white;
+            badge.style.fontSize = 10;
+            badge.style.unityFontStyleAndWeight = FontStyle.Bold;
+            badge.style.SetPadding(2, 6); // Horizontal padding
+            badge.style.SetBorderRadius(8);
+            badge.style.marginRight = 5;
+            badge.style.display = DisplayStyle.None; // 默认隐藏
+            root.Add(badge);
 
-		private void DrawToolbar(VisualElement root)
-		{
-			_toolbar = new VisualElement
-			{
-				style = { flexDirection = FlexDirection.Row, height = 30, backgroundColor = new Color(0.22f, 0.22f, 0.22f), alignItems = Align.Center, paddingLeft = 5, borderBottomWidth = 1, borderBottomColor = new Color(0.1f, 0.1f, 0.1f) }
-			};
+            // 4. Time Label
+            var time = new Label { name = "time-label" };
+            time.style.fontSize = 11;
+            time.style.color = new Color(0.5f, 0.5f, 0.5f);
+            time.style.width = 60;
+            time.style.unityTextAlign = TextAnchor.MiddleRight;
+            root.Add(time);
 
-			// Clear Button
-			_toolbar.Add(new Button(() =>
-			{
-				_liveAggregator?.Clear();
-				_localLogs.Clear();
-				_listView.RefreshItems();
-				_stackScrollView.Clear();
-			}) { text = "Clear", style = { width = 50 } });
+            return root;
+        }
 
-			// Load History Button
-			_toolbar.Add(new Button(OpenLogFile) { text = "📂 Load History", style = { width = 100 } });
+        private void BindLogItem(VisualElement e, int i)
+        {
+            var list = _mode == DashboardMode.Live ? _liveAggregator?.GetSnapshot() : _localLogs;
+            if (list == null || i >= list.Count) return;
 
-			// Open Folder Button
-			_toolbar.Add(new Button(() =>
-			{
-				string path = Path.Combine(Application.persistentDataPath, "Logs");
-				EditorUtility.RevealInFinder(path);
-			}) { text = "Show Folder", style = { width = 90 } });
+            var log = list[i];
 
-			// Status Label
-			_statusLabel = new Label("Status: Idle") { style = { marginLeft = 10, unityFontStyleAndWeight = FontStyle.Bold } };
-			_toolbar.Add(_statusLabel);
+            // Get references
+            var strip = e.Q("level-strip");
+            var label = e.Q<Label>("msg-label");
+            var badge = e.Q<Label>("count-badge");
+            var time = e.Q<Label>("time-label");
 
-			root.Add(_toolbar);
-		}
+            // Data Binding
+            label.text = log.Message;
+            time.text = log.DisplayTime;
 
-		private void BindLogItem(VisualElement e, int i)
-		{
-			var list = _mode == DashboardMode.Live ? _liveAggregator?.GetSnapshot() : _localLogs;
-			if (list == null || i >= list.Count) return;
+            // Badge Logic
+            if (log.Count > 1)
+            {
+                badge.style.display = DisplayStyle.Flex;
+                badge.text = log.Count > 999 ? "999+" : log.Count.ToString();
+            }
+            else
+            {
+                badge.style.display = DisplayStyle.None;
+            }
 
-			var log = list[i];
-			var label = e as Label;
+            // Styling based on Level
+            Color stripColor;
+            Color textColor;
 
-			string countBadge = log.Count > 1 ? $" [{log.Count}]" : "";
-			label.text = $"[{log.DisplayTime}]{countBadge} {log.Message}";
+            switch (log.Level)
+            {
+                case AsakiLogLevel.Error:
+                case AsakiLogLevel.Fatal:
+                    stripColor = ColorAccentError;
+                    textColor = new Color(1f, 0.6f, 0.6f);
+                    break;
+                case AsakiLogLevel.Warning:
+                    stripColor = ColorAccentWarn;
+                    textColor = new Color(1f, 0.9f, 0.5f);
+                    break;
+                default:
+                    stripColor = ColorSystemCode; // Info/Debug
+                    textColor = new Color(0.8f, 0.8f, 0.8f);
+                    break;
+            }
 
-			// Modern Colors
-			switch (log.Level)
-			{
-				case AsakiLogLevel.Error:   label.style.color = new Color(1f, 0.5f, 0.5f); break;
-				case AsakiLogLevel.Warning: label.style.color = new Color(1f, 0.9f, 0.4f); break;
-				case AsakiLogLevel.Fatal:   label.style.color = new Color(1f, 0.2f, 0.2f); break;
-				default:                    label.style.color = new Color(0.9f, 0.9f, 0.9f); break;
-			}
-		}
+            strip.style.backgroundColor = stripColor;
+            label.style.color = textColor;
+        }
 
-		// --- 现代化堆栈渲染 (Waterfall Visualization) ---
+        // =========================================================
+        // 详情渲染 (Details & Stack Trace)
+        // =========================================================
 
-		private void OnLogSelected(IEnumerable<object> selection)
-		{
-			var log = selection.FirstOrDefault() as AsakiLogModel;
-			if (log == null) return;
+        private void OnLogSelected(IEnumerable<object> selection)
+        {
+            var log = selection.FirstOrDefault() as AsakiLogModel;
+            if (log == null) return;
 
-			_stackScrollView.Clear();
+            _stackScrollView.Clear();
 
-			// 1. Message Header (Copyable)
-			var msgContainer = new VisualElement { style = { marginBottom = 15, borderLeftWidth = 3, borderLeftColor = GetColorByLevel(log.Level), paddingLeft = 10 } };
-			var msgLabel = new Label(log.Message) { style = { fontSize = 14, whiteSpace = WhiteSpace.Normal, unityFontStyleAndWeight = FontStyle.Bold, color = new Color(0.95f, 0.95f, 0.95f) } };
-			// 允许选中复制
-			msgLabel.RegisterCallback<MouseDownEvent>(evt =>
-			{
-				if (evt.button == 1) // Right click
-				{
-					var menu = new GenericMenu();
-					menu.AddItem(new GUIContent("Copy Message"), false, () => EditorGUIUtility.systemCopyBuffer = log.Message);
-					menu.AddItem(new GUIContent("Copy Full Log (JSON)"), false, () => EditorGUIUtility.systemCopyBuffer = JsonUtility.ToJson(log, true));
-					menu.ShowAsContext();
-				}
-			});
-			msgContainer.Add(msgLabel);
-			_stackScrollView.Add(msgContainer);
+            // === 1. Header Area ===
+            var header = new VisualElement { style = { marginBottom = 15 } };
+            
+            // Level Badge in Header
+            var lvlBadge = new Label(log.Level.ToString().ToUpper())
+            {
+                style = { 
+                    alignSelf = Align.FlexStart, 
+                    fontSize = 10, 
+                    color = Color.black,
+                    marginBottom = 5,
+                    backgroundColor = GetColorByLevel(log.Level)
+                }
+            };
+            lvlBadge.style.SetPadding(2, 6);
+            lvlBadge.style.SetBorderRadius(3);
+            header.Add(lvlBadge);
 
-			// 2. Payload
-			if (!string.IsNullOrEmpty(log.PayloadJson))
-			{
-				var pBox = new VisualElement { style = { backgroundColor = new Color(0.2f, 0.2f, 0.25f), marginBottom = 15 } };
-				pBox.style.SetPadding(8);
-				pBox.style.SetBorderRadius(4);
-				pBox.Add(new Label("PAYLOAD") { style = { fontSize = 10, color = new Color(0.5f, 0.5f, 0.6f), marginBottom = 4 } });
-				pBox.Add(new Label(log.PayloadJson) { style = { color = new Color(0.6f, 0.8f, 1f) } });
-				_stackScrollView.Add(pBox);
-			}
+            // Message
+            var msgLabel = new Label(log.Message)
+            {
+                style = {
+                    fontSize = 14,
+                    whiteSpace = WhiteSpace.Normal,
+                    unityFontStyleAndWeight = FontStyle.Bold,
+                    color = new Color(0.9f, 0.9f, 0.9f)
+                }
+            };
+            // 复制菜单
+            msgLabel.RegisterCallback<MouseDownEvent>(evt =>
+            {
+                if (evt.button == 1)
+                {
+                    var menu = new GenericMenu();
+                    menu.AddItem(new GUIContent("Copy Message"), false, () => EditorGUIUtility.systemCopyBuffer = log.Message);
+                    menu.AddItem(new GUIContent("Copy Full JSON"), false, () => EditorGUIUtility.systemCopyBuffer = JsonUtility.ToJson(log, true));
+                    menu.ShowAsContext();
+                }
+            });
+            header.Add(msgLabel);
+            _stackScrollView.Add(header);
 
-			// 3. Stack Trace (Visual Timeline)
-			_stackScrollView.Add(new Label("STACK TRACE") { style = { fontSize = 10, color = Color.gray, marginBottom = 8, marginLeft = 2 } });
+            // === 2. Payload Area (Code Block Style) ===
+            if (!string.IsNullOrEmpty(log.PayloadJson))
+            {
+                var pContainer = new VisualElement { style = { marginBottom = 20 } };
+                pContainer.Add(new Label("PAYLOAD") { style = { fontSize = 10, color = Color.gray, marginBottom = 4, unityFontStyleAndWeight = FontStyle.Bold } });
+                
+                var pBox = new VisualElement
+                {
+                    style = {
+                        backgroundColor = new Color(0.12f, 0.12f, 0.12f), // Darker code block
+                        borderLeftColor = new Color(0.4f, 0.4f, 0.45f),
+                        borderLeftWidth = 2
+                    }
+                };
+                pBox.style.SetPadding(10);
+                pBox.style.SetBorderRadius(4);
+                
+                var pText = new Label(log.PayloadJson) { style = { color = new Color(0.6f, 0.8f, 0.6f), whiteSpace = WhiteSpace.Normal } }; // Greenish code color
+                pBox.Add(pText);
+                pContainer.Add(pBox);
+                _stackScrollView.Add(pContainer);
+            }
 
-			if (log.StackFrames != null)
-			{
-				for (int i = 0; i < log.StackFrames.Count; i++)
-				{
-					var frame = log.StackFrames[i];
-					RenderStackRow(frame, i == log.StackFrames.Count - 1);
-				}
-			}
-		}
+            // === 3. Waterfall Stack Trace ===
+            _stackScrollView.Add(new Label("STACK TRACE") { style = { fontSize = 10, color = Color.gray, marginBottom = 10, unityFontStyleAndWeight = FontStyle.Bold } });
 
-		private void RenderStackRow(StackFrameModel frame, bool isLast)
-		{
-			var row = new VisualElement { style = { flexDirection = FlexDirection.Row, minHeight = 24 } };
+            if (log.StackFrames != null)
+            {
+                for (int i = 0; i < log.StackFrames.Count; i++)
+                {
+                    RenderStackRow(log.StackFrames[i], i == log.StackFrames.Count - 1);
+                }
+            }
+        }
 
-			// A. Timeline Graphic
-			var timeline = new VisualElement { style = { width = 20, alignItems = Align.Center } };
-			// Vertical Line
-			if (!isLast)
-			{
-				timeline.Add(new VisualElement { style = { position = Position.Absolute, top = 10, bottom = -14, width = 1, backgroundColor = new Color(0.3f, 0.3f, 0.3f) } });
-			}
-			// Dot
-			var dot = new VisualElement { style = { width = 8, height = 8, marginTop = 8 } };
-			dot.style.SetBorderRadius(4);
-			dot.style.backgroundColor = frame.IsUserCode ? new Color(0.3f, 0.6f, 1f) : new Color(0.4f, 0.4f, 0.4f);
-			timeline.Add(dot);
-			row.Add(timeline);
+        /// <summary>
+        /// 渲染单行堆栈 (时间线风格)
+        /// </summary>
+        private void RenderStackRow(StackFrameModel frame, bool isLast)
+        {
+            var row = new VisualElement { style = { flexDirection = FlexDirection.Row, minHeight = 26 } };
 
-			// B. Content Button
-			var btn = new Button(() =>
-			{
-				if (!string.IsNullOrEmpty(frame.FilePath))
-				{
-					string sysPath = frame.FilePath.Replace('/', System.IO.Path.DirectorySeparatorChar);
-					UnityEditorInternal
-						.InternalEditorUtility
-						.OpenFileAtLineExternal(sysPath, frame.LineNumber);
-				}
-			})
-			{
-				style =
-				{
-					flexGrow = 1, flexDirection = FlexDirection.Column, justifyContent = Justify.Center,
-					backgroundColor = Color.clear, borderTopWidth = 0, borderBottomWidth = 0, borderLeftWidth = 0, borderRightWidth = 0,
-					paddingTop = 4, paddingBottom = 4, marginLeft = 5
-				}
-			};
+            // --- A. Timeline Graphic ---
+            var timeline = new VisualElement { style = { width = 24, alignItems = Align.Center } };
+            
+            // Vertical Line (贯穿线)
+            if (!isLast)
+            {
+                var line = new VisualElement { style = { width = 1, backgroundColor = new Color(0.3f, 0.3f, 0.35f), flexGrow = 1 } };
+                // 微调位置使其连接圆点
+                line.style.marginTop = 0; 
+                timeline.Add(line);
+            }
 
-			// Method Name
-			var methodLabel = new Label($"{frame.DeclaringType}.{frame.MethodName}")
-			{
-				style =
-				{
-					fontSize = 12,
-					color = frame.IsUserCode ? new Color(0.9f, 0.9f, 0.9f) : new Color(0.6f, 0.6f, 0.6f),
-					unityFontStyleAndWeight = frame.IsUserCode ? FontStyle.Bold : FontStyle.Normal
-				}
-			};
-			btn.Add(methodLabel);
+            // Dot (节点) - 使用 Absolute 定位覆盖在线上
+            var dot = new VisualElement
+            {
+                style = {
+                    width = 9, height = 9,
+                    position = Position.Absolute,
+                    top = 8, // Center vertically roughly
+                    borderTopWidth = 1, borderBottomWidth = 1, borderLeftWidth = 1, borderRightWidth = 1,
+                    borderTopColor = ColorBgDark, borderBottomColor = ColorBgDark, borderLeftColor = ColorBgDark, borderRightColor = ColorBgDark // Stroke effect
+                }
+            };
+            dot.style.SetBorderRadius(4.5f);
+            
+            // Color Logic
+            if (frame.IsUserCode)
+            {
+                dot.style.backgroundColor = ColorUserCode;
+            }
+            else
+            {
+                dot.style.backgroundColor = ColorSystemCode;
+            }
+            
+            timeline.Add(dot);
+            row.Add(timeline);
 
-			// File Path (Small)
-			if (frame.IsUserCode)
-			{
-				var fileLabel = new Label($"{Path.GetFileName(frame.FilePath)}:{frame.LineNumber}") { style = { fontSize = 10, color = new Color(0.4f, 0.4f, 0.4f) } };
-				btn.Add(fileLabel);
-			}
+            // --- B. Content Interactive Area ---
+            var contentBtn = new Button(() =>
+            {
+                if (!string.IsNullOrEmpty(frame.FilePath))
+                {
+                    string sysPath = frame.FilePath.Replace('/', System.IO.Path.DirectorySeparatorChar);
+                    UnityEditorInternal.InternalEditorUtility.OpenFileAtLineExternal(sysPath, frame.LineNumber);
+                }
+            })
+            {
+                style =
+                {
+                    flexGrow = 1, flexDirection = FlexDirection.Column, justifyContent = Justify.Center,
+                    backgroundColor = Color.clear, 
+                    borderTopWidth = 0, borderBottomWidth = 0, borderLeftWidth = 0, borderRightWidth = 0,
+                    paddingTop = 2, paddingBottom = 4, paddingLeft = 4, marginLeft = 4
+                }
+            };
 
-			row.Add(btn);
-			_stackScrollView.Add(row);
-		}
+            // Hover effect logic handled by Unity Button default, but we can customize if needed
+            
+            // Method Name
+            var methodLabel = new Label($"{frame.DeclaringType}.{frame.MethodName}")
+            {
+                style =
+                {
+                    fontSize = 12,
+                    color = frame.IsUserCode ? new Color(0.9f, 0.9f, 0.95f) : new Color(0.55f, 0.55f, 0.6f),
+                    unityFontStyleAndWeight = frame.IsUserCode ? FontStyle.Bold : FontStyle.Normal
+                }
+            };
+            contentBtn.Add(methodLabel);
 
-		// --- 辅助功能 ---
+            // File Path
+            if (frame.IsUserCode)
+            {
+                var pathLabel = new Label($"{Path.GetFileName(frame.FilePath)}:{frame.LineNumber}") 
+                { 
+                    style = { fontSize = 10, color = new Color(0.35f, 0.55f, 0.75f), marginTop = 1 } 
+                };
+                contentBtn.Add(pathLabel);
+            }
 
-		private void OpenLogFile()
-		{
-			string dir = Path.Combine(Application.persistentDataPath, "Logs");
-			string path = EditorUtility.OpenFilePanel("Load Asaki Log", dir, "asakilog");
-			if (!string.IsNullOrEmpty(path))
-			{
-				_localLogs = AsakiLogFileReader.LoadFile(path);
-				_mode = DashboardMode.Local;
-				_listView.itemsSource = _localLogs;
-				_listView.Rebuild();
-				_statusLabel.text = $"Status: Loaded {Path.GetFileName(path)}";
-				_statusLabel.style.color = new Color(0.4f, 0.8f, 1f);
-			}
-		}
+            row.Add(contentBtn);
+            _stackScrollView.Add(row);
+        }
 
-		private Color GetColorByLevel(AsakiLogLevel level)
-		{
-			switch (level)
-			{
-				case AsakiLogLevel.Error:   return new Color(1f, 0.4f, 0.4f);
-				case AsakiLogLevel.Warning: return Color.yellow;
-				default:                    return Color.white;
-			}
-		}
-	}
+        // =========================================================
+        // 核心逻辑 (保持原有功能)
+        // =========================================================
+
+        private void OnPlayModeChanged(PlayModeStateChange state)
+        {
+            if (_statusLabel == null || _listView == null) return;
+
+            if (state == PlayModeStateChange.ExitingPlayMode)
+            {
+                if (_liveAggregator != null)
+                {
+                    var snapshot = _liveAggregator.GetSnapshot();
+                    if (snapshot != null && snapshot.Count > 0) SnapshotLiveLogs();
+                }
+                _mode = DashboardMode.Local;
+                _statusLabel.text = "Status: Local Snapshot";
+                _statusLabel.style.color = ColorAccentWarn;
+            }
+            else if (state == PlayModeStateChange.EnteredPlayMode)
+            {
+                _mode = DashboardMode.Live;
+                if (_localLogs == null) _localLogs = new List<AsakiLogModel>();
+                _localLogs.Clear();
+                _liveAggregator = null;
+                _statusLabel.text = "Status: Connecting...";
+                _statusLabel.style.color = Color.gray;
+            }
+        }
+
+        private void SnapshotLiveLogs()
+        {
+            if (_liveAggregator == null || _listView == null || _statusLabel == null) return;
+
+            List<AsakiLogModel> tempSnapshot = _liveAggregator.GetSnapshot();
+            _localLogs.Clear();
+            if (tempSnapshot.Count > 0)
+            {
+                var wrapper = new LogListWrapper { List = tempSnapshot };
+                string json = JsonUtility.ToJson(wrapper);
+                var deserialized = JsonUtility.FromJson<LogListWrapper>(json);
+                if (deserialized != null && deserialized.List != null) _localLogs = deserialized.List;
+            }
+            _listView.itemsSource = _localLogs;
+            _listView.Rebuild();
+            _statusLabel.text = "Status: Local Snapshot";
+            _statusLabel.style.color = ColorAccentWarn;
+        }
+
+        private void OnEditorUpdate()
+        {
+            if (_mode == DashboardMode.Local) return;
+
+            if (_liveAggregator == null)
+            {
+                var s = AsakiContext.Get<IAsakiLoggingService>() as AsakiLoggingService;
+                if (s != null)
+                {
+                    _liveAggregator = s.Aggregator;
+                    _listView.itemsSource = _liveAggregator.GetSnapshot();
+                    _listView.Rebuild();
+                    _statusLabel.text = "● Live";
+                    _statusLabel.style.color = new Color(0.4f, 1f, 0.4f);
+                }
+            }
+
+            if (EditorApplication.timeSinceStartup - _lastRefreshTime > REFRESH_INTERVAL)
+            {
+                _lastRefreshTime = EditorApplication.timeSinceStartup;
+                if (_listView != null && _liveAggregator != null && _liveAggregator.GetSnapshot().Count > 0)
+                {
+                    _listView.RefreshItems();
+                }
+            }
+        }
+
+        private void OpenLogFile()
+        {
+            string dir = Path.Combine(Application.persistentDataPath, "Logs");
+            string path = EditorUtility.OpenFilePanel("Load Asaki Log", dir, "asakilog");
+            if (!string.IsNullOrEmpty(path))
+            {
+                _localLogs = AsakiLogFileReader.LoadFile(path);
+                _mode = DashboardMode.Local;
+                _listView.itemsSource = _localLogs;
+                _listView.Rebuild();
+                _statusLabel.text = $"Loaded: {Path.GetFileName(path)}";
+                _statusLabel.style.color = new Color(0.4f, 0.8f, 1f);
+            }
+        }
+
+        private Color GetColorByLevel(AsakiLogLevel level)
+        {
+            switch (level)
+            {
+                case AsakiLogLevel.Error: return ColorAccentError;
+                case AsakiLogLevel.Warning: return ColorAccentWarn;
+                case AsakiLogLevel.Fatal: return Color.red;
+                default: return ColorSystemCode;
+            }
+        }
+
+        [System.Serializable] private class LogListWrapper { public List<AsakiLogModel> List; }
+    }
 }

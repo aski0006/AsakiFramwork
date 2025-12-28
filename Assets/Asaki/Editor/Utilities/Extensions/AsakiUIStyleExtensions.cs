@@ -2,7 +2,7 @@
 
 namespace Asaki.Editor.Utilities.Extensions
 {
-	public static class AsakiUIExtensions
+	public static class AsakiUIStyleExtensions
 	{
 		// =========================================================
 		// Padding 拓展
