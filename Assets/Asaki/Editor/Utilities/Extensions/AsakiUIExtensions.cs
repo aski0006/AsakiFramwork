@@ -63,7 +63,7 @@ namespace Asaki.Editor.Utilities.Extensions
 		/// <summary>
 		/// 一键设置圆角
 		/// </summary>
-		public static void SetRadius(this IStyle style, float value)
+		public static void SetBorderRadius(this IStyle style, float value)
 		{
 			style.borderTopLeftRadius = value;
 			style.borderTopRightRadius = value;

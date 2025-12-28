@@ -6,12 +6,10 @@ namespace Asaki.Unity.Bridge
 	public class AsakiMonoDriver : MonoBehaviour
 	{
 		private AsakiSimulationManager _simManager;
-
 		public void Initialize(AsakiSimulationManager simManager)
 		{
 			_simManager = simManager;
 		}
-
 		private void Update()
 		{
 			if (_simManager == null) return;
