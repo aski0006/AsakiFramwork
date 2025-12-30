@@ -1,5 +1,6 @@
 ﻿using Asaki.Core.Context;
 using Asaki.Core.Logging;
+using Asaki.Core.Network;
 using Asaki.Unity.Services.Resources;
 using UnityEngine;
 
@@ -45,10 +46,8 @@ namespace Asaki.Unity.Configuration
 		// =============================================================
 
 		[Header("Web")]
-		[SerializeField] private string baseUrl;
-		[SerializeField] private int webTimeoutSeconds;
-		public string BaseUrt => baseUrl;
-		public int WebTimeoutSeconds => webTimeoutSeconds;
+		[SerializeField] private AsakiWebConfig asakiWebConfig;
+		public AsakiWebConfig AsakiWebConfig => asakiWebConfig;
 		
 		[Header("Logging System")]
 		[SerializeField] private AsakiLogConfig logConfig;

@@ -17,14 +17,12 @@ namespace Asaki.Unity.Modules
 		{
 			AsakiConfig asakiConfig = AsakiContext.Get<AsakiConfig>();
 			_asakiWebService = new AsakiWebService();
-			_asakiWebService.OnInit();
-			_asakiWebService.SetBaseUrl(asakiConfig.BaseUrt);
-			_asakiWebService.SetTimeout(asakiConfig.WebTimeoutSeconds);
+			_asakiWebService.Setup(asakiConfig.AsakiWebConfig);
 			AsakiContext.Register<IAsakiWebService>(_asakiWebService);
 		}
-		public async Task OnInitAsync()
+		public Task OnInitAsync()
 		{
-			await _asakiWebService.OnInitAsync();
+			return Task.CompletedTask;
 		}
 		public void OnDispose()
 		{

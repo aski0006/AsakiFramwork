@@ -2,7 +2,7 @@
 using Asaki.Core.Coroutines;
 using Asaki.Core.Network;
 using Asaki.Core.Tasks;
-using Asaki.Unity.Utils;
+using Asaki.Unity.Services.Logging;
 using System;
 using System.IO;
 using System.Threading;
@@ -15,6 +15,7 @@ namespace Game.Examples
 		private IAsakiDownloadService _downloader;
 		private IAsakiCoroutineService _asakiCoroutineService;
 		private CancellationTokenSource _cts;
+
 		private void Start()
 		{
 			_downloader = AsakiContext.Get<IAsakiDownloadService>();
@@ -24,42 +25,51 @@ namespace Game.Examples
 		[ContextMenu("Test Download Image")]
 		public async AsakiTaskVoid TestDownload()
 		{
+			// 测试长链接
 			string url = "https://image.baidu.com/search/down?&tn=download&word=download&ie=utf8&fr=home&url=https%3A%2F%2Fgips2.baidu.com%2Fit%2Fu%3D1651586290%2C17201034%26fm%3D3028%26app%3D3028%26f%3DJPEG%26fmt%3Dauto%26q%3D100%26size%3Df600_800&thumbUrl=https%3A%2F%2Fgips2.baidu.com%2Fit%2Fu%3D1651586290%2C17201034%26fm%3D3028%26app%3D3028%26f%3DJPEG%26fmt%3Dauto%26q%3D100%26size%3Df600_800&iswise=1";
+			
+			// [W-006] 路径必须在 PersistentDataPath 下
 			string savePath = Path.Combine(Application.persistentDataPath, "Downloads", "test_image.jpg");
 
-			Debug.Log($"[Test] Start downloading to: {savePath}");
-			var progress = new Progress<float>(p =>
+			ALog.Info($"[Test] Start downloading to: {savePath}");
+
+			// [M-005] 适配新的进度结构体 AsakiDownloadProgress
+			var progress = new Progress<AsakiDownloadProgress>(p =>
 			{
-				// 打印进度 (0.1, 0.2 ...) 避免刷屏
-				Debug.Log($"Downloading... {p:P0}");
+				// 展示更多维度的信息：进度、速度、已下载量
+				// p.Speed 单位是 Bytes/s，转换为 KB/s
+				ALog.Info($"[Progress] {p.Progress:P0} | Speed: {p.Speed / 1024f:F1} KB/s | Downloaded: {p.DownloadedBytes / 1024} KB");
 			});
 
 			_cts = new CancellationTokenSource();
-			var linkedToken = _asakiCoroutineService.Link(this, _cts.Token);
+
+			// [Fix] 修正 API 调用：使用 IAsakiCoroutineService 定义的 CreateLinkedToken
+			var linkedToken = _asakiCoroutineService.CreateLinkedToken(_cts.Token);
+
 			try
 			{
-				// 获取文件大小
+				// 获取文件大小 (HEAD 请求)
 				long size = await _downloader.GetFileSizeAsync(url);
-				Debug.Log($"[Test] File Size: {size / 1024} KB");
+				ALog.Info($"[Test] Remote File Size: {size / 1024} KB");
 
 				// 开始下载
 				await _downloader.DownloadAsync(url, savePath, progress, linkedToken);
 
-				Debug.Log("<color=green>[Test] Download Success!</color>");
+				ALog.Info("<color=green>[Test] Download Success!</color>");
 
 				// 验证文件存在
 				if (File.Exists(savePath))
 				{
-					Debug.Log($"File exists, size: {new FileInfo(savePath).Length} bytes");	
+					ALog.Info($"[Verify] File exists, local size: {new FileInfo(savePath).Length} bytes");	
 				}
 			}
 			catch (OperationCanceledException)
 			{
-				Debug.LogWarning("[Test] Download Canceled.");
+				ALog.Warn("[Test] Download Canceled.");
 			}
 			catch (Exception ex)
 			{
-				Debug.LogError($"[Test] Failed: {ex.Message}");
+				ALog.Error($"[Test] Failed: {ex.Message}", ex);
 			}
 		}
 
@@ -67,7 +77,7 @@ namespace Game.Examples
 		public void Cancel()
 		{
 			_cts?.Cancel();
+			ALog.Info("[Test] Cancel requested...");
 		}
-
 	}
 }

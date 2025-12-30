@@ -17,41 +17,43 @@ namespace Asaki.Unity.Services.Network
 	{
 		private string _baseUrl = "";
 		private int _timeout = 10;
-		private readonly List<IAsakiWebInterceptor> _interceptors = new List<IAsakiWebInterceptor>();
-		public void OnInit()
-		{
-			AddInterceptor(new AsakiLogInterceptor());
-		}
+		// 使用 HashSet 防止重复添加拦截器
+		private readonly HashSet<IAsakiWebInterceptor> _interceptors = new HashSet<IAsakiWebInterceptor>();
 
-		public Task OnInitAsync()
+		private bool _isDisposed = false;
+		public void Setup(AsakiWebConfig config)
 		{
-			return Task.CompletedTask;
+			if (config == null) return;
+			_baseUrl = config.BaseUrl?.TrimEnd('/') ?? "";
+			_timeout = config.TimeoutSeconds;
+
+			if (config.InitialInterceptors == null) return;
+			foreach (IAsakiWebInterceptor i in config.InitialInterceptors)
+				AddInterceptor(i);
 		}
 		public void OnDispose()
 		{
+			Dispose();
+		}
+		public void Dispose()
+		{
+			if (_isDisposed) return;
+			_isDisposed = true;
 			_interceptors.Clear();
-		}
-
-		public void SetBaseUrl(string url)
-		{
-			_baseUrl = url.TrimEnd('/');
-		}
-		public void SetTimeout(int seconds)
-		{
-			_timeout = seconds;
 		}
 		public void AddInterceptor(IAsakiWebInterceptor interceptor)
 		{
-			if (!_interceptors.Contains(interceptor)) _interceptors.Add(interceptor);
+			if (interceptor != null) _interceptors.Add(interceptor);
 		}
 		public void RemoveInterceptor(IAsakiWebInterceptor interceptor)
 		{
-			_interceptors.Remove(interceptor);
+			if (interceptor != null) _interceptors.Remove(interceptor);
 		}
 
 		public async Task<TResponse> GetAsync<TResponse>(string apiPath)
 			where TResponse : IAsakiSavable, new()
 		{
+			CheckDisposed();
 			string url = BuildUrl(apiPath);
 			using (UnityWebRequest uwr = UnityWebRequest.Get(url))
 			{
@@ -67,9 +69,9 @@ namespace Asaki.Unity.Services.Network
 
 		public async Task<TResponse> PostAsync<TRequest, TResponse>(string apiPath, TRequest body) where TRequest : IAsakiSavable where TResponse : IAsakiSavable, new()
 		{
+			CheckDisposed();
 			string url = BuildUrl(apiPath);
-			string jsonBody = SerializeRequest(body);
-			byte[] bodyRaw = Encoding.UTF8.GetBytes(jsonBody);
+			byte[] bodyRaw = SerializeRequestToBytes(body);
 
 			using (UnityWebRequest uwr = new UnityWebRequest(url, "POST"))
 			{
@@ -88,6 +90,7 @@ namespace Asaki.Unity.Services.Network
 
 		public async Task<TResponse> PostFormAsync<TResponse>(string apiPath, WWWForm form) where TResponse : IAsakiSavable, new()
 		{
+			CheckDisposed();
 			string url = BuildUrl(apiPath);
 			using (UnityWebRequest uwr = UnityWebRequest.Post(url, form))
 			{
@@ -104,6 +107,10 @@ namespace Asaki.Unity.Services.Network
 		// 内部逻辑
 		// =========================================================
 
+		private void CheckDisposed()
+		{
+			if (_isDisposed) throw new ObjectDisposedException(nameof(AsakiWebService));
+		}
 		private string BuildUrl(string apiPath)
 		{
 			if (apiPath.StartsWith("http") || string.IsNullOrEmpty(_baseUrl)) return apiPath;
@@ -115,16 +122,22 @@ namespace Asaki.Unity.Services.Network
 			uwr.timeout = _timeout;
 		}
 
-		private string SerializeRequest<T>(T body) where T : IAsakiSavable
+		private byte[] SerializeRequestToBytes<T>(T body) where T : IAsakiSavable
 		{
 			StringBuilder sb = AsakiStringBuilderPool.Rent();
 			try
 			{
 				AsakiJsonWriter writer = new AsakiJsonWriter(sb);
 				body.Serialize(writer);
-				return writer.GetResult();
+
+				// 使用新写的优化方法
+				return AsakiStringBuilderPool.GetBytesAndRelease(sb);
 			}
-			finally { AsakiStringBuilderPool.Return(sb); }
+			catch
+			{
+				AsakiStringBuilderPool.Return(sb); // 确保异常时也归还
+				throw;
+			}
 		}
 
 		private T ProcessResponse<T>(UnityWebRequest uwr) where T : IAsakiSavable, new()

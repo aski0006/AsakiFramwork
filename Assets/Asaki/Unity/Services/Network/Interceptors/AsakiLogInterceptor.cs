@@ -1,4 +1,5 @@
 ﻿using Asaki.Core.Network;
+using Asaki.Unity.Services.Logging;
 using System;
 using UnityEngine;
 using UnityEngine.Networking;
@@ -11,7 +12,7 @@ namespace Asaki.Unity.Services.Network.Interceptors
 		public bool OnResponse(UnityWebRequest uwr) { return true; }
 		public void OnError(UnityWebRequest uwr, Exception ex)
 		{
-			Debug.LogError($"[Web Error] {uwr.url}: {ex.Message}");
+			ALog.Error($"[Web Error] {uwr.url}: {ex.Message}", ex);
 		}
 	}
 }

@@ -149,9 +149,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   _config: {fileID: 11400000, guid: 6018a50383e7b8540a5cbb5227dd211c, type: 2}
-  _scanAssemblies:
-  - Asaki.Unity
-  - Game
 --- !u!4 &459729747
 Transform:
   m_ObjectHideFlags: 0

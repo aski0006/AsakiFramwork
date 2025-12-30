@@ -1,15 +1,14 @@
 ﻿using Asaki.Core.Context;
 using Asaki.Core.Serialization;
+using System;
 using System.Threading.Tasks;
 using UnityEngine;
 
 namespace Asaki.Core.Network
 {
-	public interface IAsakiWebService : IAsakiService
+	public interface IAsakiWebService : IAsakiService, IDisposable
 	{
-		void SetBaseUrl(string url);
-		void SetTimeout(int seconds);
-
+		void Setup(AsakiWebConfig config);
 		void AddInterceptor(IAsakiWebInterceptor interceptor);
 		void RemoveInterceptor(IAsakiWebInterceptor interceptor);
 
