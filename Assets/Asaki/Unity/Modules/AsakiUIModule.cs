@@ -26,12 +26,12 @@ namespace Asaki.Unity.Modules
 			IAsakiResService resService = AsakiContext.Get<IAsakiResService>();
 			IAsakiPoolService poolService = AsakiContext.Get<IAsakiPoolService>();
 			// 如果没配置 UI，直接跳过
-			if (!config || !config.UIConfig) return;
+			if (!config) return;
 
 			_uiManager = new AsakiUIManager(
 				config.UIConfig,
-				config.ReferenceResolution,
-				config.MatchWidthOrHeight,
+				config.UIConfig.ReferenceResolution,
+				config.UIConfig.MatchWidthOrHeight,
 				eventService,
 				resService,
 				poolService

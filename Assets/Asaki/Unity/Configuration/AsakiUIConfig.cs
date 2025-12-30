@@ -14,11 +14,36 @@ namespace Asaki.Unity.Configuration
 		public string AssetPath;
 		public bool UsePool;
 	}
-
-	[CreateAssetMenu(fileName = "AsakiUIConfig", menuName = "Asaki/Configuration/UI Configuration")]
-	public class AsakiUIConfig : ScriptableObject
+	
+	[Serializable]
+	public struct WidgetTemplate
 	{
+		public AsakiUIWidgetType Type;
+		public GameObject Prefab;
+	}
+
+	[Serializable] // 关键：标记为可序列化
+	public class AsakiUIConfig
+	{
+		[Header("Global Settings")]
+		public Vector2 ReferenceResolution = new Vector2(1920, 1080);
+		[Range(0f, 1f)] public float MatchWidthOrHeight = 0.5f;
+
+		[Header("Registry")]
 		public List<UIInfo> UIList = new List<UIInfo>();
+
+		[Header("Templates")]
+		public List<WidgetTemplate> Templates = new List<WidgetTemplate>();
+		public GameObject GetTemplate(AsakiUIWidgetType type)
+		{
+			// 简单的线性查找
+			foreach (WidgetTemplate t in Templates)
+			{
+				if (t.Type == type) return t.Prefab;
+			}
+			return null;
+		}
+		// 运行时缓存 (不序列化)
 		private Dictionary<int, UIInfo> _lookup;
 
 		public void InitializeLookup()
@@ -34,7 +59,7 @@ namespace Asaki.Unity.Configuration
 		public bool TryGet(int id, out UIInfo info)
 		{
 			if (_lookup == null) InitializeLookup();
-			return _lookup!.TryGetValue(id, out info);
+			return _lookup.TryGetValue(id, out info);
 		}
 	}
 }

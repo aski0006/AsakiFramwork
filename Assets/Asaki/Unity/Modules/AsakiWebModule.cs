@@ -17,7 +17,7 @@ namespace Asaki.Unity.Modules
 		{
 			AsakiConfig asakiConfig = AsakiContext.Get<AsakiConfig>();
 			_asakiWebService = new AsakiWebService();
-			_asakiWebService.Setup(asakiConfig.AsakiWebConfig);
+			_asakiWebService.Setup(asakiConfig.WebConfig);
 			AsakiContext.Register<IAsakiWebService>(_asakiWebService);
 		}
 		public Task OnInitAsync()

@@ -33,7 +33,7 @@ namespace Asaki.Core.Pooling
 			Transform = go.transform;
 			// 在构造时一次性获取接口，Spawn 时直接调用，0 GC
 			go.TryGetComponent(out AsakiPoolable);
-			LastActiveTime = Time.time;
+			LastActiveTime = UnityEngine.Time.time;
 		}
 	}
 }

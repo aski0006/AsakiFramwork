@@ -15,41 +15,37 @@ namespace Asaki.Unity.Configuration
 	[Serializable]
 	public class AudioItem
 	{
-		public string Key; // 代码引用的 Enum Key (如 "Player_Jump")
+		public string Key; // 代码引用的 Enum Key
 		public int ID;     // Hash ID
-
+        
 		[Tooltip("编辑器引用，用于预览和生成路径")]
 		public AudioClip Clip;
 
 		[Tooltip("运行时加载路径 (自动生成)")]
 		public string AssetPath;
 
-		[Range(0f, 1f)]
-		public float Volume = 1f; // 基础音量
-
-		[Range(0.1f, 3f)]
-		public float Pitch = 1f; // 基础音高
-
-		public bool Loop = false; // 默认是否循环
-
-		public AsakiAudioGroup Group = AsakiAudioGroup.SFX; // 分组
-
-		[Tooltip("是否启用随机音高扰动 (丰富听感)")]
+		[Range(0f, 1f)] public float Volume = 1f;
+		[Range(0.1f, 3f)] public float Pitch = 1f;
+		public bool Loop = false;
+		public AsakiAudioGroup Group = AsakiAudioGroup.SFX;
 		public bool RandomPitch = false;
 
-		// 编辑器折叠状态
 		#if UNITY_EDITOR
 		public bool _editorExpanded = false;
 		#endif
 	}
 
-	[CreateAssetMenu(fileName = "AsakiAudioConfig", menuName = "Asaki/Configuration/Audio Configuration")]
-	public class AsakiAudioConfig : ScriptableObject
+	[Serializable] // 关键：标记为可序列化
+	public class AsakiAudioConfig
 	{
-		// 新的核心数据列表
+		[Header("Global Settings")]
+		public string SoundAgentPrefabAssetKey;
+		public int InitialPoolSize = 16;
+
+		[Header("Registry")]
 		public List<AudioItem> Items = new List<AudioItem>();
 
-		// 运行时查找缓存
+		// 运行时缓存
 		private Dictionary<int, AudioItem> _lookup;
 
 		public void InitializeLookup()
@@ -70,6 +66,5 @@ namespace Asaki.Unity.Configuration
 			if (_lookup == null) InitializeLookup();
 			return _lookup.TryGetValue(id, out item);
 		}
-		
 	}
 }

@@ -1,1003 +1,1482 @@
-﻿namespace Asaki.Core.Logging
-{
-	/// <summary>
-	/// 日志最小原子单元。
-	/// 设计为 Struct 以减少堆内存分配，在并发队列中传递值的副本。
-	/// </summary>
-	public struct AsakiLogEntry
-	{
-		/// <summary>
-		/// UTC 时间戳 (Ticks)
-		/// </summary>
-		public long Timestamp;
+﻿# Unity Scripts Aggregation
+# Generated: 2025-12-30 14:36:08
+# Total Files: 13
+# Total Size: 41475 bytes
 
-		/// <summary>
-		/// 线程 ID
-		/// </summary>
-		public int ThreadId;
-
-		/// <summary>
-		/// 日志级别
-		/// </summary>
-		public AsakiLogLevel Level;
-
-		/// <summary>
-		/// 日志内容
-		/// </summary>
-		public string Message;
-        
-		/// <summary>
-		/// 结构化数据载荷 (可选)
-		/// </summary>
-		public string PayloadJson;
-
-		// --- 零反射调用点信息 ---
-
-		/// <summary>
-		/// 调用方文件绝对路径 (Compiler Generated)
-		/// </summary>
-		public string CallerPath;
-
-		/// <summary>
-		/// 调用方行号 (Compiler Generated)
-		/// </summary>
-		public int CallerLine;
-
-		/// <summary>
-		/// 调用方成员/方法名 (Compiler Generated)
-		/// </summary>
-		public string CallerMember;
-
-		// [新增] 完整堆栈信息 (用于 Unity 拦截日志 或 ALog.Error)
-		public string StackTrace;
-	}
-}
-
-namespace Asaki.Core.Logging
-{
-	/// <summary>
-	/// 日志级别定义 (Asaki Native)
-	/// </summary>
-	public enum AsakiLogLevel
-	{
-		Verbose = 0,
-		Debug = 1,
-		Info = 2,
-		Warning = 3,
-		Error = 4,
-		Fatal = 5,
-        
-		/// <summary>
-		/// 关闭所有日志
-		/// </summary>
-		None = 99
-	}
-}
-
+<!-- File: Asaki/Core/Coroutines/IAsakiCoroutineService.cs -->
+<!-- GUID: 5d64d36ebfc94b3a8b1e0bf5a05c1811 -->
+<!-- Size: 5264 bytes -->
+<!-- Modified: 2025-12-26 16:44:24 -->
+```csharp
+using Asaki.Core.Context;
 using System;
-using Asaki.Core.Context; // 引用您现有的 Context 命名空间
-
-namespace Asaki.Core.Logging
-{
-	/// <summary>
-	/// 日志服务后端接口。
-	/// 负责实际的队列管理、IO 写入和生命周期维护。
-	/// </summary>
-	public interface IAsakiLoggingService : IAsakiService, IDisposable
-	{
-		/// <summary>
-		/// 设置当前的日志过滤级别
-		/// </summary>
-		void SetLevel(AsakiLogLevel level);
-
-		/// <summary>
-		/// 将日志推入处理队列 (非阻塞)
-		/// </summary>
-		/// <param name="level">级别</param>
-		/// <param name="message">消息内容</param>
-		/// <param name="callerPath">文件路径 (自动注入)</param>
-		/// <param name="callerLine">行号 (自动注入)</param>
-		/// <param name="callerMember">方法名 (自动注入)</param>
-		/// <param name="payload">结构化数据</param>
-		/// <param name="stackTrace">堆栈信息 (自动注入)</param>
-		void Enqueue(AsakiLogLevel level, string message, string callerPath, int callerLine, string callerMember, object payload = null, string stackTrace = null);
-
-		/// <summary>
-		/// 紧急同步写入。
-		/// 通常在崩溃或应用退出时调用，阻塞线程直到缓冲区清空。
-		/// </summary>
-		void FlushSync();
-	}
-}
-
-using Asaki.Core.Logging;
-using System.Runtime.CompilerServices;
-
-// 放在根命名空间或 Asaki 命名空间下，方便调用
-namespace Asaki.Unity.Services.Logging
-{
-    /// <summary>
-    /// Asaki Logging System 静态门面。
-    /// <para>生命周期严格受控：仅在 IAsakiLoggingService 实例存活期间有效。</para>
-    /// </summary>
-    public static class ALog
-    {
-        private static IAsakiLoggingService _backend;
-
-        /// <summary>
-        /// [Internal] 注册后端实例。通常由 AsakiLoggingService.OnInitialize 调用。
-        /// </summary>
-        internal static void RegisterBackend(IAsakiLoggingService backend)
-        {
-            _backend = backend;
-        }
-
-        /// <summary>
-        /// [Internal] 重置后端。通常由 AsakiLoggingService.OnDestroy/Dispose 调用。
-        /// 防止静态引用导致的内存泄漏或野指针访问。
-        /// </summary>
-        internal static void Reset()
-        {
-            _backend = null;
-        }
-
-        #region Public API
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static void Debug(string message, object payload = null,
-            [CallerFilePath] string file = "",
-            [CallerLineNumber] int line = 0,
-            [CallerMemberName] string member = "")
-        {
-            if (_backend == null) return;
-            _backend.Enqueue(AsakiLogLevel.Debug, message, file, line, member, payload);
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static void Info(string message, object payload = null,
-            [CallerFilePath] string file = "",
-            [CallerLineNumber] int line = 0,
-            [CallerMemberName] string member = "")
-        {
-            if (_backend == null) return;
-            _backend.Enqueue(AsakiLogLevel.Info, message, file, line, member, payload);
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static void Warn(string message, object payload = null,
-            [CallerFilePath] string file = "",
-            [CallerLineNumber] int line = 0,
-            [CallerMemberName] string member = "")
-        {
-            if (_backend == null) return;
-            _backend.Enqueue(AsakiLogLevel.Warning, message, file, line, member, payload);
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static void Error(string message, object payload = null,
-            [CallerFilePath] string file = "",
-            [CallerLineNumber] int line = 0,
-            [CallerMemberName] string member = "")
-        {
-            if (_backend == null) return;
-            _backend.Enqueue(AsakiLogLevel.Error, message, file, line, member, payload);
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static void Fatal(string message, object payload = null,
-            [CallerFilePath] string file = "",
-            [CallerLineNumber] int line = 0,
-            [CallerMemberName] string member = "")
-        {
-            if (_backend == null) return;
-            _backend.Enqueue(AsakiLogLevel.Fatal, message, file, line, member, payload);
-        }
-
-        #endregion
-    }
-}
-
-using Asaki.Core.Logging;
-using System;
-
-namespace Asaki.Unity.Services.Logging
-{
-	public partial class AsakiLoggingService
-	{
-		#if UNITY_EDITOR
-		public static event Action<AsakiLogEntry> OnLogBroadcast;
-		#endif
-	}
-}
-
-using Asaki.Core.Logging;
-using Asaki.Core.Serialization;
-using Asaki.Unity.Services.Serialization;
-using Asaki.Unity.Utils;
-using System;
-using System.Collections.Concurrent;
-using System.IO;
-using System.Linq;
-using System.Text;
 using System.Threading;
+using System.Threading.Tasks;
+
+namespace Asaki.Core.Coroutines
+{
+	/// <summary>
+	/// [异步服务接口] (v3.0 Enhanced)
+	/// 提供完整的时间控制、条件等待和任务管理能力。
+	/// </summary>
+	public interface IAsakiCoroutineService : IAsakiService
+	{
+		// === 基本等待方法 ===
+
+		/// <summary>
+		/// 等待指定秒数 (受 TimeScale 影响)
+		/// </summary>
+		Task WaitSeconds(float seconds, CancellationToken token = default(CancellationToken));
+
+		/// <summary>
+		/// 等待指定秒数 (真实时间，不受 TimeScale 影响)
+		/// </summary>
+		Task WaitSecondsUnscaled(float seconds, CancellationToken token = default(CancellationToken));
+
+		// === 帧等待 ===
+
+		/// <summary>
+		/// 等待下一帧 (Update)
+		/// </summary>
+		Task WaitFrame(CancellationToken token = default(CancellationToken));
+
+		/// <summary>
+		/// 等待指定数量的帧
+		/// </summary>
+		Task WaitFrames(int count, CancellationToken token = default(CancellationToken));
+
+		/// <summary>
+		/// 等待物理/固定帧 (FixedUpdate)
+		/// </summary>
+		Task WaitFixedFrame(CancellationToken token = default(CancellationToken));
+
+		/// <summary>
+		/// 等待指定数量的物理帧
+		/// </summary>
+		Task WaitFixedFrames(int count, CancellationToken token = default(CancellationToken));
+
+		// === 条件等待 ===
+
+		/// <summary>
+		/// 挂起直到条件为 true
+		/// </summary>
+		Task WaitUntil(Func<bool> predicate, CancellationToken token = default(CancellationToken));
+
+		/// <summary>
+		/// 挂起直到条件为 false
+		/// </summary>
+		Task WaitWhile(Func<bool> predicate, CancellationToken token = default(CancellationToken));
+
+		/// <summary>
+		/// 等待直到条件为 true，带超时时间
+		/// </summary>
+		Task<bool> WaitUntil(Func<bool> predicate, float timeoutSeconds, CancellationToken token = default(CancellationToken));
+
+		/// <summary>
+		/// 等待直到条件为 false，带超时时间
+		/// </summary>
+		Task<bool> WaitWhile(Func<bool> predicate, float timeoutSeconds, CancellationToken token = default(CancellationToken));
+
+		// === 任务管理 ===
+
+		/// <summary>
+		/// 异步执行一个任务，自动处理取消和异常
+		/// </summary>
+		Task RunTask(Func<Task> taskFunc, CancellationToken token = default(CancellationToken));
+
+		/// <summary>
+		/// 异步执行一个带返回值的任务
+		/// </summary>
+		Task<T> RunTask<T>(Func<Task<T>> taskFunc, CancellationToken token = default(CancellationToken));
+
+		/// <summary>
+		/// 延迟执行一个动作
+		/// </summary>
+		Task DelayedCall(float delaySeconds, Action action, CancellationToken token = default(CancellationToken), bool unscaledTime = false);
+
+		/// <summary>
+		/// 在下一帧执行一个动作
+		/// </summary>
+		Task NextFrameCall(Action action, CancellationToken token = default(CancellationToken));
+
+		/// <summary>
+		/// 当条件满足时执行一个动作
+		/// </summary>
+		Task When(Func<bool> condition, Action action, CancellationToken token = default(CancellationToken));
+
+		// === 批量任务管理 ===
+
+		/// <summary>
+		/// 等待所有任务完成
+		/// </summary>
+		Task WaitAll(params Task[] tasks);
+
+		/// <summary>
+		/// 等待任意一个任务完成
+		/// </summary>
+		Task WaitAny(params Task[] tasks);
+
+		/// <summary>
+		/// 顺序执行多个异步操作
+		/// </summary>
+		Task Sequence(params Func<Task>[] actions);
+
+		/// <summary>
+		/// 并行执行多个异步操作
+		/// </summary>
+		Task Parallel(params Func<Task>[] actions);
+
+		/// <summary>
+		/// 重试执行异步操作
+		/// </summary>
+		Task Retry(Func<Task> action, int maxRetries = 3, float retryDelay = 1f, CancellationToken token = default(CancellationToken));
+
+		// === 高级等待模式 ===
+
+		/// <summary>
+		/// 等待一个自定义的等待源
+		/// </summary>
+		Task WaitCustom(IAsakiWaitSource waitSource, CancellationToken token = default(CancellationToken));
+
+		/// <summary>
+		/// 创建可配置的等待构建器
+		/// </summary>
+		IWaitBuilder CreateWaitBuilder();
+
+		// === 状态和取消 ===
+
+		/// <summary>
+		/// 当前运行的任务数量
+		/// </summary>
+		int RunningTaskCount { get; }
+
+		/// <summary>
+		/// 取消所有正在运行的任务
+		/// </summary>
+		void CancelAllTasks();
+
+		/// <summary>
+		/// 创建一个链接到服务生命周期的取消令牌
+		/// </summary>
+		CancellationToken CreateLinkedToken(CancellationToken externalToken = default(CancellationToken));
+	}
+
+	// === 扩展接口 ===
+
+	/// <summary>
+	/// 自定义等待源接口
+	/// </summary>
+	public interface IAsakiWaitSource
+	{
+		bool IsCompleted { get; }
+		float Progress { get; }
+		void Update();
+	}
+
+	/// <summary>
+	/// 等待构建器接口（流畅API）
+	/// </summary>
+	public interface IWaitBuilder
+	{
+		IWaitBuilder Seconds(float seconds, bool unscaled = false);
+		IWaitBuilder Frames(int count);
+		IWaitBuilder FixedFrames(int count);
+		IWaitBuilder Until(Func<bool> condition);
+		IWaitBuilder While(Func<bool> condition);
+		Task Build(CancellationToken token = default(CancellationToken));
+	}
+}
+```
+
+<!-- File: Asaki/Core/Network/AsakiWebException.cs -->
+<!-- GUID: 6060da023f6e4716abff77c13a072245 -->
+<!-- Size: 299 bytes -->
+<!-- Modified: 2025-12-26 16:01:43 -->
+```csharp
+namespace Asaki.Core.Network
+{
+	public class AsakiWebException : System.Exception
+	{
+		public long ResponseCode { get; }
+		public string Url { get; }
+		public AsakiWebException(string message, long code, string url) : base(message)
+		{
+			ResponseCode = code;
+			Url = url;
+		}
+	}
+}
+```
+
+<!-- File: Asaki/Core/Network/IAsakiWebService.cs -->
+<!-- GUID: aba658193b4f4f8cbc29d55c5417edf0 -->
+<!-- Size: 1095 bytes -->
+<!-- Modified: 2025-12-26 21:44:49 -->
+```csharp
+using Asaki.Core.Context;
+using Asaki.Core.Serialization;
+using System.Threading.Tasks;
 using UnityEngine;
 
-namespace Asaki.Unity.Services.Logging
+namespace Asaki.Core.Network
 {
-	public partial class AsakiLoggingService : IAsakiLoggingService
+	public interface IAsakiWebService : IAsakiService
 	{
-		// 默认配置
-		private const int DEFAULT_MAX_FILE_SIZE = 1 * 1024 * 1024;
-		private const int DEFAULT_HISTORY_SESSIONS = 3;
-		private const string DEFAULT_DATE_FORMAT = "yyyyMMdd_HHmmss";
+		void SetBaseUrl(string url);
+		void SetTimeout(int seconds);
 
-		// 运行时配置
-		private readonly int _maxFileSize;
-		private readonly int _maxHistorySessions;
-		private readonly string _sessionDateFormat;
+		void AddInterceptor(IAsakiWebInterceptor interceptor);
+		void RemoveInterceptor(IAsakiWebInterceptor interceptor);
 
-		private AsakiLogLevel _currentLevel = AsakiLogLevel.Debug;
-		private readonly ConcurrentQueue<AsakiLogEntry> _queue = new ConcurrentQueue<AsakiLogEntry>();
-		private readonly AutoResetEvent _signal = new AutoResetEvent(false);
+		/// <summary>
+		/// GET 请求
+		/// </summary>
+		Task<TResponse> GetAsync<TResponse>(string apiPath)
+			where TResponse : IAsakiSavable, new();
 
-		// [优化] 线程静态缓存 Writer，彻底消除每次 Log 的 GC 分配
-		// 每个调用 SerializePayload 的线程都会维护自己的 Writer 实例
-		[ThreadStatic]
-		private static AsakiJsonWriter _cachedWriter;
+		Task<TResponse> PostAsync<TRequest, TResponse>(string apiPath, TRequest body)
+			where TRequest : IAsakiSavable
+			where TResponse : IAsakiSavable, new();
 
-		private Thread _writerThread;
-		private volatile bool _isRunning = false;
+		Task<TResponse> PostFormAsync<TResponse>(string apiPath, WWWForm form)
+			where TResponse : IAsakiSavable, new();
+	}
 
-		private string _sessionDir;
-		private string _currentLogPath;
-		private int _fileIndex = 0;
+	public interface IAsakiWebInterceptor
+	{
+		void OnRequest(UnityEngine.Networking.UnityWebRequest uwr);
+		bool OnResponse(UnityEngine.Networking.UnityWebRequest uwr);
+		void OnError(UnityEngine.Networking.UnityWebRequest uwr, System.Exception ex);
+	}
 
-		// 构造函数：支持动态配置注入
-		public AsakiLoggingService(int maxFileSize = DEFAULT_MAX_FILE_SIZE,
-		                           int maxHistorySessions = DEFAULT_HISTORY_SESSIONS,
-		                           string sessionDateFormat = DEFAULT_DATE_FORMAT)
+}
+```
+
+<!-- File: Asaki/Unity/Extensions/AsakiUnityWebRequestExtensions.cs -->
+<!-- GUID: 947f331e8c164a769544907162fc8707 -->
+<!-- Size: 640 bytes -->
+<!-- Modified: 2025-12-26 21:45:52 -->
+```csharp
+using System.Threading.Tasks;
+using UnityEngine.Networking;
+
+namespace Asaki.Unity.Extensions
+{
+	public static class AsakiUnityWebRequestExtensions
+	{
+		public static Task SendWebRequestAsTask(this UnityWebRequest uwr)
 		{
-			_maxFileSize = maxFileSize;
-			_maxHistorySessions = maxHistorySessions;
-			_sessionDateFormat = sessionDateFormat;
-		}
+			var tcs = new TaskCompletionSource<bool>();
 
-		public void OnInitialize()
-		{
-			SetupSessionDirectory();
-			ALog.RegisterBackend(this);
+			// UnityWebRequestAsyncOperation 是一个 AsyncOperation
+			UnityWebRequestAsyncOperation op = uwr.SendWebRequest();
 
-			_isRunning = true;
-			_writerThread = new Thread(WriteLoop)
+			op.completed += (asyncOp) =>
 			{
-				IsBackground = true,
-				Name = "AsakiLogWriter",
-				Priority = System.Threading.ThreadPriority.BelowNormal
-			};
-			_writerThread.Start();
-
-			RegisterCrashHooks();
-
-			ALog.Info($"Asaki Log Service Initialized. Root: {_sessionDir}");
-		}
-
-		public void SetLevel(AsakiLogLevel level) => _currentLevel = level;
-
-		public void Enqueue(AsakiLogLevel level, string message, string callerPath, int callerLine, string callerMember, object payload = null, string stackTrace = null)
-		{
-			if (level < _currentLevel) return;
-
-			string payloadJson = SerializePayload(payload);
-
-			var entry = new AsakiLogEntry
-			{
-				Timestamp = DateTime.UtcNow.Ticks,
-				ThreadId = Thread.CurrentThread.ManagedThreadId,
-				Level = level,
-				Message = message,
-				CallerPath = callerPath,
-				CallerLine = callerLine,
-				CallerMember = callerMember,
-				PayloadJson = payloadJson,
-				StackTrace = stackTrace // [新增] 填充堆栈
+				// 无论成功还是失败，只要请求结束，Task 就结束
+				// 具体的成功/失败由 uwr.result 判断
+				tcs.SetResult(true);
 			};
 
-			_queue.Enqueue(entry);
-			_signal.Set();
-
-			// Editor 广播
-			#if UNITY_EDITOR
-			OnLogBroadcast?.Invoke(entry);
-			#endif
+			return tcs.Task;
 		}
+	}
+}
+```
 
-		public void FlushSync()
+<!-- File: Asaki/Unity/Modules/AsakiWebModule.cs -->
+<!-- GUID: 9888f8a05ec34490a2f3c4f664a5323a -->
+<!-- Size: 864 bytes -->
+<!-- Modified: 2025-12-27 18:41:56 -->
+```csharp
+using Asaki.Core;
+using Asaki.Core.Context;
+using Asaki.Core.Network;
+using Asaki.Unity.Configuration;
+using Asaki.Unity.Services.Network;
+using System.Threading.Tasks;
+
+namespace Asaki.Unity.Modules
+{
+	[AsakiModule(priority: 100)]
+	public class AsakiWebModule : IAsakiModule
+	{
+
+		private AsakiWebService _asakiWebService;
+
+		public void OnInit()
 		{
-			try { ProcessQueueToFile(forceFlush: true); }
-			catch
-			{ /* Crash safety first */
-			}
+			AsakiConfig asakiConfig = AsakiContext.Get<AsakiConfig>();
+			_asakiWebService = new AsakiWebService();
+			_asakiWebService.OnInit();
+			_asakiWebService.SetBaseUrl(asakiConfig.BaseUrt);
+			_asakiWebService.SetTimeout(asakiConfig.WebTimeoutSeconds);
+			AsakiContext.Register<IAsakiWebService>(_asakiWebService);
 		}
-
-		public void Dispose()
+		public async Task OnInitAsync()
 		{
-			if (!_isRunning) return;
-
-			Application.logMessageReceivedThreaded -= OnUnityLogMessage;
-			AppDomain.CurrentDomain.UnhandledException -= OnUncaughtException;
-			ALog.Reset();
-
-			_isRunning = false;
-			_signal.Set();
-			_writerThread?.Join(500);
-			_signal.Dispose();
+			await _asakiWebService.OnInitAsync();
 		}
+		public void OnDispose()
+		{
+			_asakiWebService?.OnDispose();
+		}
+	}
+}
+```
 
+<!-- File: Asaki/Unity/Services/Coroutines/AsakiCoroutineRunner.cs -->
+<!-- GUID: fb468c54dbb94558a21da27654d30d7c -->
+<!-- Size: 230 bytes -->
+<!-- Modified: 2025-12-23 17:48:27 -->
+```csharp
+using UnityEngine;
+
+namespace Asaki.Unity.Services.Coroutines
+{
+	[AddComponentMenu("")]
+	internal class AsakiCoroutineRunner : MonoBehaviour
+	{
+		private void Awake()
+		{
+			DontDestroyOnLoad(gameObject);
+		}
+	}
+}
+```
+
+<!-- File: Asaki/Unity/Services/Coroutines/AsakiRoutineProvider.Bridge.cs -->
+<!-- GUID: ad3ffcfc7ea949ae94b19b66c15cb1c1 -->
+<!-- Size: 3084 bytes -->
+<!-- Modified: 2025-12-26 21:44:47 -->
+```csharp
+using System;
+using System.Threading;
+using System.Threading.Tasks;
+using UnityEngine;
+
+namespace Asaki.Unity.Services.Coroutines
+{
+	public partial class AsakiCoroutineProvider
+	{
 		// =========================================================
-		// 私有逻辑
+		// Core Bridge: IEnumerator -> Task
 		// =========================================================
 
-		private void WriteLoop()
+		/// <summary>
+		/// [核心桥接] 将 Unity 协程封装为标准 Task。
+		/// <para>1. 支持 await 语法糖。</para>
+		/// <para>2. 支持 CancellationToken 取消 (立即停止协程)。</para>
+		/// <para>3. 0 轮询开销 (Zero Polling Overhead)。</para>
+		/// </summary>
+		/// <param name="routine">要执行的 Unity 协程迭代器</param>
+		/// <param name="token">取消令牌</param>
+		private Task RunRoutine(System.Collections.IEnumerator routine, CancellationToken token)
 		{
-			CreateNewLogFile();
-			while (_isRunning)
+			// 1. 快速检查：如果已经取消，直接返回 Canceled Task
+			if (token.IsCancellationRequested) return Task.FromCanceled(token);
+
+			// 2. 安全检查：如果 Runner 丢失 (比如游戏退出时)，抛出异常或快速返回
+			if (_runner == null) return Task.FromException(new InvalidOperationException("Asaki Coroutine Runner is missing or destroyed."));
+
+			// 3. 创建 TCS (TaskCompletionSource)
+			// 关键点：RunContinuationsAsynchronously
+			// 这能防止在某些极端情况下 (如协程同步完成) 导致的死锁，并强制后续代码在异步上下文中执行。
+			var tcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+
+			// 4. 准备协程引用，用于后续取消
+			Coroutine activeCoroutine = null;
+
+			// 5. 注册取消回调 (Safety Valve)
+			// 当 Token 被 Cancel 时，这个回调会被立即执行
+			CancellationTokenRegistration registration = token.Register(() =>
 			{
-				_signal.WaitOne();
-				if (!_isRunning && _queue.IsEmpty) break;
-				ProcessQueueToFile(forceFlush: false);
-			}
-			ProcessQueueToFile(forceFlush: true);
+				// A. 停止 Unity 侧的协程 (防止后台空跑)
+				if (activeCoroutine != null && _runner != null)
+				{
+					_runner.StopCoroutine(activeCoroutine);
+				}
+
+				// B. 将 Task 标记为取消
+				tcs.TrySetCanceled(token);
+			});
+
+			// 6. 启动包装协程 (Wrapper)
+			// 我们不能直接跑 routine，因为我们需要知道它什么时候结束
+			activeCoroutine = _runner.StartCoroutine(ExecWrapper(routine, tcs, registration));
+
+			return tcs.Task;
 		}
 
-		private void ProcessQueueToFile(bool forceFlush)
+		/// <summary>
+		/// 内部包装器：负责等待原始协程完成，并处理结果
+		/// </summary>
+		private System.Collections.IEnumerator ExecWrapper(
+			System.Collections.IEnumerator targetRoutine,
+			TaskCompletionSource<bool> tcs,
+			CancellationTokenRegistration registration)
 		{
-			if (string.IsNullOrEmpty(_currentLogPath)) return;
+			// 等待原始业务逻辑执行完毕 (全权交给 Unity 引擎)
+			yield return targetRoutine;
 
-			var sb = AsakiStringBuilderPool.Rent();
+			// === 只有当上面这一行跑完，才会执行下面 ===
+
+			// 清理取消注册 (既然跑完了，就不需要监听取消了)
+			registration.Dispose();
+
+			// 如果 Task 还没结束 (没被取消)，则标记为成功
+			if (!tcs.Task.IsCompleted)
+			{
+				tcs.TrySetResult(true);
+			}
+		}
+	}
+}
+```
+
+<!-- File: Asaki/Unity/Services/Coroutines/AsakiRoutineProvider.Core.cs -->
+<!-- GUID: 87308edfc0be45f2a16e78acb03ebaed -->
+<!-- Size: 2490 bytes -->
+<!-- Modified: 2025-12-26 21:44:43 -->
+```csharp
+using Asaki.Core.Coroutines;
+using System;
+using System.Threading;
+using System.Threading.Tasks;
+using UnityEngine;
+using Object = UnityEngine.Object;
+
+namespace Asaki.Unity.Services.Coroutines
+{
+	// [修改点 1] 增加 IDisposable 接口，养成良好习惯
+	public partial class AsakiCoroutineProvider : IAsakiCoroutineService, IDisposable
+	{
+		private CancellationTokenSource _serviceCts = new CancellationTokenSource();
+		private int _runningTaskCount = 0;
+
+		// [修改点 2] 持有 Runner 的引用
+		private AsakiCoroutineRunner _runner;
+
+		// [修改点 3] 构造函数初始化
+		public AsakiCoroutineProvider()
+		{
+			InitializeRunner();
+		}
+
+		private void InitializeRunner()
+		{
+			// 防止重复初始化
+			if (_runner != null) return;
+
+			// 必须在主线程执行 (构造函数如果不在主线程会报错，但在 Unity 服务定位器模式中通常是安全的)
+			GameObject go = new GameObject("[Asaki.Routine.Kernel]");
+			Object.DontDestroyOnLoad(go);
+
+			// 挂载驱动器
+			_runner = go.AddComponent<AsakiCoroutineRunner>();
+		}
+
+		public int RunningTaskCount => _runningTaskCount;
+
+		public void CancelAllTasks()
+		{
+			if (_serviceCts != null)
+			{
+				_serviceCts.Cancel();
+				_serviceCts.Dispose();
+			}
+			_serviceCts = new CancellationTokenSource();
+		}
+
+		public CancellationToken CreateLinkedToken(CancellationToken externalToken = default(CancellationToken))
+		{
+			if (_serviceCts.IsCancellationRequested) return CancellationToken.None;
+			if (externalToken == CancellationToken.None) return _serviceCts.Token;
+			return CancellationTokenSource.CreateLinkedTokenSource(_serviceCts.Token, externalToken).Token;
+		}
+
+		private async Task Track(Func<Task> taskFunc)
+		{
+			Interlocked.Increment(ref _runningTaskCount);
 			try
 			{
-				// FileShare.ReadWrite 允许外部工具（如 Notepad++ / Tail）实时查看日志
-				using (var fs = new FileStream(_currentLogPath, FileMode.Append, FileAccess.Write, FileShare.ReadWrite))
-				using (var sw = new StreamWriter(fs, Encoding.UTF8))
-				{
-					while (_queue.TryDequeue(out var entry))
-					{
-						sb.Clear();
-						FormatLogEntry(sb, entry);
-						sw.Write(sb.ToString());
-						CheckFileRoll();
-					}
-				}
+				await taskFunc();
+			}
+			catch (OperationCanceledException)
+			{
+				// 任务被取消是正常操作
+			}
+			catch (Exception e)
+			{
+				Debug.LogException(e);
+				throw;
 			}
 			finally
 			{
-				AsakiStringBuilderPool.Return(sb);
+				Interlocked.Decrement(ref _runningTaskCount);
 			}
 		}
 
-		private void FormatLogEntry(StringBuilder sb, AsakiLogEntry entry)
+		// [修改点 4] 销毁逻辑
+		public void Dispose()
 		{
-			var time = new DateTime(entry.Timestamp, DateTimeKind.Utc).ToLocalTime();
+			CancelAllTasks();
 
-			sb.Append('[').Append(time.ToString("HH:mm:ss.fff")).Append(']');
-			sb.Append('[').Append(entry.ThreadId).Append(']');
-			sb.Append('[').Append(entry.Level.ToString()[0]).Append(']');
-			sb.Append(' ').Append(entry.Message);
-
-			if (entry.Level >= AsakiLogLevel.Warning && !string.IsNullOrEmpty(entry.CallerPath))
+			// 销毁宿主 GameObject
+			if (_runner != null)
 			{
-				sb.Append(" @ ").Append(Path.GetFileName(entry.CallerPath)).Append(':').Append(entry.CallerLine);
+				// 区分运行时和编辑器模式的销毁
+				if (Application.isPlaying)
+					Object.Destroy(_runner.gameObject);
+				else
+					Object.DestroyImmediate(_runner.gameObject);
+
+				_runner = null;
 			}
-
-			// [修复] 这里的 entry.PayloadJson 是 string，不再报错
-			if (!string.IsNullOrEmpty(entry.PayloadJson))
-			{
-				sb.AppendLine();
-				sb.Append("\t=> ").Append(entry.PayloadJson);
-			}
-
-			sb.AppendLine();
-		}
-
-		// =========================================================
-		// 文件与目录管理 (实现配置逻辑)
-		// =========================================================
-
-		private void SetupSessionDirectory()
-		{
-			string root = Path.Combine(Application.persistentDataPath, "Logs");
-			if (!Directory.Exists(root)) Directory.CreateDirectory(root);
-
-			// [新增] 清理历史 Session
-			CleanupOldSessions(root);
-
-			_sessionDir = Path.Combine(root, $"Session_{DateTime.Now.ToString(_sessionDateFormat)}");
-			Directory.CreateDirectory(_sessionDir);
-		}
-
-		private void CleanupOldSessions(string rootPath)
-		{
-			try
-			{
-				var dirs = new DirectoryInfo(rootPath).GetDirectories("Session_*")
-				                                      .OrderByDescending(d => d.CreationTime) // 按时间倒序，最新的在前
-				                                      .ToList();
-
-				// 如果超过最大数量，删除旧的
-				if (dirs.Count >= _maxHistorySessions)
-				{
-					// 保留前 (Max - 1) 个，以便为当前新 Session 腾出位置
-					// 比如 Max=3，这里保留最新的2个，加上当前创建的1个，总共3个
-					for (int i = _maxHistorySessions - 1; i < dirs.Count; i++)
-					{
-						dirs[i].Delete(true);
-					}
-				}
-			}
-			catch (Exception ex)
-			{
-				Debug.LogWarning($"[AsakiLog] Failed to cleanup old sessions: {ex.Message}");
-			}
-		}
-
-		private void CreateNewLogFile()
-		{
-			_fileIndex++;
-			_currentLogPath = Path.Combine(_sessionDir, $"Log_{_fileIndex:00}.log");
-		}
-
-		private void CheckFileRoll()
-		{
-			try
-			{
-				var info = new FileInfo(_currentLogPath);
-				// [修复] 使用配置的 _maxFileSize
-				if (info.Exists && info.Length > _maxFileSize) CreateNewLogFile();
-			}
-			catch { }
-		}
-
-		// =========================================================
-		// 序列化与 Crash Hook
-		// =========================================================
-
-		/// <summary>
-		/// 零 GC 序列化 Payload
-		/// </summary>
-		private string SerializePayload(object payload)
-		{
-			if (payload == null) return null;
-
-			if (payload is IAsakiSavable savable)
-			{
-				var sb = AsakiStringBuilderPool.Rent();
-				try
-				{
-					// [优化] 获取当前线程缓存的 Writer，如果没有则创建
-					if (_cachedWriter == null)
-					{
-						// 第一次创建时传入 sb，但后续 Reset 会覆盖它
-						_cachedWriter = new AsakiJsonWriter(sb);
-					}
-					else
-					{
-						// [核心] 复用 Writer，重置状态并指向新的 StringBuilder
-						_cachedWriter.Reset(sb);
-					}
-
-					_cachedWriter.WriteObject(null, savable);
-					return _cachedWriter.GetResult();
-				}
-				catch (Exception ex)
-				{
-					return $"[Serialization Error: {ex.Message}]";
-				}
-				finally
-				{
-					AsakiStringBuilderPool.Return(sb);
-				}
-			}
-
-			return payload.ToString();
-		}
-
-		private void RegisterCrashHooks()
-		{
-			Application.logMessageReceivedThreaded += OnUnityLogMessage;
-			AppDomain.CurrentDomain.UnhandledException += OnUncaughtException;
-		}
-
-		private void OnUnityLogMessage(string condition, string stack, LogType type)
-		{
-			if (type == LogType.Log || type == LogType.Warning) return;
-
-			AsakiLogLevel level = type == LogType.Exception ? AsakiLogLevel.Fatal : AsakiLogLevel.Error;
-			
-			Enqueue(level, condition, null, 0, "UnityNative", null, stack);
-
-			if (level == AsakiLogLevel.Fatal) FlushSync();
-		}
-
-		private void OnUncaughtException(object sender, UnhandledExceptionEventArgs e)
-		{
-			var ex = e.ExceptionObject as Exception;
-			string msg = $"[UNCAUGHT] {ex?.Message}\nStack: {ex?.StackTrace}";
-			Enqueue(AsakiLogLevel.Fatal, msg, "System", 0, "AppDomain", null);
-			FlushSync();
 		}
 	}
 }
+```
 
+<!-- File: Asaki/Unity/Services/Coroutines/AsakiRoutineProvider.Tasks.cs -->
+<!-- GUID: 8ec10dc87628413194c72042d2e30eb2 -->
+<!-- Size: 7586 bytes -->
+<!-- Modified: 2025-12-26 21:44:43 -->
+```csharp
+using Asaki.Core.Coroutines;
+using Cysharp.Threading.Tasks;
 using System;
-using System.Collections.Concurrent;
+using System.Collections; // 引入 IEnumerator
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Text.RegularExpressions;
-using UnityEditor;
-using UnityEngine;
-using UnityEngine.UIElements;
-using Asaki.Core.Logging;
-using Asaki.Editor.Utilities.Extensions;
-using Asaki.Unity.Services.Logging;
+using System.Threading;
+using System.Threading.Tasks;
 
-namespace Asaki.Editor.Debugging
+namespace Asaki.Unity.Services.Coroutines
 {
-    public class AsakiLogDashboard : EditorWindow
-    {
-        // =========================================================
-        // 1. 数据层
-        // =========================================================
-        [NonSerialized] private ConcurrentQueue<AsakiLogEntry> _incomingQueue;
-        [NonSerialized] private List<AsakiLogEntry> _allLogs;
-        [NonSerialized] private List<AsakiLogEntry> _filteredLogs;
-        
-        // 当前选中的日志（用于复制功能）
-        [NonSerialized] private AsakiLogEntry? _selectedEntry;
+	/// <summary>
+	/// [异步服务实现] Part 3: Tasks & Orchestration (Native Refactored)
+	/// </summary>
+	public partial class AsakiCoroutineProvider
+	{
+		// =========================================================
+		// 1. 任务执行包装
+		// =========================================================
 
-        [SerializeField] private bool _isPaused;
-        [SerializeField] private string _searchText = "";
-        [SerializeField] private bool _showInfo = true;
-        [SerializeField] private bool _showWarn = true;
-        [SerializeField] private bool _showErr = true;
-        [SerializeField] private bool _autoScroll = true;
+		public Task RunTask(Func<Task> taskFunc, CancellationToken token = default(CancellationToken))
+		{
+			// Track 负责了计数和异常时的计数恢复，直接复用
+			return Track(taskFunc);
+		}
 
-        private ListView _listView;
-        private ScrollView _stackTraceView;
-        private Label _payloadLabel;
+		public async Task<T> RunTask<T>(Func<Task<T>> taskFunc, CancellationToken token = default(CancellationToken))
+		{
+			// 链接 Token (虽然 taskFunc 内部可能不使用，但作为 API 契约建议处理)
+			// 注意：这里我们无法强行取消 taskFunc 内部的逻辑，除非 taskFunc 接收 token
+			// 所以这里的 token 主要是为了 Check
+			if (token.IsCancellationRequested) throw new OperationCanceledException(token);
 
-        // 正则：匹配 Unity 堆栈格式 (Namespace.Class:Method (Args) (at Path:Line))
-        private static readonly Regex _unityStackRegex = new Regex(@"(.*)\s+\(.*\)\s+\(at\s+(.+):(\d+)\)", RegexOptions.Compiled);
+			Interlocked.Increment(ref _runningTaskCount);
+			try
+			{
+				return await taskFunc();
+			}
+			finally
+			{
+				Interlocked.Decrement(ref _runningTaskCount);
+			}
+		}
 
-        [MenuItem("Asaki/Debugger/Log Dashboard (V5)", false, 0)] 
-        public static void ShowWindow()
-        {
-            var zombies = Resources.FindObjectsOfTypeAll<AsakiLogDashboard>();
-            foreach (var zombie in zombies) { try { zombie.Close(); DestroyImmediate(zombie); } catch {} }
+		// =========================================================
+		// 2. 快捷调用 (自动享受 Native 优化)
+		// =========================================================
 
-            var wnd = CreateInstance<AsakiLogDashboard>();
-            wnd.titleContent = new GUIContent("Asaki Dashboard");
-            wnd.minSize = new Vector2(900, 600);
-            wnd.Show();
-            wnd.Focus();
-        }
+		public async Task DelayedCall(float delaySeconds, Action action, CancellationToken token = default(CancellationToken), bool unscaled = false)
+		{
+			// 使用 Track 确保计入 RunningTaskCount
+			await Track(async () =>
+			{
+				CancellationToken linkedToken = CreateLinkedToken(token);
 
-        private void OnEnable()
-        {
-            InitDataContainers();
-            AsakiLoggingService.OnLogBroadcast -= OnLogReceived;
-            AsakiLoggingService.OnLogBroadcast += OnLogReceived;
-            EditorApplication.update -= OnEditorUpdate;
-            EditorApplication.update += OnEditorUpdate;
-        }
+				// 这里调用的是 Part 2 中已经优化的 Native 方法
+				if (unscaled) await WaitSecondsUnscaled(delaySeconds, linkedToken);
+				else await WaitSeconds(delaySeconds, linkedToken);
 
-        private void OnDisable()
-        {
-            AsakiLoggingService.OnLogBroadcast -= OnLogReceived;
-            EditorApplication.update -= OnEditorUpdate;
-        }
+				if (!linkedToken.IsCancellationRequested) action?.Invoke();
+			});
+		}
 
-        private void InitDataContainers()
-        {
-            if (_incomingQueue == null) _incomingQueue = new ConcurrentQueue<AsakiLogEntry>();
-            if (_allLogs == null) _allLogs = new List<AsakiLogEntry>(5000);
-            if (_filteredLogs == null) _filteredLogs = new List<AsakiLogEntry>(5000);
-        }
+		public async Task NextFrameCall(Action action, CancellationToken token = default(CancellationToken))
+		{
+			await Track(async () =>
+			{
+				CancellationToken linkedToken = CreateLinkedToken(token);
+				await WaitFrame(linkedToken);
+				if (!linkedToken.IsCancellationRequested) action?.Invoke();
+			});
+		}
 
-        private void OnLogReceived(AsakiLogEntry entry)
-        {
-            if (_incomingQueue == null) _incomingQueue = new ConcurrentQueue<AsakiLogEntry>();
-            _incomingQueue.Enqueue(entry);
-        }
+		public async Task When(Func<bool> condition, Action action, CancellationToken token = default(CancellationToken))
+		{
+			await Track(async () =>
+			{
+				CancellationToken linkedToken = CreateLinkedToken(token);
+				await WaitUntil(condition, linkedToken);
+				if (!linkedToken.IsCancellationRequested) action?.Invoke();
+			});
+		}
 
-        private void OnEditorUpdate()
-        {
-            if (_incomingQueue == null || _incomingQueue.IsEmpty) return;
-            bool needsRefresh = false;
-            if (_allLogs == null || _filteredLogs == null) InitDataContainers();
+		// =========================================================
+		// 3. 批量与流程控制
+		// =========================================================
 
-            while (_incomingQueue.TryDequeue(out var entry))
-            {
-                if (_isPaused) continue;
-                _allLogs.Add(entry);
-                if (IsMatch(entry))
-                {
-                    _filteredLogs.Add(entry);
-                    needsRefresh = true;
-                }
-            }
+		public Task WaitAll(params Task[] tasks)
+		{
+			return Task.WhenAll(tasks);
+		}
 
-            if (needsRefresh && _listView != null)
-            {
-                _listView.RefreshItems();
-                if (_autoScroll && _listView.itemsSource.Count > 0)
-                    _listView.ScrollToItem(_listView.itemsSource.Count - 1);
-            }
-        }
+		public Task WaitAny(params Task[] tasks)
+		{
+			return Task.WhenAny(tasks);
+		}
 
-        // =========================================================
-        // 2. UI 构建
-        // =========================================================
-        public void CreateGUI()
-        {
-            InitDataContainers();
-            var root = rootVisualElement;
-            root.style.backgroundColor = new Color(0.18f, 0.18f, 0.18f);
+		public async Task Sequence(params Func<Task>[] actions)
+		{
+			await Track(async () =>
+			{
+				foreach (var action in actions)
+				{
+					// 依次执行，只要子任务是 Native 的，这里就是高效的
+					await action();
+				}
+			});
+		}
 
-            // --- Toolbar ---
-            var toolbar = new VisualElement();
-            toolbar.style.flexDirection = FlexDirection.Row;
-            toolbar.style.height = 32;
-            toolbar.style.borderBottomWidth = 1;
-            toolbar.style.borderBottomColor = new Color(0.1f, 0.1f, 0.1f);
-            toolbar.style.alignItems = Align.Center;
-            toolbar.style.paddingLeft = 8;
-            toolbar.style.backgroundColor = new Color(0.25f, 0.25f, 0.25f);
+		public async Task Parallel(params Func<Task>[] actions)
+		{
+			await Track(async () =>
+			{
+				var tasks = new Task[actions.Length];
+				for (int i = 0; i < actions.Length; i++)
+				{
+					tasks[i] = actions[i]();
+				}
+				await Task.WhenAll(tasks);
+			});
+		}
 
-            // 功能区
-            toolbar.Add(CreateBtn("Clean", () => { _allLogs.Clear(); _filteredLogs.Clear(); _listView?.RefreshItems(); ClearDetail(); }, 50));
-            toolbar.Add(new Label("|") { style = { color = Color.gray, marginLeft = 5, marginRight = 5 } });
-            
-            // [新增 1] 打开日志目录
-            toolbar.Add(CreateBtn("Open Logs", () => {
-                string path = System.IO.Path.Combine(Application.persistentDataPath, "Logs");
-                EditorUtility.RevealInFinder(path);
-            }, 80));
-            
-            // [新增 2] 复制当前日志
-            toolbar.Add(CreateBtn("Copy Select", CopySelectedToClipboard, 80));
+		public async Task Retry(Func<Task> action, int maxRetries = 3, float retryDelay = 1f, CancellationToken token = default(CancellationToken))
+		{
+			CancellationToken linkedToken = CreateLinkedToken(token);
+			await Track(async () =>
+			{
+				for (int i = 0; i < maxRetries; i++)
+				{
+					try
+					{
+						await action();
+						return; // 成功
+					}
+					catch (Exception)
+					{
+						if (i == maxRetries - 1) throw; // 最后一次失败
+						if (linkedToken.IsCancellationRequested) return;
 
-            toolbar.Add(new Label("|") { style = { color = Color.gray, marginLeft = 5, marginRight = 5 } });
-            
-            // 筛选区
-            var scrollTog = new UnityEngine.UIElements.Toggle("Auto") { value = _autoScroll };
-            scrollTog.RegisterValueChangedCallback(e => _autoScroll = e.newValue);
-            toolbar.Add(scrollTog);
+						// 失败等待 (Native 优化)
+						await WaitSeconds(retryDelay, linkedToken);
+					}
+				}
+			});
+		}
 
-            var searchField = new TextField { value = _searchText, style = { width = 150, marginLeft = 10 } };
-            searchField.RegisterValueChangedCallback(e => { _searchText = e.newValue.ToLower(); RebuildFilter(); });
-            toolbar.Add(searchField);
+		// =========================================================
+		// 4. [重构重点] 自定义等待源 (Native Optimized)
+		// =========================================================
 
-            toolbar.Add(CreateToggle("I", _showInfo, v => { _showInfo = v; RebuildFilter(); }, new Color(0.4f, 0.7f, 1f)));
-            toolbar.Add(CreateToggle("W", _showWarn, v => { _showWarn = v; RebuildFilter(); }, new Color(1f, 0.8f, 0.2f)));
-            toolbar.Add(CreateToggle("E", _showErr, v => { _showErr = v; RebuildFilter(); }, new Color(1f, 0.4f, 0.4f)));
+		public Task WaitCustom(IAsakiWaitSource waitSource, CancellationToken token = default(CancellationToken))
+		{
+			CancellationToken linkedToken = CreateLinkedToken(token);
 
-            root.Add(toolbar);
+			#if ASAKI_USE_UNITASK
+			// UniTask 路径：使用 ToUniTask 或手动轮询
+			// 为了保持一致性，且 IAsakiWaitSource 是 C# 接口，我们依然需要轮询
+			// 但 UniTask 的轮询开销极低
+			return WaitCustomUniTask(waitSource, linkedToken).AsTask();
+			#else
+            // Native 路径：使用 RunRoutine 下沉到协程
+            return RunRoutine(WaitCustomRoutine(waitSource), linkedToken);
+			#endif
+		}
 
-            // --- Split View ---
-            var split = new TwoPaneSplitView(0, 350, TwoPaneSplitViewOrientation.Vertical);
-            root.Add(split);
+		#if ASAKI_USE_UNITASK
+		private async UniTask WaitCustomUniTask(IAsakiWaitSource source, CancellationToken token)
+		{
+			while (!source.IsCompleted)
+			{
+				source.Update();
+				await UniTask.Yield(PlayerLoopTiming.Update, token);
+			}
+		}
+		#endif
 
-            // Log List
-            _listView = new ListView();
-            _listView.style.flexGrow = 1;
-            _listView.fixedItemHeight = 26;
-            _listView.makeItem = MakeLogItem;
-            _listView.bindItem = BindLogItem;
-            _listView.itemsSource = _filteredLogs;
-            _listView.selectionType = SelectionType.Single;
-            _listView.selectionChanged += OnLogSelected;
-            split.Add(_listView);
+		/// <summary>
+		/// [内部协程] 将 Update 循环下沉到 Unity 引擎层
+		/// </summary>
+		private IEnumerator WaitCustomRoutine(IAsakiWaitSource source)
+		{
+			while (!source.IsCompleted)
+			{
+				// 执行用户的自定义 Update 逻辑
+				source.Update();
 
-            // Bottom Panel
-            var bottomPanel = new VisualElement();
-            bottomPanel.style.flexDirection = FlexDirection.Row;
-            
-            // [新增 3] Stack Trace (Gantt Style)
-            var stackContainer = new VisualElement() { style = { flexGrow = 3, borderRightWidth = 1, borderRightColor = Color.black } };
-            stackContainer.Add(new Label("Call Graph (Waterfall View)") { style = { unityFontStyleAndWeight = FontStyle.Bold, paddingLeft = 5, paddingTop = 2, color = new Color(0.7f, 0.7f, 0.7f) } });
-            _stackTraceView = new ScrollView();
-            stackContainer.Add(_stackTraceView);
-            
-            // Payload
-            var payloadContainer = new VisualElement() { style = { flexGrow = 1, minWidth = 250 } };
-            payloadContainer.Add(new Label("Data Payload") { style = { unityFontStyleAndWeight = FontStyle.Bold, paddingLeft = 5, paddingTop = 2, color = new Color(0.7f, 0.7f, 0.7f) } });
-            var payloadScroll = new ScrollView();
-            _payloadLabel = new Label() { style = { whiteSpace = WhiteSpace.Normal, fontSize = 12, color = new Color(0.7f, 0.9f, 0.7f) } };
-            _payloadLabel.RegisterCallback<MouseDownEvent>(e => {
-                if (e.clickCount == 2) { EditorGUIUtility.systemCopyBuffer = _payloadLabel.text; ALog.Info("Payload Copied"); }
-            });
-            payloadScroll.Add(_payloadLabel);
-            payloadContainer.Add(payloadScroll);
+				// 等待一帧 (0 GC)
+				yield return null;
+			}
+		}
 
-            bottomPanel.Add(stackContainer);
-            bottomPanel.Add(payloadContainer);
-            split.Add(bottomPanel);
-        }
+		// =========================================================
+		// 5. Builder 实现 (无需修改，逻辑正确)
+		// =========================================================
 
-        // =========================================================
-        // 3. 逻辑处理 (筛选 & 复制)
-        // =========================================================
+		public IWaitBuilder CreateWaitBuilder()
+		{
+			return new AsakiWaitBuilder(this);
+		}
 
-        private void RebuildFilter()
-        {
-            if (_filteredLogs == null) _filteredLogs = new List<AsakiLogEntry>();
-            if (_allLogs == null) _allLogs = new List<AsakiLogEntry>();
+		private class AsakiWaitBuilder : IWaitBuilder
+		{
+			private readonly IAsakiCoroutineService _service;
+			private readonly List<Func<CancellationToken, Task>> _steps = new List<Func<CancellationToken, Task>>();
 
-            _filteredLogs.Clear();
-            foreach (var log in _allLogs) { if (IsMatch(log)) _filteredLogs.Add(log); }
-            _listView?.RefreshItems();
-        }
+			public AsakiWaitBuilder(IAsakiCoroutineService service)
+			{
+				_service = service;
+			}
 
-        private bool IsMatch(AsakiLogEntry entry)
-        {
-            if (entry.Level == AsakiLogLevel.Info && !_showInfo) return false;
-            if (entry.Level == AsakiLogLevel.Warning && !_showWarn) return false;
-            if ((entry.Level == AsakiLogLevel.Error || entry.Level == AsakiLogLevel.Fatal) && !_showErr) return false;
-            if (!string.IsNullOrEmpty(_searchText))
-            {
-                bool msgMatch = entry.Message != null && entry.Message.ToLower().Contains(_searchText);
-                bool pathMatch = entry.CallerPath != null && entry.CallerPath.ToLower().Contains(_searchText);
-                if (!msgMatch && !pathMatch) return false;
-            }
-            return true;
-        }
+			public IWaitBuilder Seconds(float seconds, bool unscaled = false)
+			{
+				_steps.Add(ct => unscaled
+					? _service.WaitSecondsUnscaled(seconds, ct)
+					: _service.WaitSeconds(seconds, ct));
+				return this;
+			}
 
-        private void CopySelectedToClipboard()
-        {
-            if (_selectedEntry == null) return;
-            var e = _selectedEntry.Value;
-            
-            StringBuilder sb = new StringBuilder();
-            sb.AppendLine($"[{e.Level}] {new DateTime(e.Timestamp).ToLocalTime()}");
-            sb.AppendLine($"Message: {e.Message}");
-            if (!string.IsNullOrEmpty(e.CallerPath)) sb.AppendLine($"Location: {e.CallerPath}:{e.CallerLine}");
-            if (!string.IsNullOrEmpty(e.PayloadJson)) sb.AppendLine($"Payload: {e.PayloadJson}");
-            if (!string.IsNullOrEmpty(e.StackTrace)) sb.AppendLine("Stack Trace:\n" + e.StackTrace);
-            
-            EditorGUIUtility.systemCopyBuffer = sb.ToString();
-            ALog.Info("Log Entry copied to clipboard.");
-        }
+			public IWaitBuilder Frames(int count)
+			{
+				_steps.Add(ct => _service.WaitFrames(count, ct));
+				return this;
+			}
 
-        // =========================================================
-        // 4. Gantt/Waterfall 堆栈可视化 (核心升级)
-        // =========================================================
+			public IWaitBuilder FixedFrames(int count)
+			{
+				_steps.Add(ct => _service.WaitFixedFrames(count, ct));
+				return this;
+			}
 
-        private void OnLogSelected(IEnumerable<object> selection)
-        {
-            var item = selection?.FirstOrDefault();
-            if (item == null) { _selectedEntry = null; return; }
-            
-            var entry = (AsakiLogEntry)item;
-            _selectedEntry = entry;
+			public IWaitBuilder Until(Func<bool> condition)
+			{
+				_steps.Add(ct => _service.WaitUntil(condition, ct));
+				return this;
+			}
 
-            // Payload
-            _payloadLabel.text = !string.IsNullOrEmpty(entry.PayloadJson) ? PrettifyJson(entry.PayloadJson) : "";
+			public IWaitBuilder While(Func<bool> condition)
+			{
+				_steps.Add(ct => _service.WaitWhile(condition, ct));
+				return this;
+			}
 
-            // Stack Visualization
-            BuildWaterfallStack(entry);
-        }
+			public async Task Build(CancellationToken token = default(CancellationToken))
+			{
+				// 这里再次 Link 是为了安全，确保 Builder 执行过程中的取消能被响应
+				CancellationToken linkedToken = _service.CreateLinkedToken(token);
 
-        private struct StackFrameInfo
-        {
-            public string Method;
-            public string Path;
-            public int Line;
-            public bool IsUserCode;
-            public bool IsAsaki;
-            public string RawLine;
-        }
-
-        private void BuildWaterfallStack(AsakiLogEntry entry)
-        {
-            _stackTraceView.Clear();
-            var frames = new List<StackFrameInfo>();
-
-            // 1. 解析堆栈
-            if (!string.IsNullOrEmpty(entry.StackTrace))
-            {
-                var lines = entry.StackTrace.Split('\n');
-                foreach (var line in lines)
-                {
-                    if (string.IsNullOrWhiteSpace(line)) continue;
-                    var match = _unityStackRegex.Match(line);
-                    if (match.Success)
-                    {
-                        string path = match.Groups[2].Value.Trim();
-                        frames.Add(new StackFrameInfo {
-                            Method = match.Groups[1].Value.Trim(),
-                            Path = path,
-                            Line = int.Parse(match.Groups[3].Value),
-                            IsUserCode = path.Contains("Assets/"),
-                            IsAsaki = match.Groups[1].Value.Contains("Asaki"),
-                            RawLine = line
-                        });
-                    }
-                    else
-                    {
-                        // 无法解析的行 (DLL调用) 也作为一个Frame，但不具备跳转能力
-                        frames.Add(new StackFrameInfo { RawLine = line, Method = line.Trim() });
-                    }
-                }
-            }
-            else if (!string.IsNullOrEmpty(entry.CallerPath))
-            {
-                // 如果没有 StackTrace (如 Info)，使用 Caller 伪造一个单帧
-                frames.Add(new StackFrameInfo {
-                    Method = entry.CallerMember ?? "Log Call",
-                    Path = entry.CallerPath,
-                    Line = entry.CallerLine,
-                    IsUserCode = true,
-                    IsAsaki = false,
-                    RawLine = "Manual Call"
-                });
-            }
-
-            // 2. 倒序排列 (Root -> Leaf) 形成瀑布流
-            // 注意：Unity 堆栈默认是 Top -> Bottom，我们反转它以显示从启动到报错的流程
-            frames.Reverse();
-
-            // 3. 绘制
-            for (int i = 0; i < frames.Count; i++)
-            {
-                var frame = frames[i];
-                AddGanttFrameUI(frame, i);
-            }
-        }
-
-        private void AddGanttFrameUI(StackFrameInfo frame, int depth)
-        {
-            // 容器：行
-            var row = new VisualElement();
-            row.style.flexDirection = FlexDirection.Row;
-            row.style.marginBottom = 1;
-            row.style.alignItems = Align.Center;
-
-            // 1. 缩进 (Waterfall Indentation)
-            // 限制最大缩进防止溢出
-            float indentSize = Mathf.Min(depth * 15, 200); 
-            
-            // 绘制连接线 (L型)
-            var connector = new VisualElement();
-            connector.style.width = indentSize;
-            connector.style.height = 1; // 横线
-            connector.style.backgroundColor = new Color(0.4f, 0.4f, 0.4f, 0.3f);
-            connector.style.marginRight = 0;
-            row.Add(connector);
-
-            // 2. 交互块 (Bar)
-            Button btn;
-            if (!string.IsNullOrEmpty(frame.Path))
-            {
-                // 可跳转的代码帧
-                btn = new Button(() => UnityEditorInternal.InternalEditorUtility.OpenFileAtLineExternal(frame.Path, frame.Line));
-                btn.tooltip = $"{frame.Path}:{frame.Line}";
-            }
-            else
-            {
-                // 不可跳转的系统帧
-                btn = new Button();
-                btn.SetEnabled(false); // 禁用点击
-            }
-
-            // 样式设置
-            btn.style.flexDirection = FlexDirection.Row;
-            btn.style.height = 22;
-            btn.style.SetBorderWidth(0);
-            btn.style.borderTopLeftRadius = 0;
-            btn.style.borderBottomLeftRadius = 0;
-            btn.style.borderTopRightRadius = 4;
-            btn.style.borderBottomRightRadius = 4;
-            btn.style.alignItems = Align.Center;
-            btn.style.paddingLeft = 6;
-            btn.style.paddingRight = 10;
-            btn.style.flexGrow = 0; // 不自动填充，保持甘特条形状
-
-            // 颜色策略
-            Color barColor;
-            if (frame.IsAsaki) barColor = new Color(0.8f, 0.5f, 0.2f); // 橙色: 框架
-            else if (frame.IsUserCode) barColor = new Color(0.2f, 0.5f, 0.7f); // 蓝色: 业务
-            else barColor = new Color(0.25f, 0.25f, 0.25f); // 灰色: 引擎
-
-            btn.style.backgroundColor = barColor;
-
-            // 方法名
-            var lbl = new Label(frame.Method);
-            lbl.style.color = Color.white;
-            lbl.style.fontSize = 11;
-            btn.Add(lbl);
-
-            // 行号 (右侧弱化显示)
-            if (frame.Line > 0)
-            {
-                var lineLbl = new Label($":{frame.Line}");
-                lineLbl.style.color = new Color(1,1,1,0.5f);
-                lineLbl.style.fontSize = 10;
-                lineLbl.style.marginLeft = 5;
-                btn.Add(lineLbl);
-            }
-
-            row.Add(btn);
-            _stackTraceView.Add(row);
-        }
-
-        // =========================================================
-        // 5. 辅助方法
-        // =========================================================
-
-        private VisualElement MakeLogItem()
-        {
-            var row = new VisualElement();
-            row.style.flexDirection = FlexDirection.Row;
-            row.style.alignItems = Align.Center;
-            row.style.paddingLeft = 6;
-            row.style.borderBottomWidth = 1;
-            row.style.borderBottomColor = new Color(0,0,0, 0.3f);
-
-            var lvl = new VisualElement() { name = "icon", style = { width = 4, height = 18, marginRight = 6 } };
-            var time = new Label() { name = "time", style = { width = 65, fontSize = 11, color = Color.gray } };
-            var msg = new Label() { name = "msg", style = { flexGrow = 1, fontSize = 12 } };
-
-            row.Add(lvl);
-            row.Add(time);
-            row.Add(msg);
-            return row;
-        }
-
-        private void BindLogItem(VisualElement ele, int index)
-        {
-            if (_filteredLogs == null || index >= _filteredLogs.Count) return;
-            var entry = _filteredLogs[index];
-
-            var icon = ele.Q("icon");
-            var msg = ele.Q<Label>("msg");
-            var time = ele.Q<Label>("time");
-
-            time.text = new DateTime(entry.Timestamp, DateTimeKind.Utc).ToLocalTime().ToString("HH:mm:ss");
-            msg.text = entry.Message;
-
-            Color c = Color.white;
-            if (entry.Level == AsakiLogLevel.Info) { c = new Color(0.5f, 0.8f, 1f); }
-            else if (entry.Level == AsakiLogLevel.Warning) { c = new Color(1f, 0.8f, 0.2f); }
-            else if (entry.Level >= AsakiLogLevel.Error) { c = new Color(1f, 0.4f, 0.4f); }
-
-            icon.style.backgroundColor = c;
-            msg.style.color = c;
-        }
-
-        private Button CreateBtn(string txt, Action act, float width)
-        {
-            return new Button(act) { text = txt, style = { height = 20, width = width, backgroundColor = new Color(0.3f,0.3f,0.3f) } };
-        }
-
-        private UnityEngine.UIElements.Toggle CreateToggle(string label, bool val, Action<bool> onChange, Color c)
-        {
-            var t = new UnityEngine.UIElements.Toggle(label) { value = val, style = { marginLeft = 10 } };
-            t.RegisterValueChangedCallback(e => onChange(e.newValue));
-            t.Q<Label>().style.color = c;
-            return t;
-        }
-
-        private void ClearDetail()
-        {
-            _stackTraceView.Clear();
-            _payloadLabel.text = "";
-            _selectedEntry = null;
-        }
-
-        private string PrettifyJson(string json)
-        {
-            return json.Replace(",", ",\n").Replace("{", "{\n").Replace("}", "\n}");
-        }
-    }
+				foreach (var step in _steps)
+				{
+					if (linkedToken.IsCancellationRequested) break;
+					await step(linkedToken);
+				}
+			}
+		}
+	}
 }
+```
+
+<!-- File: Asaki/Unity/Services/Coroutines/AsakiRoutineProvider.Time.cs -->
+<!-- GUID: 57e39c58841244bb82d1220bc3df61e1 -->
+<!-- Size: 8280 bytes -->
+<!-- Modified: 2025-12-26 21:44:44 -->
+```csharp
+using Cysharp.Threading.Tasks; // 如果没有定义宏，这行会被忽略或报错，但在 Asaki 中通常通过 ASMDEF 隔离
+using System;
+using System.Collections; // 必须引用
+using System.Threading;
+using System.Threading.Tasks;
+using UnityEngine;
+
+namespace Asaki.Unity.Services.Coroutines
+{
+	/// <summary>
+	/// [异步服务实现] Part 2: Time & Wait (Native Refactored)
+	/// <para>V5.0 重构版：抛弃 Task.Yield 轮询，全面拥抱 Unity 原生 Coroutine。</para>
+	/// </summary>
+	public partial class AsakiCoroutineProvider
+	{
+		// =========================================================
+		// 1. 辅助协程实现 (Impls)
+		// 这里的很多指令是 YieldInstruction，需要包裹在 IEnumerator 中
+		// =========================================================
+
+		private IEnumerator WaitForSecondsImpl(float seconds)
+		{
+			yield return new WaitForSeconds(seconds);
+		}
+
+		private IEnumerator WaitForSecondsRealtimeImpl(float seconds)
+		{
+			yield return new WaitForSecondsRealtime(seconds);
+		}
+
+		private IEnumerator WaitFramesImpl(int count)
+		{
+			for (int i = 0; i < count; i++) yield return null;
+		}
+
+		private IEnumerator WaitFixedFramesImpl(int count)
+		{
+			WaitForFixedUpdate wait = new WaitForFixedUpdate();
+			for (int i = 0; i < count; i++) yield return wait;
+		}
+
+		private IEnumerator WaitUntilImpl(Func<bool> predicate)
+		{
+			yield return new WaitUntil(predicate);
+		}
+
+		private IEnumerator WaitWhileImpl(Func<bool> predicate)
+		{
+			yield return new WaitWhile(predicate);
+		}
+
+		// =========================================================
+		// 2. 时间等待 (Time)
+		// =========================================================
+
+		public Task WaitSeconds(float seconds, CancellationToken token = default(CancellationToken))
+		{
+			// 1. 链接 Token
+			CancellationToken linkedToken = CreateLinkedToken(token);
+
+			#if ASAKI_USE_UNITASK
+			return UniTask.Delay(TimeSpan.FromSeconds(seconds), DelayType.DeltaTime, PlayerLoopTiming.Update, linkedToken).AsTask();
+			#else
+			// 2. 快速路径：时间为0或已取消
+			if (seconds <= 0) return Task.CompletedTask;
+			
+			// 3. 桥接到原生协程
+			return RunRoutine(WaitForSecondsImpl(seconds), linkedToken);
+			#endif
+		}
+
+		public Task WaitSecondsUnscaled(float seconds, CancellationToken token = default(CancellationToken))
+		{
+			CancellationToken linkedToken = CreateLinkedToken(token);
+
+			#if ASAKI_USE_UNITASK
+			return UniTask.Delay(TimeSpan.FromSeconds(seconds), DelayType.UnscaledDeltaTime, PlayerLoopTiming.Update, linkedToken).AsTask();
+			#else
+			if (seconds <= 0) return Task.CompletedTask;
+			return RunRoutine(WaitForSecondsRealtimeImpl(seconds), linkedToken);
+			#endif
+		}
+
+		// =========================================================
+		// 3. 帧等待 (Frames)
+		// =========================================================
+
+		public Task WaitFrame(CancellationToken token = default(CancellationToken))
+		{
+			CancellationToken linkedToken = CreateLinkedToken(token);
+			#if ASAKI_USE_UNITASK
+			return UniTask.Yield(PlayerLoopTiming.Update, linkedToken).AsTask();
+			#else
+			// 这里的 1 代表等待 1 帧 (yield return null)
+			return RunRoutine(WaitFramesImpl(1), linkedToken);
+			#endif
+		}
+
+		public Task WaitFrames(int count, CancellationToken token = default(CancellationToken))
+		{
+			CancellationToken linkedToken = CreateLinkedToken(token);
+			#if ASAKI_USE_UNITASK
+			return UniTask.DelayFrame(count, PlayerLoopTiming.Update, linkedToken).AsTask();
+			#else
+			if (count <= 0) return Task.CompletedTask;
+			return RunRoutine(WaitFramesImpl(count), linkedToken);
+			#endif
+		}
+
+		public Task WaitFixedFrame(CancellationToken token = default(CancellationToken))
+		{
+			CancellationToken linkedToken = CreateLinkedToken(token);
+			#if ASAKI_USE_UNITASK
+			return UniTask.Yield(PlayerLoopTiming.FixedUpdate, linkedToken).AsTask();
+			#else
+			return RunRoutine(WaitFixedFramesImpl(1), linkedToken);
+			#endif
+		}
+
+		public Task WaitFixedFrames(int count, CancellationToken token = default(CancellationToken))
+		{
+			CancellationToken linkedToken = CreateLinkedToken(token);
+			#if ASAKI_USE_UNITASK
+			return UniTask.DelayFrame(count, PlayerLoopTiming.FixedUpdate, linkedToken).AsTask();
+			#else
+			if (count <= 0) return Task.CompletedTask;
+			return RunRoutine(WaitFixedFramesImpl(count), linkedToken);
+			#endif
+		}
+
+		// =========================================================
+		// 4. 条件等待 (Conditions)
+		// =========================================================
+
+		public Task WaitUntil(Func<bool> predicate, CancellationToken token = default(CancellationToken))
+		{
+			CancellationToken linkedToken = CreateLinkedToken(token);
+			#if ASAKI_USE_UNITASK
+			return UniTask.WaitUntil(predicate, PlayerLoopTiming.Update, linkedToken).AsTask();
+			#else
+			return RunRoutine(WaitUntilImpl(predicate), linkedToken);
+			#endif
+		}
+
+		public Task WaitWhile(Func<bool> predicate, CancellationToken token = default(CancellationToken))
+		{
+			CancellationToken linkedToken = CreateLinkedToken(token);
+			#if ASAKI_USE_UNITASK
+			return UniTask.WaitWhile(predicate, PlayerLoopTiming.Update, linkedToken).AsTask();
+			#else
+			return RunRoutine(WaitWhileImpl(predicate), linkedToken);
+			#endif
+		}
+
+		// =========================================================
+		// 5. 复杂逻辑：带超时的等待 (Complex Logic)
+		// =========================================================
+
+		public async Task<bool> WaitUntil(Func<bool> predicate, float timeoutSeconds, CancellationToken token = default(CancellationToken))
+		{
+			CancellationToken linkedToken = CreateLinkedToken(token);
+
+			#if ASAKI_USE_UNITASK
+			try
+			{
+				await UniTask.WaitUntil(predicate, PlayerLoopTiming.Update, linkedToken)
+				             .Timeout(TimeSpan.FromSeconds(timeoutSeconds));
+				return true;
+			}
+			catch (TimeoutException) { return false; }
+			catch (OperationCanceledException) { return false; } // 根据需求，取消也可以视为"未成功"
+			#else
+			// === Native Implementation ===
+			// 这是一个手动构建的"有返回值"的桥接器
+
+			// 1. 快速检查
+			if (linkedToken.IsCancellationRequested) return false;
+			if (_runner == null) return false;
+
+			// 2. 创建 TCS (返回 bool)
+			var tcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+
+			// 3. 启动协程引用
+			Coroutine activeCoroutine = null;
+
+			// 4. 注册取消回调
+			using (linkedToken.Register(() => 
+			{
+				if (activeCoroutine != null && _runner != null) _runner.StopCoroutine(activeCoroutine);
+				tcs.TrySetCanceled(linkedToken);
+			}))
+			{
+				// 5. 启动自定义的超时协程
+				activeCoroutine = _runner.StartCoroutine(WaitUntilTimeoutRoutine(predicate, timeoutSeconds, tcs));
+
+				try 
+				{
+					return await tcs.Task;
+				}
+				catch (OperationCanceledException)
+				{
+					return false;
+				}
+			}
+			#endif
+		}
+
+		/// <summary>
+		/// [内部协程] 执行带超时的条件等待
+		/// </summary>
+		private IEnumerator WaitUntilTimeoutRoutine(Func<bool> predicate, float timeout, TaskCompletionSource<bool> tcs)
+		{
+			float timer = 0f;
+
+			// 核心循环：完全在 Unity 协程调度器中运行
+			// 相比 C# 的 Task.Yield 循环，这里避免了大量的 Task 状态机上下文切换
+			while (timer < timeout)
+			{
+				// 检查条件
+				if (predicate())
+				{
+					tcs.TrySetResult(true); // 成功
+					yield break;
+				}
+
+				// 如果外部 Task 已经被取消 (通过 Register 回调)，则退出协程
+				if (tcs.Task.IsCanceled) yield break;
+
+				// 等待下一帧 (原生 Unity 等待)
+				yield return null;
+
+				// 累加时间
+				timer += Time.deltaTime;
+			}
+
+			// 循环结束仍未满足 -> 超时
+			tcs.TrySetResult(false);
+		}
+
+		public async Task<bool> WaitWhile(Func<bool> predicate, float timeoutSeconds, CancellationToken token = default(CancellationToken))
+		{
+			// 复用 WaitUntil 的逻辑，只是条件取反
+			return await WaitUntil(() => !predicate(), timeoutSeconds, token);
+		}
+	}
+}
+```
+
+<!-- File: Asaki/Unity/Services/Coroutines/AsakiTaskVoid.cs -->
+<!-- GUID: 3cf83cadeb054bcaa74e4e1179ec69bb -->
+<!-- Size: 2932 bytes -->
+<!-- Modified: 2025-12-26 21:44:42 -->
+```csharp
+using System;
+using System.Diagnostics;
+using System.Runtime.CompilerServices;
+using UnityEngine;
+
+namespace Asaki.Core.Tasks
+{
+	/// <summary>
+	/// [Asaki Native] 轻量级异步 void 替代方案。
+	/// <para>用于 "Fire-and-Forget" 场景。</para>
+	/// <para>相比 async void，它能捕获并记录未处理的异常，防止程序崩溃或异常静默丢失。</para>
+	/// </summary>
+	[AsyncMethodBuilder(typeof(AsakiTaskVoidMethodBuilder))]
+	public readonly struct AsakiTaskVoid
+	{
+		/// <summary>
+		/// 显式调用此方法以消除 "调用未等待" 的编译器警告。
+		/// </summary>
+		public void Forget()
+		{
+			// 纯语义方法，运行时无操作
+		}
+	}
+
+	/// <summary>
+	/// [Internal] 负责构建 AsakiTaskVoid 状态机的构建器。
+	/// 核心逻辑在于 SetException 时将异常输出到 Unity 控制台。
+	/// </summary>
+	public struct AsakiTaskVoidMethodBuilder
+	{
+		// 1. 创建构建器实例 (编译器调用)
+		public static AsakiTaskVoidMethodBuilder Create()
+		{
+			return default(AsakiTaskVoidMethodBuilder);
+		}
+
+		// 2. 返回给调用者的对象 (编译器调用)
+		public AsakiTaskVoid Task => default(AsakiTaskVoid);
+
+		// 3. 状态机启动 (编译器调用)
+		[DebuggerHidden]
+		public void Start<TStateMachine>(ref TStateMachine stateMachine)
+			where TStateMachine : IAsyncStateMachine
+		{
+			stateMachine.MoveNext();
+		}
+
+		// 4. 关联状态机 (编译器调用 - 仅在类模式下使用，Struct模式下通常为空)
+		public void SetStateMachine(IAsyncStateMachine stateMachine) { }
+
+		// 5. 任务成功完成时调用
+		public void SetResult()
+		{
+			// Do nothing - void 任务不需要结果
+		}
+
+		// 6. [核心] 任务抛出未处理异常时调用
+		public void SetException(Exception exception)
+		{
+			// 在这里拦截了原本会导致 async void 崩溃或静默失败的异常
+			// 强制输出到 Unity 控制台
+			AsakiTaskExceptionLogger.Log(exception);
+		}
+
+		// 7. 处理 await (常规)
+		public void AwaitOnCompleted<TAwaiter, TStateMachine>(
+			ref TAwaiter awaiter, ref TStateMachine stateMachine)
+			where TAwaiter : INotifyCompletion
+			where TStateMachine : IAsyncStateMachine
+		{
+			awaiter.OnCompleted(stateMachine.MoveNext);
+		}
+
+		// 8. 处理 await (不安全/高性能)
+		public void AwaitUnsafeOnCompleted<TAwaiter, TStateMachine>(
+			ref TAwaiter awaiter, ref TStateMachine stateMachine)
+			where TAwaiter : ICriticalNotifyCompletion
+			where TStateMachine : IAsyncStateMachine
+		{
+			awaiter.UnsafeOnCompleted(stateMachine.MoveNext);
+		}
+	}
+
+	/// <summary>
+	/// [Internal] 简单的异常日志记录器
+	/// </summary>
+	internal static class AsakiTaskExceptionLogger
+	{
+		public static void Log(Exception ex)
+		{
+			// 你可以在这里扩展，比如上报到服务器或弹出错误窗口
+			UnityEngine.Debug.LogException(ex);
+		}
+	}
+}
+```
+
+<!-- File: Asaki/Unity/Services/Network/AsakiWebService.cs -->
+<!-- GUID: 328fe65ba5de4854bf434418ffe8adc7 -->
+<!-- Size: 4775 bytes -->
+<!-- Modified: 2025-12-26 21:45:06 -->
+```csharp
+using Asaki.Core.Network;
+using Asaki.Core.Serialization;
+using Asaki.Unity.Extensions;
+using Asaki.Unity.Services.Network.Interceptors;
+using Asaki.Unity.Services.Serialization;
+using Asaki.Unity.Utils;
+using System;
+using System.Collections.Generic;
+using System.Text;
+using System.Threading.Tasks;
+using UnityEngine;
+using UnityEngine.Networking;
+
+namespace Asaki.Unity.Services.Network
+{
+	public class AsakiWebService : IAsakiWebService
+	{
+		private string _baseUrl = "";
+		private int _timeout = 10;
+		private readonly List<IAsakiWebInterceptor> _interceptors = new List<IAsakiWebInterceptor>();
+		public void OnInit()
+		{
+			AddInterceptor(new AsakiLogInterceptor());
+		}
+
+		public Task OnInitAsync()
+		{
+			return Task.CompletedTask;
+		}
+		public void OnDispose()
+		{
+			_interceptors.Clear();
+		}
+
+		public void SetBaseUrl(string url)
+		{
+			_baseUrl = url.TrimEnd('/');
+		}
+		public void SetTimeout(int seconds)
+		{
+			_timeout = seconds;
+		}
+		public void AddInterceptor(IAsakiWebInterceptor interceptor)
+		{
+			if (!_interceptors.Contains(interceptor)) _interceptors.Add(interceptor);
+		}
+		public void RemoveInterceptor(IAsakiWebInterceptor interceptor)
+		{
+			_interceptors.Remove(interceptor);
+		}
+
+		public async Task<TResponse> GetAsync<TResponse>(string apiPath)
+			where TResponse : IAsakiSavable, new()
+		{
+			string url = BuildUrl(apiPath);
+			using (UnityWebRequest uwr = UnityWebRequest.Get(url))
+			{
+				ConfigureRequest(uwr);
+				foreach (IAsakiWebInterceptor i in _interceptors) i.OnRequest(uwr);
+
+				// 使用扩展方法桥接 UnityWebRequest 到 Task
+				await uwr.SendWebRequestAsTask();
+
+				return ProcessResponse<TResponse>(uwr);
+			}
+		}
+
+		public async Task<TResponse> PostAsync<TRequest, TResponse>(string apiPath, TRequest body) where TRequest : IAsakiSavable where TResponse : IAsakiSavable, new()
+		{
+			string url = BuildUrl(apiPath);
+			string jsonBody = SerializeRequest(body);
+			byte[] bodyRaw = Encoding.UTF8.GetBytes(jsonBody);
+
+			using (UnityWebRequest uwr = new UnityWebRequest(url, "POST"))
+			{
+				uwr.uploadHandler = new UploadHandlerRaw(bodyRaw);
+				uwr.downloadHandler = new DownloadHandlerBuffer();
+				uwr.SetRequestHeader("Content-Type", "application/json");
+
+				ConfigureRequest(uwr);
+				foreach (IAsakiWebInterceptor i in _interceptors) i.OnRequest(uwr);
+
+				await uwr.SendWebRequestAsTask();
+
+				return ProcessResponse<TResponse>(uwr);
+			}
+		}
+
+		public async Task<TResponse> PostFormAsync<TResponse>(string apiPath, WWWForm form) where TResponse : IAsakiSavable, new()
+		{
+			string url = BuildUrl(apiPath);
+			using (UnityWebRequest uwr = UnityWebRequest.Post(url, form))
+			{
+				ConfigureRequest(uwr);
+				foreach (IAsakiWebInterceptor i in _interceptors) i.OnRequest(uwr);
+
+				await uwr.SendWebRequestAsTask();
+
+				return ProcessResponse<TResponse>(uwr);
+			}
+		}
+
+		// =========================================================
+		// 内部逻辑
+		// =========================================================
+
+		private string BuildUrl(string apiPath)
+		{
+			if (apiPath.StartsWith("http") || string.IsNullOrEmpty(_baseUrl)) return apiPath;
+			return $"{_baseUrl}/{apiPath.TrimStart('/')}";
+		}
+
+		private void ConfigureRequest(UnityWebRequest uwr)
+		{
+			uwr.timeout = _timeout;
+		}
+
+		private string SerializeRequest<T>(T body) where T : IAsakiSavable
+		{
+			StringBuilder sb = AsakiStringBuilderPool.Rent();
+			try
+			{
+				AsakiJsonWriter writer = new AsakiJsonWriter(sb);
+				body.Serialize(writer);
+				return writer.GetResult();
+			}
+			finally { AsakiStringBuilderPool.Return(sb); }
+		}
+
+		private T ProcessResponse<T>(UnityWebRequest uwr) where T : IAsakiSavable, new()
+		{
+			// 错误检查
+			if (uwr.result == UnityWebRequest.Result.ConnectionError ||
+			    uwr.result == UnityWebRequest.Result.ProtocolError)
+			{
+				AsakiWebException ex = new AsakiWebException(uwr.error, uwr.responseCode, uwr.url);
+				foreach (IAsakiWebInterceptor i in _interceptors) i.OnError(uwr, ex);
+				throw ex;
+			}
+
+			// 业务拦截
+			foreach (IAsakiWebInterceptor i in _interceptors)
+			{
+				if (!i.OnResponse(uwr))
+					throw new AsakiWebException("Intercepted", uwr.responseCode, uwr.url);
+			}
+
+			// 反序列化
+			string json = uwr.downloadHandler.text;
+			if (string.IsNullOrEmpty(json)) return default(T);
+
+			try
+			{
+				AsakiJsonReader reader = AsakiJsonReader.FromJson(json);
+				T response = new T();
+				response.Deserialize(reader);
+				return response;
+			}
+			catch (Exception ex)
+			{
+				Debug.LogError($"[AsakiWeb] Parse Error: {ex.Message}\n{json}"); // TODO: [Asaki] -> Asaki.ALog.Error
+				throw;
+			}
+		}
+	}
+}
+```
+
+<!-- File: Game/Examples/AsakiWebTest.cs -->
+<!-- GUID: ed48897f36514de7942ac499b8e48e7d -->
+<!-- Size: 3936 bytes -->
+<!-- Modified: 2025-12-26 23:14:12 -->
+```csharp
+using Asaki.Core.Context;
+using Asaki.Core.Network;
+using Asaki.Core.Serialization;
+using System;
+using UnityEngine;
+
+namespace Game.Examples
+{
+	// =========================================================
+	// 1. 定义 DTO (模拟 Roslyn 生成的代码)
+	// =========================================================
+
+	// 模拟登录请求
+	public class MockLoginReq : IAsakiSavable
+	{
+		public string Username;
+		public string Password;
+		public int ClientVersion;
+
+		public void Serialize(IAsakiWriter writer)
+		{
+			writer.BeginObject("MockLoginReq");
+			writer.WriteString("Username", Username);
+			writer.WriteString("Password", Password);
+			writer.WriteInt("ClientVersion", ClientVersion);
+			writer.EndObject();
+		}
+
+		public void Deserialize(IAsakiReader reader)
+		{
+			Username = reader.ReadString("Username");
+			Password = reader.ReadString("Password");
+			ClientVersion = reader.ReadInt("ClientVersion");
+		}
+	}
+
+	// 模拟 HttpBin 的响应结构
+	// HttpBin 会把我们发的 json 放在 "json" 字段里返回
+	public class HttpBinResponse : IAsakiSavable
+	{
+		public string origin; // 请求IP
+		public string url;
+		public MockLoginReq json; // 嵌套对象测试
+
+		public void Serialize(IAsakiWriter writer)
+		{ /* 只读，不需要写 */
+		}
+
+		public void Deserialize(IAsakiReader reader)
+		{
+			origin = reader.ReadString("origin");
+			url = reader.ReadString("url");
+			// 测试嵌套反序列化
+			json = reader.ReadObject<MockLoginReq>("json");
+		}
+	}
+
+	// =========================================================
+	// 2. 测试逻辑
+	// =========================================================
+
+	public class AsakiWebTest : MonoBehaviour
+	{
+		private IAsakiWebService _webService;
+
+		private void Start()
+		{
+			_webService = AsakiContext.Get<IAsakiWebService>();
+		}
+
+
+		[ContextMenu("Run Web Test")]
+		public async void RunTest()
+		{
+			Debug.Log("<color=yellow>[AsakiWebTest] === Start Integration Test ===</color>");
+
+			try
+			{
+				// --- Step 1: 测试 POST JSON ---
+				Debug.Log("[Test 1] Testing POST JSON...");
+
+				var req = new MockLoginReq
+				{
+					Username = "AsakiUser",
+					Password = "SuperSecretPassword",
+					ClientVersion = 500
+				};
+
+				// 发送请求
+				var res = await _webService.PostAsync<MockLoginReq, HttpBinResponse>("post", req);
+
+				// 验证结果
+				if (res.json != null && res.json.Username == "AsakiUser")
+				{
+					Debug.Log($"<color=green>[Success] POST Response Validated!</color>\nEcho IP: {res.origin}");
+				}
+				else
+				{
+					Debug.LogError("[Fail] POST Response Data Mismatch!");
+				}
+
+				// --- Step 2: 测试 GET (模拟) ---
+				Debug.Log("[Test 2] Testing GET...");
+				// httpbin/get 返回结构类似，我们复用 HttpBinResponse 里的 url 字段验证
+				var getRes = await _webService.GetAsync<HttpBinResponse>("get?foo=bar");
+
+				if (getRes.url.Contains("foo=bar"))
+				{
+					Debug.Log($"<color=green>[Success] GET Response Validated!</color>\nURL: {getRes.url}");
+				}
+				else
+				{
+					Debug.LogError("[Fail] GET Response URL Mismatch");
+				}
+
+				// --- Step 3: 测试异常捕获 (404) ---
+				Debug.Log("[Test 3] Testing Error Handling (404)...");
+				try
+				{
+					await _webService.GetAsync<HttpBinResponse>("status/404");
+					Debug.LogError("[Fail] Should verify 404 but got success!");
+				}
+				catch (AsakiWebException ex)
+				{
+					if (ex.ResponseCode == 404)
+					{
+						Debug.Log($"<color=green>[Success] Caught expected 404 error: {ex.Message}</color>");
+					}
+					else
+					{
+						Debug.LogError($"[Fail] Caught wrong error code: {ex.ResponseCode}");
+					}
+				}
+
+			}
+			catch (Exception e)
+			{
+				Debug.LogError($"[Critical Fail] Unexpected Exception: {e}");
+			}
+
+			Debug.Log("<color=yellow>[AsakiWebTest] === Test Finished ===</color>");
+		}
+	}
+}
+```
+
+```

@@ -145,7 +145,7 @@ namespace Asaki.Unity.Services.Audio
 			}
 
 			// 4. 生成 Handle 并记录
-			AsakiAudioHandle handle = new AsakiAudioHandle(++_handleCounter, Time.frameCount);
+			AsakiAudioHandle handle = new AsakiAudioHandle(++_handleCounter, UnityEngine.Time.frameCount);
 			_activeAgents.Add(handle, agent);
 
 			// 5. 启动异步播放流程

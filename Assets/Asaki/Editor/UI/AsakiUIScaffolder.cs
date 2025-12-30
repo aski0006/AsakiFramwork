@@ -1,6 +1,6 @@
 using Asaki.Core;
 using Asaki.Core.UI;
-using Asaki.Unity;
+using Asaki.Unity.Configuration;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
@@ -11,7 +11,8 @@ namespace Asaki.Editor.UI
 {
 	public static class AsakiUIScaffolder
 	{
-		private const string CONFIG_PATH = "Assets/Resources/Asaki/Configuration/AsakiUITemplateConfig.asset";
+		// [修改] 指向主配置
+		private const string CONFIG_PATH = "Assets/Resources/Asaki/Configuration/AsakiConfig.asset";
 
 		// =========================================================
 		// 入口 1: 从 Project 窗口的脚本直接生成 (新需求)
@@ -72,6 +73,9 @@ namespace Asaki.Editor.UI
 			ProcessScaffolding(root);
 		}
 
+		// =========================================================
+		// 入口 3: 从指定 MonoBehaviour 生成
+		// =========================================================
 		public static void ScaffoldFromTarget(MonoBehaviour target)
 		{
 			ProcessScaffolding(target.gameObject);
@@ -87,10 +91,11 @@ namespace Asaki.Editor.UI
 			MonoBehaviour targetScript = scripts[0];
 			System.Type type = targetScript.GetType();
 
-			AsakiUITemplateConfig config = AssetDatabase.LoadAssetAtPath<AsakiUITemplateConfig>(CONFIG_PATH);
-			if (config == null)
+			// [修改] 加载主配置
+			AsakiConfig mainConfig = AssetDatabase.LoadAssetAtPath<AsakiConfig>(CONFIG_PATH);
+			if (mainConfig == null)
 			{
-				EditorUtility.DisplayDialog("Error", $"Configuration not found at {CONFIG_PATH}", "OK");
+				EditorUtility.DisplayDialog("Error", $"AsakiConfig not found at {CONFIG_PATH}", "OK");
 				return;
 			}
 
@@ -155,7 +160,9 @@ namespace Asaki.Editor.UI
 				}
 				else
 				{
-					prefab = config.GetTemplate(attr.Type);
+					// [修改] 从主配置的 UIConfig 中获取模板
+					// 假设 AsakiUIConfig 已实现 GetTemplate 方法
+					prefab = mainConfig.UIConfig.GetTemplate(attr.Type);
 				}
 
 				if (prefab != null)
@@ -173,7 +180,7 @@ namespace Asaki.Editor.UI
 					instance.transform.SetAsLastSibling(); // 确保 Order 生效
 					AssignReference(field, targetScript, instance);
 
-					// 注册撤销 (InstantiatePrefab 内部已处理部分，但 SetParent 等可能需要)
+					// 注册撤销
 					Undo.RegisterCreatedObjectUndo(instance, "Create UI Widget");
 				}
 			}

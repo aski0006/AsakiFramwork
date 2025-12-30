@@ -230,7 +230,7 @@ namespace Asaki.Unity.Services.Coroutines
 				yield return null;
 
 				// 累加时间
-				timer += Time.deltaTime;
+				timer += UnityEngine.Time.deltaTime;
 			}
 
 			// 循环结束仍未满足 -> 超时

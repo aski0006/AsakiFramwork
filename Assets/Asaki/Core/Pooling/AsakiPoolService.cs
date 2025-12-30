@@ -205,7 +205,7 @@ namespace Asaki.Core.Pooling
 			// 调用接口回调 (0 GC，因为我们在 PoolItem 构造时缓存了接口)
 			item.AsakiPoolable?.OnSpawn();
 
-			item.LastActiveTime = Time.time;
+			item.LastActiveTime = UnityEngine.Time.time;
 
 			return item.GameObject;
 		}

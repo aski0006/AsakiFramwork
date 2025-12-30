@@ -7,7 +7,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.Networking;
-
 namespace Asaki.Unity.Services.Network
 {
     // 事件定义保持不变，建议未来优化为 ref struct 传递
@@ -55,7 +54,7 @@ namespace Asaki.Unity.Services.Network
                 UnityWebRequestAsyncOperation op = uwr.SendWebRequest();
 
                 // 速度计算变量
-                float lastTime = Time.realtimeSinceStartup;
+                float lastTime = UnityEngine.Time.realtimeSinceStartup;
                 ulong lastBytes = 0;
 
                 while (!op.isDone)
@@ -73,7 +72,7 @@ namespace Asaki.Unity.Services.Network
                     // 2. 计算进度与速度 (每帧更新)
                     if (progress != null)
                     {
-                        float currentTime = Time.realtimeSinceStartup;
+                        float currentTime =UnityEngine.Time.realtimeSinceStartup;
                         float deltaTime = currentTime - lastTime;
                         
                         // 限制更新频率，避免除以零或过于敏感

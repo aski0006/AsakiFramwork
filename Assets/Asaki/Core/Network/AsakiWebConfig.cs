@@ -8,6 +8,8 @@ namespace Asaki.Core.Network
 	{
 		[field: SerializeField] public string BaseUrl { get; set; }
 		[field: SerializeField] public int TimeoutSeconds { get; set; }
+		[SerializeReference]
+		[AsakiInterface(typeof(IAsakiWebInterceptor))]
 		public IAsakiWebInterceptor[] InitialInterceptors;
 	}
 }

@@ -8,7 +8,6 @@ using UnityEngine;
 
 namespace Asaki.Editor.UI
 {
-	// [关键] 对所有继承自 AsakiUIWindow 的脚本生效 (第二个参数 true)
 	[CustomEditor(typeof(AsakiUIWindow), true)]
 	public class AsakiUIWindowEditor : UnityEditor.Editor
 	{
@@ -26,8 +25,6 @@ namespace Asaki.Editor.UI
 			GUI.backgroundColor = Color.green;
 			if (GUILayout.Button("♻️ Sync & Re-Scaffold UI", GUILayout.Height(30)))
 			{
-				// 调用现有的逻辑 (需要把 ProcessScaffolding 改为 public 或通过反射调用)
-				// 这里我们假设把它改为了 public static
 				AsakiUIScaffolder.ScaffoldFromTarget((AsakiUIWindow)target);
 			}
 			GUI.backgroundColor = Color.white;

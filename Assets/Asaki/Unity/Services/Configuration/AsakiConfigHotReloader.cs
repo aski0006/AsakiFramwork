@@ -64,7 +64,7 @@ namespace Asaki.Unity.Services.Configuration
 			// 1. 处理队列
 			while (_changedFiles.TryDequeue(out string filePath))
 			{
-				_debounceMap[filePath] = Time.realtimeSinceStartup + DEBOUNCE_TIME;
+				_debounceMap[filePath] = UnityEngine.Time.realtimeSinceStartup + DEBOUNCE_TIME;
 			}
 
 			// 2. 检查防抖
@@ -75,7 +75,7 @@ namespace Asaki.Unity.Services.Configuration
 
 				foreach (string key in keys)
 				{
-					if (Time.realtimeSinceStartup >= _debounceMap[key])
+					if (UnityEngine.Time.realtimeSinceStartup >= _debounceMap[key])
 					{
 						toReload.Add(key);
 						_debounceMap.Remove(key);

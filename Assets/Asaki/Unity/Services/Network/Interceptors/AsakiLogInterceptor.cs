@@ -1,11 +1,11 @@
 ﻿using Asaki.Core.Network;
 using Asaki.Unity.Services.Logging;
 using System;
-using UnityEngine;
 using UnityEngine.Networking;
 
 namespace Asaki.Unity.Services.Network.Interceptors
 {
+	[Serializable]
 	public class AsakiLogInterceptor : IAsakiWebInterceptor
 	{
 		public void OnRequest(UnityWebRequest uwr) { }

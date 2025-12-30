@@ -228,7 +228,7 @@ namespace Asaki.Unity.Services.Audio
 			float timer = 0f;
 			while (timer < duration)
 			{
-				timer += Time.unscaledDeltaTime;
+				timer += UnityEngine.Time.unscaledDeltaTime;
 				_source.volume = Mathf.Lerp(startVol, 0f, timer / duration);
 				await AsakiAudioAsyncBridge.Yield();
 				if (!IsPlaying || _source == null) return;

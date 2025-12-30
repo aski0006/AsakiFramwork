@@ -23,14 +23,14 @@ namespace Asaki.Unity.Modules
 			AsakiConfig config = AsakiContext.Get<AsakiConfig>();
 			IAsakiResService res = AsakiContext.Get<IAsakiResService>();
 			IAsakiPoolService pool = AsakiContext.Get<IAsakiPoolService>();
-			if (!config || !config.AsakiAudioConfig) return;
+			if (!config) return;
 
 			_audioService = new AsakiAudioService(
 				res,
 				pool,
-				config.AsakiAudioConfig,
-				config.SoundAgentPrefabAssetKey,
-				config.InitialAudioPoolSize
+				config.AudioConfig,
+				config.AudioConfig.SoundAgentPrefabAssetKey,
+				config.AudioConfig.InitialPoolSize
 			);
 
 			_audioService.OnInit();

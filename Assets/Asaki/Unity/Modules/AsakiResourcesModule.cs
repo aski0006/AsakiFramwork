@@ -25,8 +25,8 @@ namespace Asaki.Unity.Modules
 			IAsakiCoroutineService routine = AsakiContext.Get<IAsakiCoroutineService>();
 			IAsakiEventService eventService = AsakiContext.Get<IAsakiEventService>();
 			// 2. 创建工厂
-			AsakiResKitMode mode = config ? config.AsakiResKitMode : AsakiResKitMode.Resources;
-			int timeoutSeconds = config.ResourcesTimeoutSeconds;
+			AsakiResKitMode mode = config ? config.ResConfig.Mode : AsakiResKitMode.Resources;
+			int timeoutSeconds = config.ResConfig.TimeoutSeconds;
 			_resService = AsakiResKitFactory.Create(mode, routine, eventService);
 			_resService.SetTimeoutSeconds(timeoutSeconds);
 			// 3. 注册服务
