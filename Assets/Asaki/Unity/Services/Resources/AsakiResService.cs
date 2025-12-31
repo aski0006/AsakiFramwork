@@ -45,6 +45,10 @@ namespace Asaki.Unity.Services.Resources
 			_asakiResDependencyLookup = asakiResDependencyLookup;
 		}
 
+		public async Task UnloadUnusedAssets(CancellationToken token = default(CancellationToken))
+		{
+			await _strategy.UnloadUnusedAssets(token);
+		}
 		public void SetTimeoutSeconds(int timeoutSeconds)
 		{
 			_timeoutSeconds = Mathf.Max(DefaultTimeoutSeconds, timeoutSeconds);

@@ -16,11 +16,11 @@ namespace Asaki.Unity.Services.Resources.Strategies
 		public string StrategyName => "Addressables (Pro)";
 
 		// 引用 RoutineService 以使用 WaitFrame
-		private readonly IAsakiCoroutineService _routine;
+		private readonly IAsakiCoroutineService _coroutine;
 
-		public AsakiAddressablesStrategy(IAsakiCoroutineService routine)
+		public AsakiAddressablesStrategy(IAsakiCoroutineService coroutine)
 		{
-			_routine = routine;
+			_coroutine = coroutine;
 		}
 
 		public async Task InitializeAsync()
@@ -60,7 +60,7 @@ namespace Asaki.Unity.Services.Resources.Strategies
 					onProgress.Invoke(handle.PercentComplete);
 
 					// 使用框架标准的帧等待
-					await _routine.WaitFrame(token);
+					await _coroutine.WaitFrame(token);
 				}
 
 				if (handle.Status == AsyncOperationStatus.Succeeded)
@@ -97,6 +97,22 @@ namespace Asaki.Unity.Services.Resources.Strategies
 			if (asset != null)
 			{
 				Addressables.Release(asset);
+			}
+		}
+		public async Task UnloadUnusedAssets(CancellationToken token)
+		{
+			var op = UnityEngine.Resources.UnloadUnusedAssets();
+			if (_coroutine != null)
+			{
+				while (!op.isDone) 
+				{
+					if (token.IsCancellationRequested) return;
+					await _coroutine.WaitFrame(token);
+				}
+			}
+			else
+			{
+				while (!op.isDone) await Task.Yield();
 			}
 		}
 

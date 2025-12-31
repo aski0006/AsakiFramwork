@@ -58,5 +58,21 @@ namespace Asaki.Unity.Services.Resources.Strategies
 			if (asset is not GameObject)
 				UnityEngine.Resources.UnloadAsset(asset);
 		}
+		public async Task UnloadUnusedAssets(CancellationToken token)
+		{
+			var op = UnityEngine.Resources.UnloadUnusedAssets();
+			if (_coroutine != null)
+			{
+				while (!op.isDone) 
+				{
+					if (token.IsCancellationRequested) return;
+					await _coroutine.WaitFrame(token);
+				}
+			}
+			else
+			{
+				while (!op.isDone) await Task.Yield();
+			}
+		}
 	}
 }

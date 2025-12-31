@@ -44,6 +44,9 @@ namespace Asaki.Core.Resources
 		Task<List<ResHandle<T>>> LoadBatchAsync<T>(IEnumerable<string> locations, CancellationToken token) where T : class;
 		public void ReleaseBatch(IEnumerable<string> locations);
 
+		Task UnloadUnusedAssets(CancellationToken token = default(CancellationToken));
 		public void SetTimeoutSeconds(int timeoutSeconds);
+		
+		
 	}
 }

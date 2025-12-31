@@ -1,0 +1,68 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 825e7577a77b4021b00a1bbbb0debaad, type: 3}
+  m_Name: AsakiConfig
+  m_EditorClassIdentifier: 
+  tickRate: 60
+  defaultPoolSize: 128
+  resConfig:
+    Mode: 0
+    TimeoutSeconds: 60
+  audioConfig:
+    SoundAgentPrefabAssetKey: Assets/Prefabs/AsakiSourceAgent.prefab
+    InitialPoolSize: 16
+    Items:
+    - Key: "Sihan_\u4E09Z_STUDIO_HOYO_MiX___DAMIDAMI"
+      ID: 0
+      Clip: {fileID: 8300000, guid: 75249e7005272fa46b917646e087deba, type: 3}
+      AssetPath: "Assets/Asset/Sihan,\u4E09Z-STUDIO,HOYO-MiX - DAMIDAMI.mp3"
+      Volume: 1
+      Pitch: 1
+      Loop: 0
+      Group: 0
+      RandomPitch: 0
+      _editorExpanded: 0
+  uiConfig:
+    ReferenceResolution: {x: 1920, y: 1080}
+    MatchWidthOrHeight: 0.5
+    UIList: []
+    Templates:
+    - Type: 0
+      Prefab: {fileID: 4410224524190982207, guid: 4799acb4c51450a4d8aac915422899dd, type: 3}
+    - Type: 1
+      Prefab: {fileID: 8298124905401960512, guid: d2bd3c2e7f409b24295bf8223a16af09, type: 3}
+    - Type: 2
+      Prefab: {fileID: 1887711790025084292, guid: bb2efcdc7d09c7841a9ece7506a292ff, type: 3}
+    - Type: 3
+      Prefab: {fileID: 7997440663399101938, guid: eeee59cfe3ac74d45926e8f90e3f5e39, type: 3}
+    - Type: 4
+      Prefab: {fileID: 2323959893786116027, guid: 2c4deb4ab6614be43b64f32cbd296ce5, type: 3}
+    - Type: 5
+      Prefab: {fileID: 8521394823050305636, guid: 590249008a54f664f822d894125589e7, type: 3}
+    - Type: 6
+      Prefab: {fileID: 2222626599159170321, guid: da5f1d7d7ac836246a9166a8b5861206, type: 3}
+    - Type: 7
+      Prefab: {fileID: 4030152919494512186, guid: 08b88ef801ae61c4fb9e1c51587575c0, type: 3}
+    - Type: 8
+      Prefab: {fileID: 6122941550189681422, guid: 70f12dba17614b34bb2804a2c1edf107, type: 3}
+  webConfig:
+    <BaseUrl>k__BackingField: 
+    <TimeoutSeconds>k__BackingField: 3
+    InitialInterceptors: []
+  logConfig:
+    MinLogLevel: 1
+    MaxFileSizeKB: 10240
+    MaxHistoryFiles: 10
+    FilePrefix: GameLog
+  references:
+    version: 2
+    RefIds: []
