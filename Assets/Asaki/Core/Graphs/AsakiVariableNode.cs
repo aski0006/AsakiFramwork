@@ -6,14 +6,13 @@ namespace Asaki.Core.Graphs
 	[AsakiGraphContext(typeof(AsakiGraphBase), "Variable/Get")] // 适配所有图
 	public class AsakiGetVariableNode : AsakiNodeBase
 	{
-		public override string Title => $"Get {VariableName}";
-
+		public override string Title =>  $"Get {VariableName}";
 		// 存储变量名 (Key)
 		public string VariableName;
 
 		// 存储类型 (用于运行时优化和 Editor 端口着色)
 		public AsakiBlackboardPropertyType VariableType;
-
+		public bool IsGlobalVariable = false;
 		// 输出端口 (名字固定为 Value，但在 Editor 下我们会动态修改它的显示类型)
 		[AsakiNodeOutput("Value")]
 		public object Value;

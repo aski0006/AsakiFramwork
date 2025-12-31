@@ -1,0 +1,40 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 0}
+  m_Name: New Example Graph
+  m_EditorClassIdentifier: Game:Game.GraphTool:ExampleGraph
+  Nodes:
+  - rid: 4024485946819870835
+  - rid: 4024485946819870837
+  Edges: []
+  Variables: []
+  references:
+    version: 2
+    RefIds:
+    - rid: 4024485946819870835
+      type: {class: AsakiGetVariableNode, ns: Asaki.Core.Graphs, asm: Asaki.Core}
+      data:
+        Position: {x: 367.33334, y: 197.33333}
+        GUID: 8406e211-c9d6-42a6-af73-1bf15419c63e
+        ExecutionOrder: 0
+        VariableName: Health
+        VariableType: 1
+        IsGlobalVariable: 1
+    - rid: 4024485946819870837
+      type: {class: AsakiGetVariableNode, ns: Asaki.Core.Graphs, asm: Asaki.Core}
+      data:
+        Position: {x: 352, y: 376.66666}
+        GUID: 428fd830-07c9-4d9a-8449-4f5cc566637e
+        ExecutionOrder: 0
+        VariableName: NewFloat
+        VariableType: 1
+        IsGlobalVariable: 1

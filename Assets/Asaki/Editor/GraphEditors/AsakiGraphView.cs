@@ -87,58 +87,80 @@ namespace Asaki.Editor.GraphEditors
 		// 4. 执行放置 (松开鼠标)
 		private void OnDragPerform(DragPerformEvent evt)
 		{
-			AsakiVariableDef data = DragAndDrop.GetGenericData("AsakiVariable") as AsakiVariableDef;
-			if (data != null)
+			// ★★★ 关键修改：接收包装类
+			var dragData = DragAndDrop.GetGenericData("AsakiVariable") as DragVariableData;
+			if (dragData != null)
 			{
-				// 计算放置位置 (鼠标屏幕坐标 -> Graph 本地坐标)
 				Vector2 localPos = contentViewContainer.WorldToLocal(evt.mousePosition);
-
+        
 				// 弹出菜单供用户选择 Get 或 Set
-				ShowVariableMenu(data, localPos);
+				ShowVariableMenu(dragData, localPos);
 
 				DragAndDrop.AcceptDrag();
 				evt.StopImmediatePropagation();
 			}
 		}
 
-		private void ShowVariableMenu(AsakiVariableDef variable, Vector2 position)
+		/// <summary>
+		/// ★ 显示变量节点创建菜单（支持全局变量）
+		/// </summary>
+		private void ShowVariableMenu(DragVariableData dragData, Vector2 position)
 		{
 			GenericMenu menu = new GenericMenu();
+			string varName = dragData.Variable.Name;
 
-			// Option 1: Get Variable
-			menu.AddItem(new GUIContent($"Get {variable.Name}"), false, () =>
+			// Get 节点
+			menu.AddItem(new GUIContent($"Get {varName}"), false, () =>
 			{
-				CreateVariableNode<AsakiGetVariableNode>(variable, position);
+				CreateVariableNode<AsakiGetVariableNode>(dragData, position);
 			});
 
-			// Option 2: Set Variable
-			menu.AddItem(new GUIContent($"Set {variable.Name}"), false, () =>
+			// Set 节点（全局变量警告）
+			if (dragData.IsGlobal)
 			{
-				CreateVariableNode<AsakiSetVariableNode>(variable, position);
-			});
+				menu.AddItem(new GUIContent($"Set {varName} ⚠️"), false, () =>
+				{
+					CreateVariableNode<AsakiSetVariableNode>(dragData, position);
+				});
+			}
+			else
+			{
+				menu.AddItem(new GUIContent($"Set {varName}"), false, () =>
+				{
+					CreateVariableNode<AsakiSetVariableNode>(dragData, position);
+				});
+			}
 
 			menu.ShowAsContext();
 		}
 
-		private void CreateVariableNode<T>(AsakiVariableDef variable, Vector2 position) where T : AsakiNodeBase, new()
+
+		/// <summary>
+		/// ★ 创建变量节点（支持全局变量上下文）
+		/// </summary>
+		private void CreateVariableNode<T>(DragVariableData dragData, Vector2 position) where T : AsakiNodeBase, new()
 		{
-			// 使用 IO 工具创建纯数据节点
+			var variable = dragData.Variable;
+			bool isGlobal = dragData.IsGlobal;
+
 			T nodeData = AsakiGraphIOUtils.AddNode<T>(_graph, position);
 
-			// ★ 注入变量信息
-			// 这里利用反射或模式匹配，因为 T 是泛型
 			if (nodeData is AsakiGetVariableNode getNode)
 			{
 				getNode.VariableName = variable.Name;
 				getNode.VariableType = variable.Type;
+				getNode.IsGlobalVariable = isGlobal;  // ★ 传递全局标记
 			}
 			else if (nodeData is AsakiSetVariableNode setNode)
 			{
+				if (isGlobal)
+				{
+					Debug.LogWarning($"[Asaki] Creating Set node for global variable '{variable.Name}'. Changes will be local to this graph.");
+				}
 				setNode.VariableName = variable.Name;
 				setNode.VariableType = variable.Type;
 			}
 
-			// 立即在视图中生成
 			CreateNodeView(nodeData);
 		}
 		private void OnNodeCreationRequest(NodeCreationContext context)

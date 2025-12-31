@@ -57,38 +57,56 @@ namespace Asaki.Core.Graphs
 		private void InitializeBlackboardValues()
 		{
 			if (GraphAsset == null || _context.Blackboard == null) return;
-
-			// 遍历 ScriptableObject 中的变量定义
-			foreach (AsakiVariableDef variable in GraphAsset.Variables)
+			string globalAssetPath = "Assets/Asaki/Resources/GlobalBlackboard.asset";
+			var globalAsset = UnityEngine.Resources.Load<AsakiGlobalBlackboardAsset>("GlobalBlackboard");
+			if (globalAsset != null)
 			{
-
-				switch (variable.Type)
+				// 先加载全局变量（作为父作用域）
+				foreach (var globalVar in globalAsset.GlobalVariables)
 				{
-					case AsakiBlackboardPropertyType.Int:
-						_context.Blackboard.SetValue(variable.Name, variable.IntVal);
-						break;
-					case AsakiBlackboardPropertyType.Float:
-						_context.Blackboard.SetValue(variable.Name, variable.FloatVal);
-						break;
-					case AsakiBlackboardPropertyType.Bool:
-						_context.Blackboard.SetValue(variable.Name, variable.BoolVal);
-						break;
-					case AsakiBlackboardPropertyType.String:
-						_context.Blackboard.SetValue(variable.Name, variable.StringVal);
-						break;
-					case AsakiBlackboardPropertyType.Vector3:
-						_context.Blackboard.SetValue(variable.Name, variable.Vector3Val);
-						break;
-					case AsakiBlackboardPropertyType.Vector2Int:
-						_context.Blackboard.SetValue(variable.Name, variable.Vector2IntVal);
-						break;
-					case AsakiBlackboardPropertyType.Vector3Int:
-						_context.Blackboard.SetValue(variable.Name, variable.Vector3IntVal);
-						break;
-					case AsakiBlackboardPropertyType.Color:
-						_context.Blackboard.SetValue(variable.Name, variable.ColorVal);
-						break;
+					// 如果局部没有同名变量，则继承全局值
+					if (!GraphAsset.Variables.Exists(v => v.Name == globalVar.Name))
+					{
+						WriteVariableToRuntime(globalVar.Name, globalVar);
+					}
 				}
+			}
+			foreach (var variable in GraphAsset.Variables)
+			{
+				WriteVariableToRuntime(variable.Name, variable);
+			}
+		}
+		private void WriteVariableToRuntime(string name, AsakiVariableDef variable)
+		{
+			switch (variable.Type)
+			{
+				case AsakiBlackboardPropertyType.Int:
+					_context.Blackboard.SetValue(name, variable.IntVal);
+					break;
+				case AsakiBlackboardPropertyType.Float:
+					_context.Blackboard.SetValue(name, variable.FloatVal);
+					break;
+				case AsakiBlackboardPropertyType.Bool:
+					_context.Blackboard.SetValue(name, variable.BoolVal);
+					break;
+				case AsakiBlackboardPropertyType.String:
+					_context.Blackboard.SetValue(name, variable.StringVal);
+					break;
+				case AsakiBlackboardPropertyType.Vector3:
+					_context.Blackboard.SetValue(name, variable.Vector3Val);
+					break;
+				case AsakiBlackboardPropertyType.Vector2:
+					_context.Blackboard.SetValue(name, variable.Vector2Val);
+					break;
+				case AsakiBlackboardPropertyType.Vector3Int:
+					_context.Blackboard.SetValue(name, variable.Vector3IntVal);
+					break;
+				case AsakiBlackboardPropertyType.Vector2Int:
+					_context.Blackboard.SetValue(name, variable.Vector2IntVal);
+					break;
+				case AsakiBlackboardPropertyType.Color:
+					_context.Blackboard.SetValue(name, variable.ColorVal);
+					break;
 			}
 		}
 
@@ -155,18 +173,14 @@ namespace Asaki.Core.Graphs
 		/// </summary>
 		protected virtual T ResolveNodeValue<T>(AsakiNodeBase node, string outputPortName)
 		{
-			// --- Case A: Get Variable Node (从黑板取值) ---
 			if (node is AsakiGetVariableNode getVarNode)
 			{
 				if (_context.Blackboard == null) return default(T);
 
-				// 核心：直接从 Blackboard 读
-				// 利用隐式转换 string -> AsakiBlackboardKey
-				return _context.Blackboard.GetValue<T>(getVarNode.VariableName);
+				T value = _context.Blackboard.GetValue<T>(getVarNode.VariableName);
+				
+				return value;
 			}
-
-			// --- Case B: 其他数据节点 (如 Math, Logic 等，未来扩展) ---
-			// e.g. if (node is AsakiAddNode addNode) return addNode.Execute(this);
 
 			Debug.LogWarning($"[AsakiRunner] Cannot resolve value from node type: {node.GetType().Name}");
 			return default(T);

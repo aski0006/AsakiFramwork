@@ -97,7 +97,7 @@ namespace Asaki.Editor.GraphEditors
 
 		private void Disconnect()
 		{
-			if (_currentRunner != null && _handler != null && _eventInfo != null)
+			if (_currentRunner && _handler != null && _eventInfo != null)
 			{
 				_eventInfo.RemoveEventHandler(_currentRunner, _handler);
 			}

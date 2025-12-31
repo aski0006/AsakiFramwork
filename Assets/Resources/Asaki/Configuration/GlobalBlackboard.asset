@@ -1,0 +1,34 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5d867fcf213740058bc0c37af66895db, type: 3}
+  m_Name: GlobalBlackboard
+  m_EditorClassIdentifier: 
+  GlobalVariables:
+  - rid: 4024485946819870829
+  references:
+    version: 2
+    RefIds:
+    - rid: 4024485946819870829
+      type: {class: AsakiVariableDef, ns: Asaki.Core.Graphs, asm: Asaki.Core}
+      data:
+        Name: Health
+        Type: 1
+        IsExposed: 1
+        IntVal: 0
+        FloatVal: 0
+        BoolVal: 0
+        StringVal: 
+        Vector3Val: {x: 0, y: 0, z: 0}
+        Vector2Val: {x: 0, y: 0}
+        Vector3IntVal: {x: 0, y: 0, z: 0}
+        Vector2IntVal: {x: 0, y: 0}
+        ColorVal: {r: 0, g: 0, b: 0, a: 0}

@@ -4,6 +4,7 @@ using Asaki.Core.Graphs;
 using UnityEditor;
 using UnityEditor.Experimental.GraphView;
 using UnityEditor.UIElements;
+using UnityEditor.VersionControl;
 using UnityEngine;
 using UnityEngine.UIElements;
 
@@ -14,20 +15,33 @@ namespace Asaki.Editor.GraphEditors
 	/// </summary>
 	public class AsakiBlackboardProvider
 	{
+		private const string AssetPath = "Assets/Resources/Asaki/Configuration/GlobalBlackboard.asset";
 		public Blackboard Blackboard { get; private set; }
 
 		private readonly AsakiGraphView _graphView;
 		private readonly AsakiGraphBase _graphAsset;
 		private readonly SerializedObject _serializedGraph;
-
+		private AsakiGlobalBlackboardAsset _globalAsset;
 		public AsakiBlackboardProvider(AsakiGraphView graphView, AsakiGraphBase graphAsset, SerializedObject serializedGraph)
 		{
 			_graphView = graphView;
 			_graphAsset = graphAsset;
 			_serializedGraph = serializedGraph;
-
+			LoadGlobalBlackboard();
 			InitializeBlackboard();
 			RefreshBlackboard();
+		}
+
+
+		private void LoadGlobalBlackboard()
+		{
+			string globalAssetPath = AssetPath;
+			_globalAsset = AssetDatabase.LoadAssetAtPath<AsakiGlobalBlackboardAsset>(globalAssetPath);
+
+			if (!_globalAsset)
+			{
+				Debug.LogWarning("[AsakiBlackboardProvider] Global Blackboard not found. Please create it via menu.");
+			}
 		}
 
 		private void InitializeBlackboard()
@@ -37,38 +51,40 @@ namespace Asaki.Editor.GraphEditors
 			{
 				title = "Blackboard",
 				subTitle = "Variables",
-			};
-
-			// 2. 配置添加按钮 (Add Item)
-			Blackboard.addItemRequested = _ =>
-			{
-				GenericMenu menu = new GenericMenu();
-				foreach (AsakiBlackboardPropertyType type in Enum.GetValues(typeof(AsakiBlackboardPropertyType)))
+				// 2. 配置添加按钮 (Add Item)
+				addItemRequested = _ =>
 				{
-					menu.AddItem(new GUIContent(type.ToString()), false, () => AddVariable(type));
-				}
-				menu.ShowAsContext();
-			};
-
-			// 3. 配置重命名与移动
-			Blackboard.editTextRequested = (bb, element, newName) =>
-			{
-				BlackboardField field = (BlackboardField)element;
-				AsakiVariableDef variable = (AsakiVariableDef)field.userData;
-
-				if (string.IsNullOrEmpty(newName) || newName == variable.Name) return;
-
-				// 简单的重名检查
-				if (_graphAsset.Variables.Exists(v => v.Name == newName))
+					GenericMenu menu = new GenericMenu();
+					foreach (AsakiBlackboardPropertyType type in Enum.GetValues(typeof(AsakiBlackboardPropertyType)))
+					{
+						menu.AddItem(new GUIContent(type.ToString()), false, () => AddVariable(type));
+					}
+					menu.ShowAsContext();
+				},
+				// 3. 配置重命名与移动
+				editTextRequested = (bb, element, newName) =>
 				{
-					EditorUtility.DisplayDialog("Error", "Variable name already exists!", "OK");
-					return;
-				}
+					BlackboardField field = (BlackboardField)element;
+					AsakiVariableDef variable = (AsakiVariableDef)field.userData;
 
-				Undo.RecordObject(_graphAsset, "Rename Variable");
-				variable.Name = newName;
-				field.text = newName;
-				EditorUtility.SetDirty(_graphAsset);
+					if (string.IsNullOrEmpty(newName) || newName == variable.Name) return;
+					if (_globalAsset?.GlobalVariables.Contains(variable) == true)
+					{
+						EditorUtility.DisplayDialog("Error", "Cannot edit global variables here. Use Global Blackboard Editor.", "OK");
+						return;
+					}
+					// 简单的重名检查
+					if (_graphAsset.Variables.Exists(v => v.Name == newName))
+					{
+						EditorUtility.DisplayDialog("Error", "Variable name already exists!", "OK");
+						return;
+					}
+
+					Undo.RecordObject(_graphAsset, "Rename Variable");
+					variable.Name = newName;
+					field.text = newName;
+					EditorUtility.SetDirty(_graphAsset);
+				},
 			};
 
 			// 4. 设置位置 (默认左上角，稍微偏移)
@@ -88,7 +104,88 @@ namespace Asaki.Editor.GraphEditors
 					evt.StopImmediatePropagation();
 				}
 			});
+
+			Blackboard.addItemRequested = _ =>
+			{
+				GenericMenu menu = new GenericMenu();
+				foreach (AsakiBlackboardPropertyType type in Enum.GetValues(typeof(AsakiBlackboardPropertyType)))
+				{
+					menu.AddItem(new GUIContent(type.ToString()), false, () => AddVariable(type));
+				}
+				menu.ShowAsContext();
+			};
+
+			Blackboard.RegisterCallback<ContextualMenuPopulateEvent>(evt =>
+			{
+				if (Blackboard.selection.Count > 0)
+				{
+					evt.menu.AppendAction("Promote to Global", OnPromoteToGlobal, DropdownMenuAction.Status.Normal);
+				}
+			});
 		}
+
+		private void OnPromoteToGlobal(DropdownMenuAction action)
+		{
+			var selection = Blackboard.selection;
+			if (selection == null || selection.Count == 0) return;
+
+			// 加载全局资产
+			string globalAssetPath = AssetPath;
+			var globalAsset = AssetDatabase.LoadAssetAtPath<AsakiGlobalBlackboardAsset>(globalAssetPath);
+			if (!globalAsset)
+			{
+				EditorUtility.DisplayDialog("Error", "Global Blackboard asset not found. Please open Global Blackboard Editor first.", "OK");
+				return;
+			}
+
+			Undo.RecordObject(_graphAsset, "Promote Variables to Global");
+			Undo.RecordObject(globalAsset, "Promote Variables to Global");
+
+			bool promotedAny = false;
+
+			foreach (ISelectable element in selection)
+			{
+				if (element is BlackboardField { userData: AsakiVariableDef localVar })
+				{
+					// 1. 创建或获取全局变量
+					var globalVar = globalAsset.GetOrCreateVariable(localVar.Name, localVar.Type);
+
+					// 2. 复制当前值到全局
+					CopyVariableValue(localVar, globalVar);
+
+					// 3. 从局部黑板移除（可选：保留引用）
+					_graphAsset.Variables.Remove(localVar);
+					promotedAny = true;
+				}
+			}
+
+			if (promotedAny)
+			{
+				EditorUtility.SetDirty(_graphAsset);
+				EditorUtility.SetDirty(globalAsset);
+				RefreshBlackboard();
+				AssetDatabase.SaveAssets();
+				EditorUtility.DisplayDialog("Success", "Variables promoted to Global Blackboard!", "OK");
+			}
+		}
+
+		private void CopyVariableValue(AsakiVariableDef source, AsakiVariableDef dest)
+		{
+			dest.Type = source.Type;
+			switch (source.Type)
+			{
+				case AsakiBlackboardPropertyType.Int:        dest.IntVal = source.IntVal; break;
+				case AsakiBlackboardPropertyType.Float:      dest.FloatVal = source.FloatVal; break;
+				case AsakiBlackboardPropertyType.Bool:       dest.BoolVal = source.BoolVal; break;
+				case AsakiBlackboardPropertyType.String:     dest.StringVal = source.StringVal; break;
+				case AsakiBlackboardPropertyType.Vector3:    dest.Vector3Val = source.Vector3Val; break;
+				case AsakiBlackboardPropertyType.Vector2:    dest.Vector2Val = source.Vector2Val; break;
+				case AsakiBlackboardPropertyType.Vector3Int: dest.Vector3IntVal = source.Vector3IntVal; break;
+				case AsakiBlackboardPropertyType.Vector2Int: dest.Vector2IntVal = source.Vector2IntVal; break;
+				case AsakiBlackboardPropertyType.Color:      dest.ColorVal = source.ColorVal; break;
+			}
+		}
+
 
 		private void DeleteSelectedVariables()
 		{
@@ -155,27 +252,102 @@ namespace Asaki.Editor.GraphEditors
 		public void RefreshBlackboard()
 		{
 			Blackboard.Clear();
-			BlackboardSection section = new BlackboardSection { title = "Exposed Properties" };
-			Blackboard.Add(section);
 
-			foreach (AsakiVariableDef variable in _graphAsset.Variables)
+			// 1. ★ 添加全局变量节（只读，灰色显示）
+			if (_globalAsset != null && _globalAsset.GlobalVariables.Count > 0)
 			{
-				BlackboardField field = new BlackboardField
-				{
-					text = variable.Name,
-					typeText = variable.Type.ToString(),
-					userData = variable, // ★ 关键：将数据绑定到 VisualElement
+				var globalSection = new BlackboardSection { title = "Global Variables (Read-Only)",
+					style =
+					{
+						backgroundColor = new StyleColor(new Color(0.15f, 0.15f, 0.15f)),
+					},
 				};
+				Blackboard.Add(globalSection);
 
-				// ★ [New] 注册拖拽事件
-				EnableDrag(field, variable);
+				foreach (var globalVar in _globalAsset.GlobalVariables)
+				{
+					var field = CreateGlobalVariableField(globalVar);
+					globalSection.Add(field);
+				}
+			}
 
-				BlackboardRow row = new BlackboardRow(field, CreateValueView(variable));
-				section.Add(row);
+			// 2. 添加局部变量节（可编辑）
+			var localSection = new BlackboardSection { title = "Local Variables" };
+			Blackboard.Add(localSection);
+
+			foreach (var variable in _graphAsset.Variables)
+			{
+				var field = CreateLocalVariableField(variable);
+				localSection.Add(field);
 			}
 		}
 
-		private void EnableDrag(VisualElement element, AsakiVariableDef variable)
+		private VisualElement CreateGlobalVariableField(AsakiVariableDef globalVar)
+		{
+			var field = new BlackboardField
+			{
+				text = globalVar.Name,
+				typeText = $"[Global] {globalVar.Type}", // [G] 标记为全局
+				userData = globalVar,
+				style =
+				{
+					opacity = 0.6f,                             // 半透明
+					unityFontStyleAndWeight = FontStyle.Italic, // 斜体
+					color = new StyleColor(Color.gray),         // 灰色文字
+				},
+			};
+
+			EnableDrag(field, globalVar, isGlobal: true);
+
+			var row = new BlackboardRow(field, CreateGlobalValueView(globalVar));
+			return row;
+		}
+
+		private VisualElement CreateLocalVariableField(AsakiVariableDef variable)
+		{
+			var field = new BlackboardField
+			{
+				text = variable.Name,
+				typeText = variable.Type.ToString(),
+				userData = variable,
+			};
+
+			EnableDrag(field, variable, isGlobal: false);
+
+			var row = new BlackboardRow(field, CreateValueView(variable));
+			return row;
+		}
+
+		private VisualElement CreateGlobalValueView(AsakiVariableDef variable)
+		{
+			var container = new VisualElement();
+			container.style.paddingLeft = 10;
+			container.style.opacity = 0.5f; // 半透明，表示只读
+
+			// 创建只读字段
+			IMGUIContainer imgui = new IMGUIContainer(() =>
+			{
+				// 显示值，但不允许编辑
+				EditorGUILayout.LabelField(GetVariableDisplayString(variable), EditorStyles.label);
+			});
+			container.Add(imgui);
+
+			return container;
+		}
+
+
+		private string GetVariableDisplayString(AsakiVariableDef variable)
+		{
+			return variable.Type switch
+			       {
+				       AsakiBlackboardPropertyType.Int => variable.IntVal.ToString(),
+				       AsakiBlackboardPropertyType.Float => variable.FloatVal.ToString("F2"),
+				       AsakiBlackboardPropertyType.Bool => variable.BoolVal.ToString(),
+				       AsakiBlackboardPropertyType.String => $"\"{variable.StringVal}\"",
+				       _ => variable.Type.ToString()
+			       };
+		}
+		private void EnableDrag(VisualElement element, AsakiVariableDef variable, bool isGlobal = false)
 		{
 			Vector2 _mouseDownPos = Vector2.zero;
 			bool _readyToDrag = false;
@@ -191,38 +363,33 @@ namespace Asaki.Editor.GraphEditors
 
 			element.RegisterCallback<MouseMoveEvent>(evt =>
 			{
-				// 1. 基础状态检查
 				if (!_readyToDrag || evt.pressedButtons != 1) return;
 
-
+				// 防止重复拖拽
 				if (DragAndDrop.GetGenericData("AsakiVariable") != null)
 				{
 					_readyToDrag = false;
 					return;
 				}
 
-				// 3. 距离阈值检测
+				// 距离阈值检测
 				if (Vector2.Distance(evt.localMousePosition, _mouseDownPos) > 5f)
 				{
 					_readyToDrag = false;
 
+					// ★★★ 关键修改：包装数据，标记是否全局
+					var dragData = new DragVariableData(variable, isGlobal);
+            
 					DragAndDrop.PrepareStartDrag();
-					DragAndDrop.SetGenericData("AsakiVariable", variable);
-					DragAndDrop.StartDrag("Dragging " + variable.Name);
+					DragAndDrop.SetGenericData("AsakiVariable", dragData);  // 存储包装类
+					DragAndDrop.StartDrag($"Dragging {(isGlobal ? "[G]" : "")} {variable.Name}");
 
 					evt.StopImmediatePropagation();
 				}
 			});
 
-			element.RegisterCallback<MouseUpEvent>(evt =>
-			{
-				_readyToDrag = false;
-			});
-
-			element.RegisterCallback<MouseLeaveEvent>(evt =>
-			{
-				_readyToDrag = false;
-			});
+			element.RegisterCallback<MouseUpEvent>(evt => _readyToDrag = false);
+			element.RegisterCallback<MouseLeaveEvent>(evt => _readyToDrag = false);
 		}
 
 		// 创建行内的小编辑器 (修改默认值)
