@@ -12,29 +12,9 @@ MonoBehaviour:
   m_Script: {fileID: 0}
   m_Name: New Example Graph
   m_EditorClassIdentifier: Game:Game.GraphTool:ExampleGraph
-  Nodes:
-  - rid: 4024485946819870835
-  - rid: 4024485946819870837
+  Nodes: []
   Edges: []
   Variables: []
   references:
     version: 2
-    RefIds:
-    - rid: 4024485946819870835
-      type: {class: AsakiGetVariableNode, ns: Asaki.Core.Graphs, asm: Asaki.Core}
-      data:
-        Position: {x: 367.33334, y: 197.33333}
-        GUID: 8406e211-c9d6-42a6-af73-1bf15419c63e
-        ExecutionOrder: 0
-        VariableName: Health
-        VariableType: 1
-        IsGlobalVariable: 1
-    - rid: 4024485946819870837
-      type: {class: AsakiGetVariableNode, ns: Asaki.Core.Graphs, asm: Asaki.Core}
-      data:
-        Position: {x: 352, y: 376.66666}
-        GUID: 428fd830-07c9-4d9a-8449-4f5cc566637e
-        ExecutionOrder: 0
-        VariableName: NewFloat
-        VariableType: 1
-        IsGlobalVariable: 1
+    RefIds: []

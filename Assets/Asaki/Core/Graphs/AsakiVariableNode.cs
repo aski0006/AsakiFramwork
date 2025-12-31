@@ -3,17 +3,18 @@
 namespace Asaki.Core.Graphs
 {
 	[Serializable]
-	[AsakiGraphContext(typeof(AsakiGraphBase), "Variable/Get")] // 适配所有图
+	[AsakiGraphContext(typeof(AsakiGraphBase), "Variable/Get")]
 	public class AsakiGetVariableNode : AsakiNodeBase
 	{
 		public override string Title =>  $"Get {VariableName}";
-		// 存储变量名 (Key)
+		
 		public string VariableName;
 
-		// 存储类型 (用于运行时优化和 Editor 端口着色)
-		public AsakiBlackboardPropertyType VariableType;
+		// [重构] 不再存储枚举，而是存储类型名字符串 (主要用于 Editor 连线检查或颜色显示)
+		public string VariableTypeName;
+        
 		public bool IsGlobalVariable = false;
-		// 输出端口 (名字固定为 Value，但在 Editor 下我们会动态修改它的显示类型)
+		
 		[AsakiNodeOutput("Value")]
 		public object Value;
 	}
@@ -25,17 +26,16 @@ namespace Asaki.Core.Graphs
 		public override string Title => $"Set {VariableName}";
 
 		public string VariableName;
-		public AsakiBlackboardPropertyType VariableType;
+		
+		// [重构] 同上
+		public string VariableTypeName;
 
-		// 执行流输入
 		[AsakiNodeInput("In")]
 		public AsakiFlowPort InputFlow;
 
-		// 值输入
 		[AsakiNodeInput("Value")]
 		public object NewValue;
 
-		// 执行流输出
 		[AsakiNodeOutput("Out")]
 		public AsakiFlowPort OutputFlow;
 	}

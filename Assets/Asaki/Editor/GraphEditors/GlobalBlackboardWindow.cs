@@ -1,155 +1,271 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using Asaki.Core.Blackboard;
+using Asaki.Core.Blackboard.Variables;
 using Asaki.Core.Graphs;
+using System;
+using System.Collections.Generic;
+using System.Linq;
 using UnityEditor;
+using UnityEditor.UIElements;
 using UnityEngine;
+using UnityEngine.UIElements;
 
 namespace Asaki.Editor.GraphEditors
 {
     public class GlobalBlackboardWindow : EditorWindow
     {
         private AsakiGlobalBlackboardAsset _globalAsset;
-        private Vector2 _scrollPos;
-        private string _newVarName = "";
-        private AsakiBlackboardPropertyType _newVarType = AsakiBlackboardPropertyType.Float;
+        private SerializedObject _serializedObject;
         
-        // ★ 延迟删除队列
-        private readonly Queue<int> _indicesToDelete = new Queue<int>();
+        // UI 元素缓存
+        private ListView _listView;
+        private PopupField<string> _typePopup;
+        private TextField _nameField;
+        
+        // 类型缓存
+        private List<Type> _availableTypes;
+        private List<string> _availableTypeNames;
 
         [MenuItem("Asaki/Global Blackboard Editor")]
         public static void ShowWindow()
         {
             var window = GetWindow<GlobalBlackboardWindow>("Global Blackboard");
             window.minSize = new Vector2(400, 300);
-            
+            window.Show();
+        }
+
+        private void OnEnable()
+        {
+            LoadAsset();
+            InitTypes();
+        }
+
+        private void LoadAsset()
+        {
             string assetPath = "Assets/Resources/Asaki/Configuration/GlobalBlackboard.asset";
-            window._globalAsset = AssetDatabase.LoadAssetAtPath<AsakiGlobalBlackboardAsset>(assetPath);
-            if (window._globalAsset == null)
+            _globalAsset = AssetDatabase.LoadAssetAtPath<AsakiGlobalBlackboardAsset>(assetPath);
+            
+            if (_globalAsset == null)
             {
-                window._globalAsset = CreateInstance<AsakiGlobalBlackboardAsset>();
+                _globalAsset = CreateInstance<AsakiGlobalBlackboardAsset>();
                 System.IO.Directory.CreateDirectory("Assets/Resources/Asaki/Configuration");
-                AssetDatabase.CreateAsset(window._globalAsset, assetPath);
+                AssetDatabase.CreateAsset(_globalAsset, assetPath);
                 AssetDatabase.SaveAssets();
             }
+
+            _serializedObject = new SerializedObject(_globalAsset);
         }
 
-        private void OnGUI()
+        private void InitTypes()
         {
-            if (!_globalAsset) return;
+            // 使用 TypeCache 缓存所有 AsakiValueBase 的实现类
+            _availableTypes = TypeCache.GetTypesDerivedFrom<AsakiValueBase>()
+                .Where(t => !t.IsAbstract)
+                .ToList();
 
-            EditorGUILayout.LabelField("Global Variables", EditorStyles.boldLabel);
-            EditorGUILayout.Space();
-            
-            EditorGUILayout.BeginHorizontal();
-            _newVarName = EditorGUILayout.TextField("Name", _newVarName);
-            _newVarType = (AsakiBlackboardPropertyType)EditorGUILayout.EnumPopup("Type", _newVarType);
-            if (GUILayout.Button("Add", GUILayout.Width(50)))
+            _availableTypeNames = _availableTypes
+                .Select(t => t.Name.Replace("Asaki", "")) // 移除前缀美化显示
+                .ToList();
+        }
+
+        // ★ 核心：UITK 入口，替代 OnGUI
+        public void CreateGUI()
+        {
+            // 1. 根布局
+            VisualElement root = rootVisualElement;
+            root.style.paddingTop = 10;
+            root.style.paddingBottom = 10;
+            root.style.paddingLeft = 10;
+            root.style.paddingRight = 10;
+
+            if (_globalAsset == null) LoadAsset();
+            _serializedObject.Update();
+
+            // 2. 顶部标题
+            var titleLabel = new Label("Global Blackboard Variables");
+            titleLabel.style.fontSize = 18;
+            titleLabel.style.unityFontStyleAndWeight = FontStyle.Bold;
+            titleLabel.style.marginBottom = 10;
+            root.Add(titleLabel);
+
+            // 3. 创建添加栏 (Toolbar)
+            var toolbar = CreateToolbar();
+            root.Add(toolbar);
+
+            // 4. 创建列表 (ListView)
+            CreateListView(root);
+        }
+
+        private VisualElement CreateToolbar()
+        {
+            var toolbar = new VisualElement();
+            toolbar.style.flexDirection = FlexDirection.Row;
+            toolbar.style.marginBottom = 10;
+            toolbar.style.height = 25;
+
+            // 变量名输入框
+            _nameField = new TextField();
+            _nameField.label = "Name";
+            _nameField.style.flexGrow = 1;
+            toolbar.Add(_nameField);
+
+            // 类型下拉框
+            if (_availableTypeNames.Count > 0)
             {
-                if (!string.IsNullOrWhiteSpace(_newVarName))
-                {
-                    Undo.RecordObject(_globalAsset, "Add Global Variable");
-                    _globalAsset.GetOrCreateVariable(_newVarName, _newVarType);
-                    EditorUtility.SetDirty(_globalAsset);
-                    _newVarName = "";
-                }
+                _typePopup = new PopupField<string>(_availableTypeNames, 0);
+                _typePopup.style.width = 100;
+                _typePopup.style.marginLeft = 5;
+                toolbar.Add(_typePopup);
             }
-            EditorGUILayout.EndHorizontal();
-            
-            EditorGUILayout.Space();
-            EditorGUILayout.LabelField("Variables", EditorStyles.boldLabel);
 
-            _scrollPos = EditorGUILayout.BeginScrollView(_scrollPos);
+            // 添加按钮
+            var addButton = new Button(OnAddClicked) { text = "Add" };
+            addButton.style.width = 60;
+            addButton.style.marginLeft = 5;
+            toolbar.Add(addButton);
+
+            return toolbar;
+        }
+
+        private void CreateListView(VisualElement root)
+        {
+            // 获取 "GlobalVariables" 属性
+            SerializedProperty listProp = _serializedObject.FindProperty("GlobalVariables");
+
+            // 创建 ListView
+            _listView = new ListView();
+            _listView.style.flexGrow = 1;
+            _listView.showBorder = true;
+            _listView.showAlternatingRowBackgrounds = AlternatingRowBackground.All; // 斑马纹背景
             
-            // ★ 反向遍历，更安全
-            for (int i = _globalAsset.GlobalVariables.Count - 1; i >= 0; i--)
+            // ★ 绑定列表源
+            _listView.BindProperty(listProp);
+
+            // ★ 定义每一行的外观 (MakeItem)
+            _listView.makeItem = () =>
             {
-                var variable = _globalAsset.GlobalVariables[i];
-                EditorGUILayout.BeginVertical(GUI.skin.box);
+                var row = new VisualElement();
+                row.style.flexDirection = FlexDirection.Row;
+                row.style.alignItems = Align.Center; // 垂直居中
+                row.style.paddingTop = 5;
+                row.style.paddingBottom = 5;
+                row.style.paddingLeft = 5;
+                row.style.paddingRight = 5;
 
-                EditorGUILayout.BeginHorizontal();
-                variable.Name = EditorGUILayout.TextField(variable.Name);
+                // 名字 (左侧)
+                var nameField = new TextField();
+                nameField.name = "NameField";
+                nameField.style.width = 150; 
+                row.Add(nameField);
+
+                // 值 (中间，自动伸缩)
+                var valueContainer = new VisualElement();
+                valueContainer.name = "ValueContainer";
+                valueContainer.style.flexGrow = 1;
+                valueContainer.style.marginLeft = 10;
+                valueContainer.style.marginRight = 10;
+                row.Add(valueContainer);
+
+                // 删除按钮 (右侧)
+                var deleteBtn = new Button();
+                deleteBtn.name = "DeleteBtn";
+                deleteBtn.text = "X";
+                deleteBtn.style.width = 25;
+                deleteBtn.style.backgroundColor = new StyleColor(new Color(0.8f, 0.3f, 0.3f)); // 红色警告色
+                row.Add(deleteBtn);
+
+                return row;
+            };
+
+            // ★ 绑定数据到行 (BindItem)
+            _listView.bindItem = (element, index) =>
+            {
+                // 获取当前元素的 SerializedProperty
+                // 注意：index 可能会变，每次 bind 时重新获取
+                if (index >= listProp.arraySize) return;
+                SerializedProperty prop = listProp.GetArrayElementAtIndex(index);
                 
-                // ★ 标记删除，不立即执行
-                if (GUILayout.Button("Delete", GUILayout.Width(60)))
+                // 1. 绑定名字
+                var nameField = element.Q<TextField>("NameField");
+                nameField.BindProperty(prop.FindPropertyRelative("Name"));
+
+                // 2. 绑定值 (多态核心)
+                var valueContainer = element.Q("ValueContainer");
+                valueContainer.Clear();
+
+                SerializedProperty valueDataProp = prop.FindPropertyRelative("ValueData");
+                // 尝试直接定位到 Value 字段以优化显示 (跳过 AsakiInt 这层外壳)
+                SerializedProperty innerValueProp = valueDataProp.FindPropertyRelative("Value");
+
+                PropertyField propField;
+                if (innerValueProp != null)
                 {
-                    _indicesToDelete.Enqueue(i);
+                    propField = new PropertyField(innerValueProp, ""); 
                 }
-                EditorGUILayout.EndHorizontal();
-
-                DrawVariableValueEditor(variable);
-                EditorGUILayout.EndVertical();
-            }
-            
-            EditorGUILayout.EndScrollView();
-
-            // ★ 处理延迟删除
-            ProcessPendingDeletions();
-        }
-
-        private void ProcessPendingDeletions()
-        {
-            if (_indicesToDelete.Count == 0) return;
-
-            Undo.RecordObject(_globalAsset, "Delete Global Variables");
-            
-            // 降序删除，避免索引问题
-            var sortedIndices = _indicesToDelete.ToArray();
-            Array.Sort(sortedIndices, (a, b) => b.CompareTo(a));
-            
-            foreach (int index in sortedIndices)
-            {
-                if (index >= 0 && index < _globalAsset.GlobalVariables.Count)
+                else
                 {
-                    _globalAsset.GlobalVariables.RemoveAt(index);
+                    // 兜底：如果是复杂结构，绘制整个 ValueData
+                    propField = new PropertyField(valueDataProp, "");
+                }
+                
+                propField.Bind(_serializedObject);
+                valueContainer.Add(propField);
+
+                // 3. 绑定删除按钮
+                var deleteBtn = element.Q<Button>("DeleteBtn");
+                // 移除旧的事件，防止闭包捕获错误的 index
+                deleteBtn.clickable.clickedWithEventInfo -= OnDeleteClicked; 
+                deleteBtn.userData = index; // 存储当前索引
+                deleteBtn.clickable.clickedWithEventInfo += OnDeleteClicked;
+            };
+
+            // 设置行高
+            _listView.fixedItemHeight = 30; // 基础高度，如果有复杂属性可能会溢出，可以用 VirtualizationMethod.DynamicHeight (Unity 2021+)
+            
+            #if UNITY_2021_3_OR_NEWER
+            _listView.virtualizationMethod = CollectionVirtualizationMethod.DynamicHeight;
+            #endif
+
+            root.Add(_listView);
+        }
+
+        private void OnDeleteClicked(EventBase evt)
+        {
+            if (evt.target is Button btn && btn.userData is int index)
+            {
+                SerializedProperty listProp = _serializedObject.FindProperty("GlobalVariables");
+                if (index >= 0 && index < listProp.arraySize)
+                {
+                    listProp.DeleteArrayElementAtIndex(index);
+                    _serializedObject.ApplyModifiedProperties();
                 }
             }
+        }
+
+        private void OnAddClicked()
+        {
+            string newName = _nameField.value;
+            if (string.IsNullOrWhiteSpace(newName))
+            {
+                EditorUtility.DisplayDialog("Warning", "Variable Name cannot be empty.", "OK");
+                return;
+            }
+
+            int typeIndex = _typePopup.index;
+            if (typeIndex < 0 || typeIndex >= _availableTypes.Count) return;
+
+            Type selectedType = _availableTypes[typeIndex];
+
+            // 逻辑操作
+            Undo.RecordObject(_globalAsset, "Add Global Variable");
+            _globalAsset.GetOrCreateVariable(newName, selectedType);
             
-            _indicesToDelete.Clear();
-            EditorUtility.SetDirty(_globalAsset);
-        }
-
-        private void DrawVariableValueEditor(AsakiVariableDef variable)
-        {
-            switch (variable.Type)
-            {
-                case AsakiBlackboardPropertyType.Int:
-                    variable.IntVal = EditorGUILayout.IntField("Value", variable.IntVal);
-                    break;
-                case AsakiBlackboardPropertyType.Float:
-                    variable.FloatVal = EditorGUILayout.FloatField("Value", variable.FloatVal);
-                    break;
-                case AsakiBlackboardPropertyType.Bool:
-                    variable.BoolVal = EditorGUILayout.Toggle("Value", variable.BoolVal);
-                    break;
-                case AsakiBlackboardPropertyType.String:
-                    variable.StringVal = EditorGUILayout.TextField("Value", variable.StringVal);
-                    break;
-                case AsakiBlackboardPropertyType.Vector3:
-                    variable.Vector3Val = EditorGUILayout.Vector3Field("Value", variable.Vector3Val);
-                    break;
-                case AsakiBlackboardPropertyType.Vector2:
-                    variable.Vector2Val = EditorGUILayout.Vector2Field("Value", variable.Vector2Val);
-                    break;
-                case AsakiBlackboardPropertyType.Vector3Int:
-                    variable.Vector3IntVal = EditorGUILayout.Vector3IntField("Value", variable.Vector3IntVal);
-                    break;
-                case AsakiBlackboardPropertyType.Vector2Int:
-                    variable.Vector2IntVal = EditorGUILayout.Vector2IntField("Value", variable.Vector2IntVal);
-                    break;
-                case AsakiBlackboardPropertyType.Color:
-                    variable.ColorVal = EditorGUILayout.ColorField("Value", variable.ColorVal);
-                    break;
-            }
-
-            if (GUI.changed)
-            {
-                EditorUtility.SetDirty(_globalAsset);
-            }
-        }
-
-        private void OnInspectorUpdate()
-        {
-            Repaint();
+            // 清空输入框
+            _nameField.value = "";
+            
+            // 更新序列化对象并刷新列表
+            _serializedObject.Update(); 
+            // ListView 绑定了 Property，Update 后通常会自动刷新，但显式调用更安全
+            _listView.RefreshItems(); 
         }
     }
 }

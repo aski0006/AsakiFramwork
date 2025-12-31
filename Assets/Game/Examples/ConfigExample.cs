@@ -1,6 +1,7 @@
 using Asaki.Core;
 using Asaki.Core.Configuration;
 using Asaki.Core.Context;
+using Asaki.Unity.Services.Logging;
 using UnityEngine;
 
 namespace Game.Test
@@ -70,12 +71,13 @@ namespace Game.Test
 			var weapon = AsakiContext.Get<IAsakiConfigService>().Get<AsakiWeaponConfigExample>(0);
 			if(weapon != null)
 			{
-				Debug.Log(weapon.WeaponAssetPath);
+				ALog.Info(weapon.WeaponAssetPath);
 			}
 			else
 			{
-				Debug.LogError("Weapon config not found.");
+				ALog.Warn("Weapon config not found.");
 			}
+			ALog.Info("Weapon config queried.");
 		}
 	}
 }

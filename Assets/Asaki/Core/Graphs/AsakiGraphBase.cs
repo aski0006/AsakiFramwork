@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using Asaki.Core.Blackboard;
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace Asaki.Core.Graphs

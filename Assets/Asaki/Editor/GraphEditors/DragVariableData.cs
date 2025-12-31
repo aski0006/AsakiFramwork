@@ -1,4 +1,5 @@
-﻿using Asaki.Core.Graphs;
+﻿using Asaki.Core.Blackboard;
+using Asaki.Core.Graphs;
 
 namespace Asaki.Editor.GraphEditors
 {

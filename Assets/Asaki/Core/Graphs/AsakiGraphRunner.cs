@@ -78,35 +78,13 @@ namespace Asaki.Core.Graphs
 		}
 		private void WriteVariableToRuntime(string name, AsakiVariableDef variable)
 		{
-			switch (variable.Type)
+			if (variable.ValueData != null)
 			{
-				case AsakiBlackboardPropertyType.Int:
-					_context.Blackboard.SetValue(name, variable.IntVal);
-					break;
-				case AsakiBlackboardPropertyType.Float:
-					_context.Blackboard.SetValue(name, variable.FloatVal);
-					break;
-				case AsakiBlackboardPropertyType.Bool:
-					_context.Blackboard.SetValue(name, variable.BoolVal);
-					break;
-				case AsakiBlackboardPropertyType.String:
-					_context.Blackboard.SetValue(name, variable.StringVal);
-					break;
-				case AsakiBlackboardPropertyType.Vector3:
-					_context.Blackboard.SetValue(name, variable.Vector3Val);
-					break;
-				case AsakiBlackboardPropertyType.Vector2:
-					_context.Blackboard.SetValue(name, variable.Vector2Val);
-					break;
-				case AsakiBlackboardPropertyType.Vector3Int:
-					_context.Blackboard.SetValue(name, variable.Vector3IntVal);
-					break;
-				case AsakiBlackboardPropertyType.Vector2Int:
-					_context.Blackboard.SetValue(name, variable.Vector2IntVal);
-					break;
-				case AsakiBlackboardPropertyType.Color:
-					_context.Blackboard.SetValue(name, variable.ColorVal);
-					break;
+				variable.ValueData.ApplyTo(_context.Blackboard, name);
+			}
+			else
+			{
+				Debug.LogWarning($"[AsakiRunner] Variable '{name}' has no data!");
 			}
 		}
 
@@ -221,7 +199,7 @@ namespace Asaki.Core.Graphs
 
 				// 2. 写入黑板 (需要处理类型分发)
 				// 这里为了演示简单，我们假设 Blackboard 有 Object 重载，或者我们手动 switch
-				WriteToBlackboard(setVarNode.VariableName, setVarNode.VariableType, valueToWrite);
+				WriteToBlackboard(setVarNode.VariableName, valueToWrite);
 
 				// 3. 继续执行后续节点
 				AsakiNodeBase nextNode = GraphAsset.GetNextNode(node, "Out");
@@ -235,45 +213,82 @@ namespace Asaki.Core.Graphs
 		}
 
 		// 辅助：处理类型写入
-		private void WriteToBlackboard(string key, AsakiBlackboardPropertyType type, object value)
+		private void WriteToBlackboard(string key, object value)
 		{
-			// 这里的 value 可能是 null，或者类型不匹配，需要安全转换
+			if (value == null)
+			{
+				Debug.LogWarning($"[AsakiRunner] Trying to set null value for key '{key}'. Ignore.");
+				return;
+			}
+
 			try
 			{
-				switch (type)
+				// 1. 优先匹配 AsakiBlackboard 内部优化的“原生类型” (Fast Path)
+				// 这些类型在 Blackboard 内部有专用桶 (IntBucket, FloatBucket 等)，直接调用最快
+				switch (value)
 				{
-					case AsakiBlackboardPropertyType.Int:
-						_context.Blackboard.SetValue(key, Convert.ToInt32(value));
+					case int i:
+						_context.Blackboard.SetValue(key, i);
 						break;
-					case AsakiBlackboardPropertyType.Float:
-						_context.Blackboard.SetValue(key, Convert.ToSingle(value));
+					case float f:
+						_context.Blackboard.SetValue(key, f);
 						break;
-					case AsakiBlackboardPropertyType.Bool:
-						_context.Blackboard.SetValue(key, Convert.ToBoolean(value));
+					case bool b:
+						_context.Blackboard.SetValue(key, b);
 						break;
-					case AsakiBlackboardPropertyType.String:
-						_context.Blackboard.SetValue(key, Convert.ToString(value));
+					case string s:
+						_context.Blackboard.SetValue(key, s);
 						break;
-					case AsakiBlackboardPropertyType.Vector3:
-						_context.Blackboard.SetValue(key, (Vector3)value);
+					case Vector3 v3:
+						_context.Blackboard.SetValue(key, v3);
 						break;
-					case AsakiBlackboardPropertyType.Vector2:
-						_context.Blackboard.SetValue(key, (Vector2)value);
+            
+					// 补充其他常用 Unity 类型
+					case Vector2 v2:
+						_context.Blackboard.SetValue(key, v2);
 						break;
-					case AsakiBlackboardPropertyType.Vector3Int:
-						_context.Blackboard.SetValue(key, (Vector3Int)value);
+					case Vector3Int v3i:
+						_context.Blackboard.SetValue(key, v3i);
 						break;
-					case AsakiBlackboardPropertyType.Vector2Int:
-						_context.Blackboard.SetValue(key, (Vector2Int)value);
+					case Vector2Int v2i:
+						_context.Blackboard.SetValue(key, v2i);
 						break;
-					case AsakiBlackboardPropertyType.Color:
-						_context.Blackboard.SetValue(key, (Color)value);
+					case Color c:
+						_context.Blackboard.SetValue(key, c);
+						break;
+
+					// 2. 兜底逻辑：处理所有用户自定义类型 (Universal Path)
+					// 只要你是 struct 或 class，这里都能处理
+					default:
+						WriteGenericToBlackboard(key, value);
 						break;
 				}
 			}
 			catch (Exception e)
 			{
-				Debug.LogError($"[AsakiRunner] SetVariable Failed: Key={key}, Type={type}, Value={value}. Error: {e.Message}");
+				// 这里 value.GetType() 可能会有轻微 GC，但在 Error 情况下可忽略
+				Debug.LogError($"[AsakiRunner] SetVariable Failed: Key={key}, Type={value.GetType().Name}, Value={value}. Error: {e.Message}");
+			}
+		}
+		
+		private void WriteGenericToBlackboard(string key, object value)
+		{
+			// 获取 SetValue<T> 方法的元数据
+			// 注意：这里假设 IAsakiBlackboard 接口或实现类上有 SetValue<T>
+			// 如果是用接口调用，需要获取 InterfaceMapping 或直接从实例类型获取
+			var methodInfo = _context.Blackboard.GetType().GetMethod("SetValue");
+    
+			if (methodInfo != null)
+			{
+				// 构造 SetValue<MyCustomType>
+				var genericMethod = methodInfo.MakeGenericMethod(value.GetType());
+        
+				// 调用
+				genericMethod.Invoke(_context.Blackboard, new object[] { key, value });
+			}
+			else
+			{
+				throw new MissingMethodException("[AsakiRunner] Could not find SetValue<T> on Blackboard instance.");
 			}
 		}
 

@@ -14,6 +14,7 @@ namespace Asaki.Editor.GraphEditors
 		public AsakiGraphBase GraphAsset => _graph;
 		private SerializedObject _serializedGraph; // 缓存 Graphs 的 SO
 		public AsakiBlackboardProvider BlackboardProvider;
+		
 		public AsakiGraphView(AsakiGraphBase graph)
 		{
 			_graph = graph;
@@ -87,7 +88,7 @@ namespace Asaki.Editor.GraphEditors
 		// 4. 执行放置 (松开鼠标)
 		private void OnDragPerform(DragPerformEvent evt)
 		{
-			// ★★★ 关键修改：接收包装类
+			// 接收包装类
 			var dragData = DragAndDrop.GetGenericData("AsakiVariable") as DragVariableData;
 			if (dragData != null)
 			{
@@ -102,7 +103,7 @@ namespace Asaki.Editor.GraphEditors
 		}
 
 		/// <summary>
-		/// ★ 显示变量节点创建菜单（支持全局变量）
+		/// 显示变量节点创建菜单（支持全局变量）
 		/// </summary>
 		private void ShowVariableMenu(DragVariableData dragData, Vector2 position)
 		{
@@ -136,7 +137,7 @@ namespace Asaki.Editor.GraphEditors
 
 
 		/// <summary>
-		/// ★ 创建变量节点（支持全局变量上下文）
+		/// ★ [Updated] 创建变量节点（适配多态类型）
 		/// </summary>
 		private void CreateVariableNode<T>(DragVariableData dragData, Vector2 position) where T : AsakiNodeBase, new()
 		{
@@ -148,8 +149,9 @@ namespace Asaki.Editor.GraphEditors
 			if (nodeData is AsakiGetVariableNode getNode)
 			{
 				getNode.VariableName = variable.Name;
-				getNode.VariableType = variable.Type;
-				getNode.IsGlobalVariable = isGlobal;  // ★ 传递全局标记
+				// [Fix] 使用 TypeName 字符串，而非旧的 Enum
+				getNode.VariableTypeName = variable.TypeName; 
+				getNode.IsGlobalVariable = isGlobal;
 			}
 			else if (nodeData is AsakiSetVariableNode setNode)
 			{
@@ -158,11 +160,13 @@ namespace Asaki.Editor.GraphEditors
 					Debug.LogWarning($"[Asaki] Creating Set node for global variable '{variable.Name}'. Changes will be local to this graph.");
 				}
 				setNode.VariableName = variable.Name;
-				setNode.VariableType = variable.Type;
+				// [Fix] 使用 TypeName 字符串
+				setNode.VariableTypeName = variable.TypeName;
 			}
 
 			CreateNodeView(nodeData);
 		}
+		
 		private void OnNodeCreationRequest(NodeCreationContext context)
 		{
 			AsakiNodeSearchWindow searchWindow = ScriptableObject.CreateInstance<AsakiNodeSearchWindow>();
@@ -217,7 +221,7 @@ namespace Asaki.Editor.GraphEditors
 
 		public void CreateNodeView(AsakiNodeBase node)
 		{
-			// ★ 传入 SerializedObject，以便 NodeView 能够绘制 Inspector
+			// 传入 SerializedObject，以便 NodeView 能够绘制 Inspector
 			AsakiNodeView nodeView = new AsakiNodeView(node, _serializedGraph);
 			AddElement(nodeView);
 			nodeView.SetPosition(new Rect(node.Position, Vector2.zero));
@@ -232,18 +236,15 @@ namespace Asaki.Editor.GraphEditors
 		{
 			if (graphViewChange.movedElements != null)
 			{
-				// ★ 关键修改：Undo 记录的是 Graphs 本身
 				Undo.RecordObject(_graph, "Move Nodes");
 
 				foreach (GraphElement element in graphViewChange.movedElements)
 				{
 					if (element is AsakiNodeView nodeView)
 					{
-						// 只需要更新内存中的数据
 						nodeView.SyncPosition();
 					}
 				}
-				// 标记 Dirty 确保保存
 				EditorUtility.SetDirty(_graph);
 			}
 
@@ -276,7 +277,6 @@ namespace Asaki.Editor.GraphEditors
 				{
 					if (element is AsakiNodeView nodeView)
 					{
-						// 这里逻辑不变，Utility 内部已经处理了 Undo.RecordObject(_graph)
 						AsakiGraphIOUtils.DeleteNode(_graph, nodeView.node);
 					}
 					else if (element is Edge edge)
@@ -302,7 +302,6 @@ namespace Asaki.Editor.GraphEditors
 			return graphViewChange;
 		}
 
-		// ... (GetCompatiblePorts 保持不变) ...
 		public override List<Port> GetCompatiblePorts(Port startPort, NodeAdapter nodeAdapter)
 		{
 			var compatiblePorts = new List<Port>();
