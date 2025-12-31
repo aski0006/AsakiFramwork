@@ -7,14 +7,14 @@ using System.Threading.Tasks;
 
 namespace Asaki.Unity.Modules
 {
-	[AsakiModule(priority: 200)]
+	[AsakiModule(priority: 200, typeof(AsakiSimulationModule))]
 	public class AsakiTimeModule : IAsakiModule
 	{
 		private IAsakiTimerService _asakiTimerService;
-
+		private AsakiSimulationManager simulation;
 		public void OnInit()
 		{
-			var simulation = AsakiContext.Get<AsakiSimulationManager>();
+			simulation = AsakiContext.Get<AsakiSimulationManager>();
 			_asakiTimerService = new AsakiTimerService();
 			simulation.Register(_asakiTimerService);
 
@@ -25,9 +25,10 @@ namespace Asaki.Unity.Modules
 		}
 		public void OnDispose()
 		{
-			var simulation = AsakiContext.Get<AsakiSimulationManager>();
 			simulation?.Unregister(_asakiTimerService);
 			_asakiTimerService.Dispose();
+			simulation = null;
+			_asakiTimerService = null;
 		}
 	}
 }

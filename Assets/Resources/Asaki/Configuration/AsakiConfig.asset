@@ -15,7 +15,7 @@ MonoBehaviour:
   tickRate: 60
   defaultPoolSize: 128
   resConfig:
-    Mode: 0
+    Mode: 1
     TimeoutSeconds: 60
   audioConfig:
     SoundAgentPrefabAssetKey: Assets/Prefabs/AsakiSourceAgent.prefab

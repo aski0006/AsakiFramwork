@@ -65,8 +65,6 @@ namespace Asaki.Unity.Bootstrapper
 			ALog.Info("== ASAKI FRAMEWORK V2 BOOT START ==");
 			ALog.Info("=======================================");
 			
-			SetupCoreDriver();
-			
 			ALog.Info($"Bootstrapper ready. Platform: {Application.platform}");
 			
 			// 注册全局配置
@@ -104,18 +102,7 @@ namespace Asaki.Unity.Bootstrapper
 				throw;
 			}
 		}
-
-		private void SetupCoreDriver()
-		{
-			var simManager = new AsakiSimulationManager();
-			AsakiContext.Register(simManager);
-
-			GameObject driverGo = new GameObject("[Asaki.Driver]");
-			DontDestroyOnLoad(driverGo);
-			AsakiMonoDriver driver = driverGo.AddComponent<AsakiMonoDriver>();
-			driver.Initialize(simManager);
-		}
-
+		
 		private void OnDestroy()
 		{
 			if (_instance == this)

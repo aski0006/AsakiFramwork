@@ -14,7 +14,8 @@ namespace Asaki.Unity.Modules
 	[AsakiModule(225,
 		typeof(AsakiResourcesModule),
 		typeof(AsakiPoolModule),
-		typeof(AsakiEventBusModule))]
+		typeof(AsakiEventBusModule),
+		typeof(AsakiSimulationModule))]
 	public class AsakiUIModule : IAsakiModule
 	{
 		private AsakiUIManager _uiManager;

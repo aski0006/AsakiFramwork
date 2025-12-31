@@ -58,6 +58,7 @@ namespace Asaki.Unity.Services.Scene
 
 		public void PerBuildScene()
 		{
+			_validScene ??= new HashSet<string>();
 			int count = SceneManager.sceneCountInBuildSettings;
 			for (int i = 0; i < count; i++)
 			{
@@ -70,7 +71,7 @@ namespace Asaki.Unity.Services.Scene
 				}
 				catch (Exception e)
 				{
-					ALog.Error($"Failed to get scene path at index {i}", e);
+					ALog.Error($"Failed to get scene path at index {i}, Message : {e.Message}", e);
 				}
 			}
 		}
