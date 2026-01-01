@@ -1,5 +1,4 @@
 using Asaki.Core.Broker;
-using Asaki.Core.Context;
 using Asaki.Core.Coroutines;
 using Asaki.Core.Resources; // 引用 Phase 1 定义的资源模块
 using System;
@@ -28,7 +27,7 @@ namespace Asaki.Core.Pooling
 
 		// 强依赖：事件服务
 		private readonly IAsakiEventService _eventService;
-
+		
 		// 核心存储：Key -> PoolData (包含 Handle + Stack)
 		// PoolData 是我们在 Phase 1 定义的 internal 类
 		private readonly Dictionary<string, PoolData> _pools = new Dictionary<string, PoolData>();
@@ -47,7 +46,9 @@ namespace Asaki.Core.Pooling
 		/// <summary>
 		/// 构造函数由 Bootstrapper 或 Module 手动注入依赖
 		/// </summary>
-		public AsakiPoolService(IAsakiCoroutineService coroutineService, IAsakiResService resService, IAsakiEventService eventService)
+		public AsakiPoolService(IAsakiCoroutineService coroutineService,
+		                        IAsakiResService resService, 
+		                        IAsakiEventService eventService)
 		{
 			// 守卫子句：确保依赖不为空
 			_coroutineService = coroutineService ?? throw new ArgumentNullException(nameof(coroutineService));

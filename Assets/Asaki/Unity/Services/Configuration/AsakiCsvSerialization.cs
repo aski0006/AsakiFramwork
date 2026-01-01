@@ -42,6 +42,11 @@ namespace Asaki.Unity.Services.Configuration
 
 		// --- 基础类型解析 ---
 
+		public byte ReadByte(string key)
+		{
+			string s = GetCol(key);
+			return byte.TryParse(s, out byte v) ? v : (byte)0;
+		}
 		public int ReadInt(string key)
 		{
 			string s = GetCol(key);

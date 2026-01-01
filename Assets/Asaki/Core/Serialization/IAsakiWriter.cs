@@ -9,6 +9,7 @@ namespace Asaki.Core.Serialization
 		void WriteVersion(int version);
 
 		// --- 基础类型 ---
+		void WriteByte(string key, byte value);
 		void WriteInt(string key, int value);
 		void WriteLong(string key, long value);
 		void WriteFloat(string key, float value);

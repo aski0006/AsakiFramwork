@@ -27,6 +27,10 @@ namespace Asaki.Unity.Services.Serialization
 		}
 
 		// --- 基础类型 ---
+		public void WriteByte(string key, byte value)
+		{
+			_bw.Write(value);
+		}
 		public void WriteInt(string key, int value)
 		{
 			_bw.Write(value);
@@ -173,6 +177,10 @@ namespace Asaki.Unity.Services.Serialization
 		}
 
 		// --- 基础类型 ---
+		public byte ReadByte(string key)
+		{
+			return _br.ReadByte();
+		}
 		public int ReadInt(string key)
 		{
 			return _br.ReadInt32();

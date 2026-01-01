@@ -9,6 +9,7 @@ namespace Asaki.Core.Serialization
 		int ReadVersion();
 
 		// --- 基础类型 ---
+		byte ReadByte(string key);
 		int ReadInt(string key);
 		long ReadLong(string key);
 		float ReadFloat(string key);

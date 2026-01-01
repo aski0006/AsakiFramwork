@@ -105,11 +105,18 @@ namespace Asaki.Unity.Services.Serialization
 			WriteInt("version", version);
 		}
 
+		public void WriteByte(string key, byte value)
+		{
+			WritePrefix(key);
+			_sb.Append(value);
+			_skipNextComma = false;
+		}
+
 		public void WriteInt(string key, int value)
 		{
 			WritePrefix(key);
 			_sb.Append(value);
-			_skipNextComma = false; // [修复] 字段结束，恢复逗号机制
+			_skipNextComma = false;
 		}
 		public void WriteLong(string key, long value)
 		{
@@ -328,6 +335,10 @@ namespace Asaki.Unity.Services.Serialization
 		}
 
 		// --- 基础类型实现 ---
+		public byte ReadByte(string key)
+		{
+			return Convert.ToByte(GetValue(key));
+		}
 		public int ReadInt(string key)
 		{
 			return Convert.ToInt32(GetValue(key));
