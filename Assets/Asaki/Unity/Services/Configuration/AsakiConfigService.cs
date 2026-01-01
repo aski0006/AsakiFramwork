@@ -83,7 +83,6 @@ namespace Asaki.Unity.Services.Configuration
 			}
 			return null;
 		}
-
 		public IReadOnlyList<T> GetAll<T>() where T : class, IAsakiConfig, new()
 		{
 			if (_listStore.TryGetValue(typeof(T), out object list))
@@ -93,6 +92,191 @@ namespace Asaki.Unity.Services.Configuration
 			return Array.Empty<T>();
 		}
 
+		public async IAsyncEnumerable<T> GetAllStreamAsync<T>() where T : class, IAsakiConfig, new()
+		{
+			if (!IsLoaded<T>())
+			{
+				string csvPath = Path.Combine(_csvRootPath, typeof(T).Name + ".csv");
+				if (File.Exists(csvPath))
+				{
+					await LoadInternalAsync<T>(csvPath);
+				}
+				else
+				{
+					yield break;
+				}
+			}
+			if (!_listStore.TryGetValue(typeof(T), out object list)) yield break;
+			if (list is not List<T> typedList) yield break;
+			foreach (T item in typedList)
+			{
+				yield return item;
+			}
+		}
+		
+		// =========================================================
+		// 条件查询 (Link)
+		// =========================================================
+
+		public T Find<T>(Predicate<T> predicate) where T : class, IAsakiConfig, new()
+		{
+			if (predicate == null)
+			{
+				ALog.Warn("[AsakiConfig] Find predicate cannot be null");
+				return null;
+			}
+
+			if (!_listStore.TryGetValue(typeof(T), out object list))
+			{
+				return null; // 配置未加载
+			}
+
+			var typedList = list as List<T>;
+			if (typedList == null) return null;
+
+			// 遍历查找第一个匹配项
+			foreach (T item in typedList)
+			{
+				if (predicate(item))
+				{
+					return item;
+				}
+			}
+
+			return null;
+		}
+
+		public IReadOnlyList<T> Where<T>(Func<T, bool> predicate) where T : class, IAsakiConfig, new()
+		{
+			if (predicate == null)
+			{
+				ALog.Warn("[AsakiConfig] Where predicate cannot be null");
+				return Array.Empty<T>();
+			}
+
+			if (!_listStore.TryGetValue(typeof(T), out object list))
+			{
+				return Array.Empty<T>(); // 配置未加载
+			}
+
+			var typedList = list as List<T>;
+			if (typedList == null) return Array.Empty<T>();
+
+			// 构建结果列表（避免返回原集合引用，保证数据安全）
+			var result = new List<T>();
+			foreach (T item in typedList)
+			{
+				if (predicate(item))
+				{
+					result.Add(item);
+				}
+			}
+
+			return result;
+		}
+
+		public bool Exists<T>(Predicate<T> predicate) where T : class, IAsakiConfig, new()
+		{
+			if (predicate == null)
+			{
+				ALog.Warn("[AsakiConfig] Exists predicate cannot be null");
+				return false;
+			}
+
+			if (!_listStore.TryGetValue(typeof(T), out object list))
+			{
+				return false; // 配置未加载视为不存在
+			}
+
+			var typedList = list as List<T>;
+			if (typedList == null) return false;
+
+			// 只要找到一个匹配项就返回
+			foreach (T item in typedList)
+			{
+				if (predicate(item))
+				{
+					return true;
+				}
+			}
+
+			return false;
+		}
+		
+		// =========================================================
+		// 批量操作 (Batch Op)
+		// =========================================================
+
+		public IReadOnlyList<T> GetBatch<T>(IEnumerable<int> ids) where T : class, IAsakiConfig, new()
+		{
+			if (ids == null)
+			{
+				ALog.Warn("[AsakiConfig] GetBatch ids cannot be null");
+				return Array.Empty<T>();
+			}
+
+			if (!_configStore.TryGetValue(typeof(T), out var dict))
+			{
+				return Array.Empty<T>(); // 配置未加载
+			}
+
+			var result = new List<T>();
+			foreach (int id in ids)
+			{
+				if (dict.TryGetValue(id, out IAsakiConfig config))
+				{
+					result.Add((T)config);
+				}
+				else
+				{
+					// 记录无效ID但不中断流程
+					ALog.Warn($"[AsakiConfig] ID {id} not found in {typeof(T).Name}");
+				}
+			}
+
+			return result;
+		}
+		
+		// =========================================================
+		// 配置元数据 (Config Meta)
+		// =========================================================
+
+		public int GetCount<T>() where T : class, IAsakiConfig, new()
+		{
+			if (_listStore.TryGetValue(typeof(T), out object list))
+			{
+				return (list as List<T>)?.Count ?? 0;
+			}
+			return 0; // 未加载返回0
+		}
+
+		public bool IsLoaded<T>() where T : class, IAsakiConfig, new()
+		{
+			return _configStore.ContainsKey(typeof(T));
+		}
+
+		public string GetSourcePath<T>() where T : class, IAsakiConfig, new()
+		{
+			string fileName = typeof(T).Name + ".csv";
+			return Path.Combine(_csvRootPath, fileName);
+		}
+
+		public DateTime GetLastModifiedTime<T>() where T : class, IAsakiConfig, new()
+		{
+			string sourcePath = GetSourcePath<T>();
+			try
+			{
+				return File.Exists(sourcePath) 
+					? File.GetLastWriteTime(sourcePath) 
+					: DateTime.MinValue;
+			}
+			catch (Exception ex)
+			{
+				ALog.Error($"[AsakiConfig] Failed to get modified time for {typeof(T).Name}: {ex.Message}", ex);
+				return DateTime.MinValue;
+			}
+		}
+		
 		// =========================================================
 		// 核心加载逻辑
 		// =========================================================
