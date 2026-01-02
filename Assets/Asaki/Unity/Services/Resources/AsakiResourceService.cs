@@ -11,7 +11,7 @@ using Object = UnityEngine.Object;
 
 namespace Asaki.Unity.Services.Resources
 {
-	public class AsakiResService : IAsakiResService
+	public class AsakiResourceService : IAsakiResourceService
 	{
 		private readonly IAsakiResStrategy _strategy;
 		private readonly IAsakiCoroutineService _coroutineService;
@@ -20,10 +20,13 @@ namespace Asaki.Unity.Services.Resources
 		private class ResRecord
 		{
 			public string Location;
+			public Type AssetType; // [新增] 记录资源类型
+			public int CacheKey;   // [新增] 记录缓存Key
 			public Object Asset;
 			public int RefCount;
-			// 使用 HashSet 防止重复依赖
-			public HashSet<string> DependencyLocations = new HashSet<string>();
+			
+			// [修改] 使用 int 类型的 HashKey 防止重复依赖 (因为依赖也是通过 HashKey 索引的)
+			public HashSet<int> DependencyKeys = new HashSet<int>();
 			public TaskCompletionSource<Object> LoadingTcs = new TaskCompletionSource<Object>(TaskCreationOptions.RunContinuationsAsynchronously);
 
 			public Action<float> ProgressCallbacks;
@@ -34,15 +37,26 @@ namespace Asaki.Unity.Services.Resources
 			}
 		}
 
-		private readonly Dictionary<string, ResRecord> _cache = new Dictionary<string, ResRecord>();
+		// [修改] Key 从 string 变为 int (Hash)
+		private readonly Dictionary<int, ResRecord> _cache = new Dictionary<int, ResRecord>();
 		private readonly object _lock = new object();
 		private int _timeoutSeconds = DefaultTimeoutSeconds;
 		private const int DefaultTimeoutSeconds = 10000;
-		public AsakiResService(IAsakiResStrategy strategy, IAsakiCoroutineService coroutineService, IAsakiResDependencyLookup asakiResDependencyLookup)
+
+		public AsakiResourceService(IAsakiResStrategy strategy, IAsakiCoroutineService coroutineService, IAsakiResDependencyLookup asakiResDependencyLookup)
 		{
 			_strategy = strategy;
 			_coroutineService = coroutineService;
 			_asakiResDependencyLookup = asakiResDependencyLookup;
+		}
+
+		// [新增] 核心 Hash 生成逻辑：Path + Type
+		private int GetCacheKey(string location, Type type)
+		{
+			if (type == null) type = typeof(Object);
+			// 拼接路径和类型全名，确保 Sprite 和 Texture2D 生成不同的 Key
+			string combine = $"{location}_{type.FullName}";
+			return combine.GetHashCode();
 		}
 
 		public async Task UnloadUnusedAssets(CancellationToken token = default(CancellationToken))
@@ -66,7 +80,7 @@ namespace Asaki.Unity.Services.Resources
 				foreach (var kvp in _cache)
 				{
 					if (kvp.Value.Asset != null)
-						_strategy.UnloadAssetInternal(kvp.Key, kvp.Value.Asset);
+						_strategy.UnloadAssetInternal(kvp.Value.Location, kvp.Value.Asset);
 				}
 				_cache.Clear();
 			}
@@ -83,7 +97,8 @@ namespace Asaki.Unity.Services.Resources
 
 		public async Task<ResHandle<T>> LoadAsync<T>(string location, Action<float> onProgress, CancellationToken token) where T : class
 		{
-			ResRecord record = GetOrCreateRecord(location);
+			// [修改] 传入 typeof(T) 进行 Key 计算
+			ResRecord record = GetOrCreateRecord(location, typeof(T));
 
 			// 进度回调注册
 			if (onProgress != null)
@@ -105,18 +120,19 @@ namespace Asaki.Unity.Services.Resources
 				}
 				else
 				{
+					// [注意] 由于现在 Key 包含了类型，理论上不会进这里，除非 Strategy 返回了错误类型
 					throw new InvalidCastException($"[Resources] Type mismatch for {location}. Expected {typeof(T)}, got {assetObj?.GetType()}");
 				}
 			}
 			catch (Exception)
 			{
-				// 发生取消或错误时，回滚引用
-				ReleaseInternal(location);
+				// 发生取消或错误时，回滚引用 (需传入类型)
+				ReleaseInternal(location, typeof(T));
 				throw;
 			}
 			finally
 			{
-				// 清理进度委托，防止内存泄漏
+				// 清理进度委托
 				if (onProgress != null)
 				{
 					record.ProgressCallbacks -= onProgress;
@@ -128,17 +144,24 @@ namespace Asaki.Unity.Services.Resources
 		// Internal Logic
 		// =========================================================
 
-		private ResRecord GetOrCreateRecord(string location)
+		private ResRecord GetOrCreateRecord(string location, Type type)
 		{
 			ResRecord record;
 			bool isOwner = false;
+			int key = GetCacheKey(location, type);
 
 			lock (_lock)
 			{
-				if (!_cache.TryGetValue(location, out record))
+				if (!_cache.TryGetValue(key, out record))
 				{
-					record = new ResRecord { Location = location };
-					_cache.Add(location, record);
+					// [修改] 初始化记录时存储 Type 和 Key
+					record = new ResRecord 
+					{ 
+						Location = location, 
+						AssetType = type,
+						CacheKey = key
+					};
+					_cache.Add(key, record);
 					isOwner = true;
 				}
 			}
@@ -159,20 +182,19 @@ namespace Asaki.Unity.Services.Resources
 			}
 			catch (Exception ex)
 			{
-				// 确保 TCS 终结
 				if (!record.LoadingTcs.Task.IsCompleted)
 				{
 					record.LoadingTcs.TrySetException(ex);
 				}
 
-				// 从缓存移除
-				lock (_lock) { _cache.Remove(record.Location); }
+				// [修改] 使用 CacheKey 移除
+				lock (_lock) { _cache.Remove(record.CacheKey); }
 
 				// 错误回滚：释放已加载的依赖
-				// 注意：这里需要对 DependencyLocations 加锁，防止与 ReleaseInternal 冲突
-				lock (record.DependencyLocations)
+				// [修改] 遍历 Int Key
+				lock (record.DependencyKeys)
 				{
-					foreach (string dep in record.DependencyLocations) ReleaseInternal(dep);
+					foreach (int depKey in record.DependencyKeys) ReleaseInternalByKey(depKey);
 				}
 			}
 		}
@@ -187,59 +209,58 @@ namespace Asaki.Unity.Services.Resources
 				{
 					foreach (string depLoc in deps)
 					{
-						ResRecord depRecord = GetOrCreateRecord(depLoc);
+						Type depType = typeof(Object);
+						ResRecord depRecord = GetOrCreateRecord(depLoc, depType);
+						int depKey = depRecord.CacheKey;
 
-						// [关键修正1] 先增加引用计数
 						Interlocked.Increment(ref depRecord.RefCount);
 
-						// [关键修正2] 检查主资源有效性并记录依赖
-						// 如果此时主资源已经被 Release 并移出缓存，我们不能继续持有依赖，否则会导致依赖泄露
 						bool isValid = false;
 						lock (_lock)
 						{
-							if (_cache.ContainsKey(record.Location))
+							// [修改] 使用 CacheKey 检查
+							if (_cache.ContainsKey(record.CacheKey))
 							{
-								lock (record.DependencyLocations)
+								lock (record.DependencyKeys)
 								{
-									record.DependencyLocations.Add(depLoc);
+									record.DependencyKeys.Add(depKey);
 								}
 								isValid = true;
 							}
 						}
 
-						// 如果主资源已失效（被取消），立即释放刚才获取的依赖并终止
 						if (!isValid)
 						{
-							ReleaseInternal(depLoc);
+							// [修改] 使用 Key 释放
+							ReleaseInternalByKey(depKey);
 							throw new OperationCanceledException($"[Resources] Loading aborted for {record.Location}");
 						}
 
-						// [关键修正3] 记录之后再等待
-						// 这样即使 Wait 超时抛出异常，catch 块也能在 DependencyLocations 中找到并释放它
 						var dependencyTask = depRecord.LoadingTcs.Task;
 						Task finishedTask = await Task.WhenAny(dependencyTask, Task.Delay(_timeoutSeconds));
 
 						if (finishedTask != dependencyTask)
 						{
-							throw new TimeoutException($"[Resources] Dependency Timeout: {depLoc} (Possible circular dependency)");
+							throw new TimeoutException($"[Resources] Dependency Timeout: {depLoc}");
 						}
 
-						// 确保依赖任务没有报错
-						if (dependencyTask.IsFaulted) throw dependencyTask.Exception;
+						if (dependencyTask.IsFaulted && dependencyTask.Exception != null)
+							throw dependencyTask.Exception;
 					}
 				}
 
 				// --- 2. 自身加载 ---
 
-				// 切换到主线程
+				// [关键修改] 将 record.AssetType 传递给 Strategy
+				// 这样 Unity Resources.Load 就能收到正确的 Sprite 类型
 				Object asset = await _coroutineService.RunTask(async () => await _strategy.LoadAssetInternalAsync(
 					record.Location,
-					typeof(Object),
+					record.AssetType, 
 					record.ReportProgress,
 					CancellationToken.None
 				));
 
-				if (asset == null) throw new Exception($"[Resources] Asset not found: {record.Location}");
+				if (asset == null) throw new Exception($"[Resources] Asset not found: {record.Location} (Type: {record.AssetType.Name})");
 
 				record.Asset = asset;
 				record.LoadingTcs.TrySetResult(asset);
@@ -249,13 +270,11 @@ namespace Asaki.Unity.Services.Resources
 			{
 				record.LoadingTcs.TrySetException(ex);
 
-				// 清理缓存
-				lock (_lock) { _cache.Remove(record.Location); }
+				lock (_lock) { _cache.Remove(record.CacheKey); }
 
-				// 回滚依赖
-				lock (record.DependencyLocations)
+				lock (record.DependencyKeys)
 				{
-					foreach (string dep in record.DependencyLocations) ReleaseInternal(dep);
+					foreach (int depKey in record.DependencyKeys) ReleaseInternalByKey(depKey);
 				}
 			}
 		}
@@ -264,40 +283,59 @@ namespace Asaki.Unity.Services.Resources
 		// Release Logic
 		// =========================================================
 
-		public void Release(string location)
+		/// <summary>
+		/// [API变更] 释放资源现在需要类型来定位准确的缓存
+		/// </summary>
+		public void Release(string location, Type type)
 		{
-			ReleaseInternal(location);
+			ReleaseInternal(location, type);
 		}
 
-		private void ReleaseInternal(string rootLocation)
+		/// <summary>
+		/// [兼容重载] 默认为 Object，但在 Sprite/Texture 混用时可能不准确，建议使用带 Type 的版本
+		/// </summary>
+		public void Release(string location)
 		{
-			var pendingRelease = new Stack<string>();
-			pendingRelease.Push(rootLocation);
+			ReleaseInternal(location, typeof(Object));
+		}
+
+		private void ReleaseInternal(string location, Type type)
+		{
+			int key = GetCacheKey(location, type);
+			ReleaseInternalByKey(key);
+		}
+
+		// 内部递归核心，使用 Key 操作
+		private void ReleaseInternalByKey(int rootKey)
+		{
+			var pendingRelease = new Stack<int>();
+			pendingRelease.Push(rootKey);
 
 			lock (_lock)
 			{
 				while (pendingRelease.Count > 0)
 				{
-					string currentLocation = pendingRelease.Pop();
+					int currentKey = pendingRelease.Pop();
 
-					if (!_cache.TryGetValue(currentLocation, out ResRecord record)) continue;
+					if (!_cache.TryGetValue(currentKey, out ResRecord record)) continue;
 					record.RefCount--;
 
 					if (record.RefCount > 0) continue;
+					
+					// 引用归零，卸载
 					if (record.Asset != null)
 					{
-						try { _strategy.UnloadAssetInternal(currentLocation, record.Asset); }
-						catch (Exception e) { Debug.LogError(e); } // TODO: [Asaki] -> Asaki.ALog.Error
+						try { _strategy.UnloadAssetInternal(record.Location, record.Asset); }
+						catch (Exception e) { Debug.LogError(e); }
 					}
 
-					// 必须先移除，防止 LoadTaskInternal 继续往里面加依赖
-					_cache.Remove(currentLocation);
+					_cache.Remove(currentKey);
 
-					if (record.DependencyLocations == null) continue;
+					if (record.DependencyKeys == null) continue;
 
-					foreach (string dep in record.DependencyLocations)
+					foreach (int depKey in record.DependencyKeys)
 					{
-						pendingRelease.Push(dep);
+						pendingRelease.Push(depKey);
 					}
 				}
 			}
@@ -316,8 +354,6 @@ namespace Asaki.Unity.Services.Resources
 				return new List<ResHandle<T>>();
 			}
 
-			// [关键修正4] 批量进度聚合
-			// 我们不能直接把 onProgress 传给每个任务，否则进度条会乱跳
 			float[] progresses = new float[locList.Count];
 
 			Action<float> GetProgressHandler(int index)
@@ -326,7 +362,6 @@ namespace Asaki.Unity.Services.Resources
 				{
 					progresses[index] = p;
 					{
-						// 计算平均进度
 						float total = 0f;
 						for (int i = 0; i < progresses.Length; i++) total += progresses[i];
 						onProgress(total / progresses.Length);
@@ -337,7 +372,6 @@ namespace Asaki.Unity.Services.Resources
 			var tasks = new Task<ResHandle<T>>[locList.Count];
 			for (int i = 0; i < locList.Count; i++)
 			{
-				// 为每个任务分配一个专属的进度回调
 				tasks[i] = LoadAsync<T>(locList[i], onProgress == null ? null : GetProgressHandler(i), token);
 			}
 
@@ -350,9 +384,19 @@ namespace Asaki.Unity.Services.Resources
 			return LoadBatchAsync<T>(locations, null, token);
 		}
 
+		/// <summary>
+		/// [API变更] 批量释放现在建议显式指定类型，或者修改接口
+		/// 这里为了兼容 Interface 暂时回退到 Object 类型，如果有问题请改为 LoadBatchAsync<T> 对应的 ReleaseBatch<T>
+		/// </summary>
 		public void ReleaseBatch(IEnumerable<string> locations)
 		{
-			foreach (string location in locations) Release(location);
+			foreach (string location in locations) Release(location, typeof(Object));
+		}
+		
+		// 建议新增的泛型批量释放
+		public void ReleaseBatch<T>(IEnumerable<string> locations)
+		{
+			foreach (string location in locations) Release(location, typeof(T));
 		}
 	}
 }

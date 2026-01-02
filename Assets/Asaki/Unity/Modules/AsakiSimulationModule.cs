@@ -10,18 +10,18 @@ namespace Asaki.Unity.Modules
 	[AsakiModule(priority: 10)]
 	public class AsakiSimulationModule : IAsakiModule
 	{
-		private AsakiSimulationManager _manager;
+		private IAsakiSimulationService _service;
 		private GameObject _driverGo;
 
 
 		public void OnInit()
 		{
-			_manager = new AsakiSimulationManager();
-			AsakiContext.Register(_manager);
+			_service = new AsakiSimulationService();
+			AsakiContext.Register(_service);
 			_driverGo = new GameObject("[Asaki.Driver]");
 			Object.DontDestroyOnLoad(_driverGo);
-			var driver = _driverGo.AddComponent<AsakiMonoDriver>();
-			driver.Initialize(_manager);
+			AsakiMonoDriver driver = _driverGo.AddComponent<AsakiMonoDriver>();
+			driver.Initialize(_service);
 		}
 		public Task OnInitAsync()
 		{
@@ -34,8 +34,8 @@ namespace Asaki.Unity.Modules
 				Object.Destroy(_driverGo);
 				_driverGo = null;
 			}
-            
-			_manager = null;
+
+			_service = null;
 		}
 	}
 }

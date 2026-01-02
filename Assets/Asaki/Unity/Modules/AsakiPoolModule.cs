@@ -26,9 +26,9 @@ namespace Asaki.Unity.Modules
 		{
 			// 1. 获取依赖
 			IAsakiCoroutineService routine = AsakiContext.Get<IAsakiCoroutineService>();
-			IAsakiResService res = AsakiContext.Get<IAsakiResService>();
+			IAsakiResourceService resource = AsakiContext.Get<IAsakiResourceService>();
 			IAsakiEventService eventService = AsakiContext.Get<IAsakiEventService>();
-			_poolService = new AsakiPoolService(routine, res, eventService);
+			_poolService = new AsakiPoolService(routine, resource, eventService);
 
 			AsakiContext.Register(_poolService);
 

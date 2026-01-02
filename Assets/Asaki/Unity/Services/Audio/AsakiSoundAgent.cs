@@ -88,7 +88,7 @@ namespace Asaki.Unity.Services.Audio
 			#endif
 			string resourcePath,
 			AsakiAudioParams p,
-			IAsakiResService resService,
+			IAsakiResourceService resourceService,
 			IAsakiPoolService poolService, // [注入] 新版对象池服务
 			CancellationToken serviceToken,
 			string poolKey)
@@ -101,8 +101,8 @@ namespace Asaki.Unity.Services.Audio
 
 			try
 			{
-				// [Step 1] 异步加载音频资源 (利用 IAsakiResService 策略屏蔽路径差异)
-				_clipHandle = await resService.LoadAsync<AudioClip>(resourcePath, linkedCts.Token);
+				// [Step 1] 异步加载音频资源 (利用 IAsakiResourceService 策略屏蔽路径差异)
+				_clipHandle = await resourceService.LoadAsync<AudioClip>(resourcePath, linkedCts.Token);
 
 				if (linkedCts.IsCancellationRequested) return;
 

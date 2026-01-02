@@ -17,7 +17,7 @@ namespace Asaki.Unity.Modules
 		typeof(AsakiEventBusModule))]
 	public class AsakiResourcesModule : IAsakiModule
 	{
-		private IAsakiResService _resService;
+		private IAsakiResourceService _resourceService;
 
 		public void OnInit()
 		{
@@ -27,10 +27,10 @@ namespace Asaki.Unity.Modules
 			// 2. 创建工厂
 			AsakiResKitMode mode = config ? config.ResConfig.Mode : AsakiResKitMode.Resources;
 			int timeoutSeconds = config.ResConfig.TimeoutSeconds;
-			_resService = AsakiResKitFactory.Create(mode, routine, eventService);
-			_resService.SetTimeoutSeconds(timeoutSeconds);
+			_resourceService = AsakiResKitFactory.Create(mode, routine, eventService);
+			_resourceService.SetTimeoutSeconds(timeoutSeconds);
 			// 3. 注册服务
-			AsakiContext.Register(_resService);
+			AsakiContext.Register(_resourceService);
 
 			ALog.Info($"[Asaki] Resources initialized in {mode} mode.");
 		}
@@ -38,9 +38,9 @@ namespace Asaki.Unity.Modules
 		public async Task OnInitAsync()
 		{
 			// 4. 执行异步初始化 (加载 Manifest 等)
-			if (_resService != null)
+			if (_resourceService != null)
 			{
-				await _resService.OnInitAsync();
+				await _resourceService.OnInitAsync();
 			}
 		}
 

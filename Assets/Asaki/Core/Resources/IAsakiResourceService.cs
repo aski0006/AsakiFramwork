@@ -8,13 +8,13 @@ namespace Asaki.Core.Resources
 {
 	public class ResHandle<T> : IDisposable where T : class
 	{
-		private readonly IAsakiResService _service;
+		private readonly IAsakiResourceService _service;
 		public readonly string Location;
 		public readonly T Asset;
 
 		public bool IsValid => Asset != null;
 
-		public ResHandle(string location, T asset, IAsakiResService service)
+		public ResHandle(string location, T asset, IAsakiResourceService service)
 		{
 			Location = location;
 			Asset = asset;
@@ -25,7 +25,7 @@ namespace Asaki.Core.Resources
 		{
 			if (IsValid)
 			{
-				_service?.Release(Location);
+				_service?.Release(Location, typeof(T));
 			}
 		}
 
@@ -34,11 +34,11 @@ namespace Asaki.Core.Resources
 			return handle.Asset;
 		}
 	}
-	public interface IAsakiResService : IAsakiModule
+	public interface IAsakiResourceService : IAsakiModule
 	{
 		Task<ResHandle<T>> LoadAsync<T>(string location, Action<float> onProgress, CancellationToken token) where T : class;
 		Task<ResHandle<T>> LoadAsync<T>(string location, CancellationToken token) where T : class;
-		void Release(string location);
+		void Release(string location, Type type);
 
 		Task<List<ResHandle<T>>> LoadBatchAsync<T>(IEnumerable<string> locations, Action<float> onProgress, CancellationToken token) where T : class;
 		Task<List<ResHandle<T>>> LoadBatchAsync<T>(IEnumerable<string> locations, CancellationToken token) where T : class;

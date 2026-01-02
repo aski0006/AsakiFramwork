@@ -16,7 +16,7 @@ namespace Asaki.Unity.Services.Scene
 	{
 		private readonly IAsakiEventService _asakiEventService;
 		private readonly IAsakiCoroutineService _asakiCoroutineService;
-		private readonly IAsakiResService _asakiResService;
+		private readonly IAsakiResourceService _asakiResourceService;
 		private HashSet<string> _validScene;
 		private bool _isLoading;
 		private bool _isDisposed;
@@ -26,11 +26,11 @@ namespace Asaki.Unity.Services.Scene
 		public AsakiSceneService(
 			IAsakiEventService asakiEventService,
 			IAsakiCoroutineService asakiCoroutineService,
-			IAsakiResService asakiResService)
+			IAsakiResourceService asakiResourceService)
 		{
 			_asakiEventService = asakiEventService;
 			_asakiCoroutineService = asakiCoroutineService;
-			_asakiResService = asakiResService;
+			_asakiResourceService = asakiResourceService;
 		}
 
 		private bool IsSceneValid(string sceneName)
@@ -99,7 +99,7 @@ namespace Asaki.Unity.Services.Scene
 				if (mode == AsakiLoadSceneMode.Single)
 				{
 					await _asakiCoroutineService.WaitFrame(ct);
-					await _asakiResService.UnloadUnusedAssets(ct);
+					await _asakiResourceService.UnloadUnusedAssets(ct);
 					GC.Collect();
 				}
 

@@ -9,7 +9,7 @@ namespace Asaki.Unity.Services.Resources
 {
 	/// <summary>
 	/// [Resources 工厂]
-	/// 负责组装 Strategy, Lookup 和 Service，产出可用的 IAsakiResService。
+	/// 负责组装 Strategy, Lookup 和 Service，产出可用的 IAsakiResourceService。
 	/// </summary>
 	public static class AsakiResKitFactory
 	{
@@ -32,7 +32,7 @@ namespace Asaki.Unity.Services.Resources
 		/// <param name="mode">运行模式</param>
 		/// <param name="coroutineService">异步驱动服务 (必须已初始化)</param>
 		/// <returns>初始化好的资源服务</returns>
-		public static IAsakiResService Create(AsakiResKitMode mode, IAsakiCoroutineService coroutineService, IAsakiEventService eventService)
+		public static IAsakiResourceService Create(AsakiResKitMode mode, IAsakiCoroutineService coroutineService, IAsakiEventService eventService)
 		{
 			if (coroutineService == null)
 				throw new ArgumentNullException(nameof(coroutineService), "[ResKitFactory] RoutineService cannot be null.");
@@ -75,7 +75,7 @@ namespace Asaki.Unity.Services.Resources
 			}
 
 			// 组装并返回
-			AsakiResService service = new AsakiResService(strategy, coroutineService, lookup);
+			AsakiResourceService service = new AsakiResourceService(strategy, coroutineService, lookup);
 			return service;
 		}
 	}

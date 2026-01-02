@@ -19,7 +19,7 @@ namespace Asaki.Unity.Modules
 		public void OnInit()
 		{
 			var eventService = AsakiContext.Get<IAsakiEventService>();
-			var resService = AsakiContext.Get<IAsakiResService>();
+			var resService = AsakiContext.Get<IAsakiResourceService>();
 			var coroutineService = AsakiContext.Get<IAsakiCoroutineService>();
 			_asakiSceneService = new AsakiSceneService(
 				eventService,

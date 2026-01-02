@@ -10,4 +10,9 @@ namespace Asaki.Core.UI
 		void OnCover();
 		void OnReveal();
 	}
+	
+	public interface IAsakiWindowWithResult : IAsakiWindow
+	{
+		void OnReturnValue(object value);
+	}
 }

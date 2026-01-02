@@ -2,15 +2,20 @@
 
 namespace Asaki.Core.Simulation
 {
-	public interface IAsakiTickable : IAsakiService
+	public interface IAsakiTickable
 	{
 		// 注入非托管的时间增量
 		void Tick(float deltaTime);
 	}
 
-	public interface IAsakiFixedTickable : IAsakiService
+	public interface IAsakiFixedTickable 
 	{
 		void FixedTick(float fixedDeltaTime);
+	}
+
+	public interface IAsakiLateTickable
+	{
+		void LateTick(float lateDeltaTime);
 	}
 
 	// [新增] 优先级定义 (数值越小越先执行)

@@ -17,45 +17,48 @@ using Object = UnityEngine.Object;
 
 namespace Asaki.Unity.Services.UI
 {
-	public class AsakiUIManager : IAsakiUIService, IAsakiTickable
+	public class AsakiUIManageService : IAsakiUIService, IAsakiTickable
 	{
 		private AsakiUIRoot _asakiUIRoot;
-		private IAsakiResService _resService;
+		private IAsakiResourceService _resourceService;
 		private IAsakiPoolService _poolService;
 		private IAsakiEventService _eventService;
-		private AsakiSimulationManager _asakiSimulationManager;
+		private IAsakiSimulationService _asakiSimulationService;
 		private AsakiUIConfig _uiConfig;
 		private readonly Vector2 _refRes;
 		private readonly float _matchMode;
 
 		// 窗口栈 (Normal层)
 		private Stack<IAsakiWindow> _normalStack = new Stack<IAsakiWindow>();
+		private readonly Stack<object> _returnValueStack = new Stack<object>();
 
 		// [新增] Popup层计数器 (用于判断是否需要恢复 Normal 层输入)
 		private int _activePopupCount = 0;
 
 		// [新增] 窗口实例到层级的映射缓存 (避免 Close 时无法获知层级)
 		private readonly Dictionary<IAsakiWindow, AsakiUILayer> _windowLayerMap = new Dictionary<IAsakiWindow, AsakiUILayer>();
-
+		private readonly Dictionary<int, IAsakiWindow> _windowInstanceMap = new Dictionary<int, IAsakiWindow>();
+		private readonly Dictionary<Type, int> _typeToIdCache = new Dictionary<Type, int>();
 		private readonly HashSet<string> _pooledAssets = new HashSet<string>();
 
 		// 线程安全的销毁队列
 		private readonly ConcurrentQueue<IAsakiWindow> _pendingDestroyQueue = new ConcurrentQueue<IAsakiWindow>();
 
-		public AsakiUIManager(AsakiUIConfig configAsset, Vector2 refRes, float matchMode, IAsakiEventService eventService, IAsakiResService resService, IAsakiPoolService poolService)
+
+		public AsakiUIManageService(AsakiUIConfig configAsset, Vector2 refRes, float matchMode, IAsakiEventService eventService, IAsakiResourceService resourceService, IAsakiPoolService poolService)
 		{
 			_uiConfig = configAsset;
 			_refRes = refRes;
 			_matchMode = matchMode;
 			_eventService = eventService;
-			_resService = resService;
+			_resourceService = resourceService;
 			_poolService = poolService;
 		}
 
 		public void OnInit()
 		{
-			_asakiSimulationManager = AsakiContext.Get<AsakiSimulationManager>();
-			_asakiSimulationManager.Register(this);
+			_asakiSimulationService = AsakiContext.Get<IAsakiSimulationService>();
+			_asakiSimulationService.Register(this);
 
 			if (_asakiUIRoot == null)
 			{
@@ -122,7 +125,7 @@ namespace Asaki.Unity.Services.UI
 				else
 				{
 					// [Step 1] 异步加载
-					rawHandle = await _resService.LoadAsync<GameObject>(info.AssetPath, token);
+					rawHandle = await _resourceService.LoadAsync<GameObject>(info.AssetPath, token);
 					if (!rawHandle.IsValid) return null;
 					if (token.IsCancellationRequested)
 					{
@@ -165,7 +168,7 @@ namespace Asaki.Unity.Services.UI
 					if (_normalStack.Count > 0) _normalStack.Peek().OnCover();
 					_normalStack.Push(window);
 				}
-
+				_windowInstanceMap[uiId] = window;
 				return window;
 			}
 			catch (Exception e)
@@ -227,6 +230,144 @@ namespace Asaki.Unity.Services.UI
 			}
 		}
 
+		#region 查询接口实现
+		
+		public bool IsOpened(int uiId)
+		{
+			return _windowInstanceMap.ContainsKey(uiId);
+		}
+
+		public T GetWindow<T>() where T : class, IAsakiWindow
+		{
+			foreach (var pair in _windowInstanceMap)
+			{
+				if (pair.Value is T target) return target;
+			}
+			return null;
+		}
+
+		public IAsakiWindow GetWindow(int uiId)
+		{
+			return _windowInstanceMap.TryGetValue(uiId, out var window) ? window : null;
+		}
+
+		public IReadOnlyList<IAsakiWindow> GetOpenedWindows(AsakiUILayer? layer = null)
+		{
+			if (layer == null)
+				return new List<IAsakiWindow>(_windowInstanceMap.Values);
+
+			return _windowLayerMap
+			       .Where(kvp => kvp.Value == layer.Value)
+			       .Select(kvp => kvp.Key)
+			       .ToList();
+		}
+
+		public bool HasPopup()
+		{
+			return _activePopupCount > 0;
+		}
+
+		public int GetActiveWindowCount(AsakiUILayer layer)
+		{
+			return _windowLayerMap.Count(kvp => kvp.Value == layer);
+		}
+
+		#endregion
+
+		#region 导航控制实现
+
+		public void BackTo<T>() where T : IAsakiWindow
+		{
+			var target = _normalStack.FirstOrDefault(w => w is T);
+			if (target == null)
+			{
+				Debug.LogWarning($"[AsakiUI] Target window {typeof(T).Name} not in stack.");
+				return;
+			}
+			BackTo(target);
+		}
+
+		public void BackTo(int uiId)
+		{
+			var target = _windowInstanceMap.GetValueOrDefault(uiId);
+			if (target == null || !_normalStack.Contains(target))
+			{
+				Debug.LogWarning($"[AsakiUI] UIID {uiId} not in navigation stack.");
+				return;
+			}
+			BackTo(target);
+		}
+
+		private void BackTo(IAsakiWindow target)
+		{
+			// 强制关闭目标上方的所有窗口
+			while (_normalStack.Count > 0 && _normalStack.Peek() != target)
+			{
+				Close(_normalStack.Peek()); // 使用异步关闭保证动画
+			}
+		}
+
+		public async Task Back(object returnValue)
+		{
+			if (_normalStack.Count == 0) return;
+
+			// 压入返回值
+			_returnValueStack.Push(returnValue);
+
+			// 触发关闭（动画完成后会自动处理返回值）
+			var topWindow = _normalStack.Peek();
+			await topWindow.OnCloseAsync(CancellationToken.None);
+
+			// 通知下方窗口接收返回值
+			if (_normalStack.Count > 0)
+			{
+				var nextWindow = _normalStack.Peek();
+				// 约定：窗口实现 IAsakiWindowWithResult 接口来接收
+				(nextWindow as IAsakiWindowWithResult)?.OnReturnValue(returnValue);
+			}
+
+			_returnValueStack.Pop(); // 清理
+		}
+
+		public void ClearStack(bool includePopup = false)
+		{
+			// 清空Normal层
+			while (_normalStack.Count > 0)
+			{
+				var window = _normalStack.Pop();
+				_pendingDestroyQueue.Enqueue(window);
+			}
+
+			// 清空Popup层（可选）
+			if (includePopup)
+			{
+				var popupWindows = _windowLayerMap
+				                   .Where(kvp => kvp.Value == AsakiUILayer.Popup)
+				                   .Select(kvp => kvp.Key)
+				                   .ToList();
+
+				foreach (var popup in popupWindows)
+				{
+					_pendingDestroyQueue.Enqueue(popup);
+				}
+			}
+		}
+
+		public async Task<T> ReplaceAsync<T>(int uiId, object args = null) where T : class, IAsakiWindow
+		{
+			// 关闭当前栈顶
+			if (_normalStack.Count > 0)
+			{
+				var oldWindow = _normalStack.Peek();
+				await oldWindow.OnCloseAsync(CancellationToken.None);
+			}
+
+			// 打开新窗口
+			return await OpenAsync<T>(uiId, args);
+		}
+
+		#endregion
+
 		// [修改] 实际的主线程关闭逻辑
 		private void ProcessCloseRequest(IAsakiWindow window)
 		{
@@ -259,6 +400,16 @@ namespace Asaki.Unity.Services.UI
 
 			// 3. 执行关闭
 			HandleCloseAsync(window).FireAndForget();
+			
+			foreach (var pair in _windowInstanceMap)
+			{
+				if (pair.Value == window)
+				{
+					_windowInstanceMap.Remove(pair.Key);
+					_typeToIdCache.Clear(); // 清理类型缓存
+					break;
+				}
+			}
 		}
 
 		private void RemoveWindowFromStackMiddle(IAsakiWindow target)
@@ -300,9 +451,9 @@ namespace Asaki.Unity.Services.UI
 			_windowLayerMap.Clear();
 
 			// 3. 注销 Tick
-			if (_asakiSimulationManager != null)
+			if (_asakiSimulationService != null)
 			{
-				_asakiSimulationManager.Unregister(this);
+				_asakiSimulationService.Unregister(this);
 			}
 
 			// 4. 销毁 Root

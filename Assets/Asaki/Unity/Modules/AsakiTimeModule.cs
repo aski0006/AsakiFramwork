@@ -11,10 +11,10 @@ namespace Asaki.Unity.Modules
 	public class AsakiTimeModule : IAsakiModule
 	{
 		private IAsakiTimerService _asakiTimerService;
-		private AsakiSimulationManager simulation;
+		private IAsakiSimulationService simulation;
 		public void OnInit()
 		{
-			simulation = AsakiContext.Get<AsakiSimulationManager>();
+			simulation = AsakiContext.Get<IAsakiSimulationService>();
 			_asakiTimerService = new AsakiTimerService();
 			simulation.Register(_asakiTimerService);
 

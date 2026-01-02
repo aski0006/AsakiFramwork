@@ -23,7 +23,7 @@ namespace Asaki.Core.Pooling
 		private readonly IAsakiCoroutineService _coroutineService;
 
 		// 强依赖：资源加载服务
-		private readonly IAsakiResService _resService;
+		private readonly IAsakiResourceService _resourceService;
 
 		// 强依赖：事件服务
 		private readonly IAsakiEventService _eventService;
@@ -47,12 +47,12 @@ namespace Asaki.Core.Pooling
 		/// 构造函数由 Bootstrapper 或 Module 手动注入依赖
 		/// </summary>
 		public AsakiPoolService(IAsakiCoroutineService coroutineService,
-		                        IAsakiResService resService, 
+		                        IAsakiResourceService resourceService, 
 		                        IAsakiEventService eventService)
 		{
 			// 守卫子句：确保依赖不为空
 			_coroutineService = coroutineService ?? throw new ArgumentNullException(nameof(coroutineService));
-			_resService = resService ?? throw new ArgumentNullException(nameof(resService));
+			_resourceService = resourceService ?? throw new ArgumentNullException(nameof(resourceService));
 			_eventService = eventService ?? throw new ArgumentNullException(nameof(eventService));
 
 			InitializeGlobalRoot();
@@ -85,7 +85,7 @@ namespace Asaki.Core.Pooling
 				// [Step A] 资源加载
 				// 调用资源服务，异步获取句柄。这里我们使用 default(CancellationToken)
 				// 如果你的业务需要取消预热，可以在接口中增加 Token 参数
-				var handle = await _resService.LoadAsync<GameObject>(key, CancellationToken.None);
+				var handle = await _resourceService.LoadAsync<GameObject>(key, CancellationToken.None);
 
 				// 校验资源有效性
 				if (handle == null || !handle.IsValid)

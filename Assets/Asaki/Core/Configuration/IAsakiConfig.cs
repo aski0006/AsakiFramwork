@@ -10,5 +10,7 @@ namespace Asaki.Core.Configuration
 		int Id { get; }
 
 		void AllowConfigSerialization(string permissionKey);
+		
+		IAsakiConfig CloneConfig();
 	}
 }

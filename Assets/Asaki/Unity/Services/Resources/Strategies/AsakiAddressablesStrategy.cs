@@ -2,9 +2,11 @@
 
 using Asaki.Core.Coroutines;
 using Asaki.Core.Resources;
+using Asaki.Unity.Services.Logging;
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using UnityEngine; // 引用 UnityEngine 以使用 Sprite
 using UnityEngine.AddressableAssets;
 using UnityEngine.ResourceManagement.AsyncOperations;
 using Object = UnityEngine.Object;
@@ -15,7 +17,6 @@ namespace Asaki.Unity.Services.Resources.Strategies
 	{
 		public string StrategyName => "Addressables (Pro)";
 
-		// 引用 RoutineService 以使用 WaitFrame
 		private readonly IAsakiCoroutineService _coroutine;
 
 		public AsakiAddressablesStrategy(IAsakiCoroutineService coroutine)
@@ -25,41 +26,49 @@ namespace Asaki.Unity.Services.Resources.Strategies
 
 		public async Task InitializeAsync()
 		{
-			// Addressables 初始化
 			var handle = Addressables.InitializeAsync();
-			await handle.Task; // 原生支持 Task
+			await handle.Task;
 		}
 
 		public async Task<Object> LoadAssetInternalAsync(string location, Type type, Action<float> onProgress, CancellationToken token)
 		{
-			// 1. 发起加载 (不使用泛型，为了兼容性)
-			// location 可以是 Addressable Name, Label, 或 Key
-			var handle = Addressables.LoadAssetAsync<Object>(location);
+			// [关键修复] 根据请求的类型，分发到正确的泛型方法
+			// Addressables 必须显式调用 LoadAssetAsync<Sprite> 才能加载出 Sprite 子资源
+			if (type == typeof(Sprite))
+			{
+				return await LoadAssetGenericAsync<Sprite>(location, onProgress, token);
+			}
+			
+			// 默认情况 (包括 Texture2D, GameObject, ScriptableObject 等)
+			return await LoadAssetGenericAsync<Object>(location, onProgress, token);
+		}
+
+		/// <summary>
+		/// [新增] 泛型加载核心逻辑，复用进度处理代码
+		/// </summary>
+		private async Task<Object> LoadAssetGenericAsync<T>(string location, Action<float> onProgress, CancellationToken token) where T : Object
+		{
+			// 使用泛型 T 发起加载
+			var handle = Addressables.LoadAssetAsync<T>(location);
 
 			try
 			{
-				// 2. 如果不需要进度，直接使用 Task (支持取消)
+				// 1. 无进度回调：直接使用 Task 包装器
 				if (onProgress == null)
 				{
-					// 使用 WaitAsync 扩展来支持 token 取消
-					// 注意：Addressables 的 handle.Task 本身不支持 CancellationToken，需要我们在外部处理
 					return await WrapTask(handle, token);
 				}
 
-				// 3. 进度轮询模式 (基于 AsakiRoutine)
+				// 2. 有进度回调：轮询模式
 				while (!handle.IsDone)
 				{
 					if (token.IsCancellationRequested)
 					{
-						// 释放正在进行的句柄
 						Addressables.Release(handle);
 						throw new OperationCanceledException(token);
 					}
 
-					// 报告进度 (Addressables 的 PercentComplete 比较准确)
 					onProgress.Invoke(handle.PercentComplete);
-
-					// 使用框架标准的帧等待
 					await _coroutine.WaitFrame(token);
 				}
 
@@ -70,17 +79,13 @@ namespace Asaki.Unity.Services.Resources.Strategies
 				}
 				else
 				{
-					// 抛出详细异常
 					Exception exception = handle.OperationException ?? new Exception($"[Addressables] Failed to load: {location}");
-					// 失败时也要 Release handle，防止内存泄露 (虽然 Failed 状态通常不占资源，但保持习惯)
 					Addressables.Release(handle);
 					throw exception;
 				}
 			}
 			catch (Exception)
 			{
-				// 双重保险：发生任何异常导致流程中断，确保 Handle 被释放
-				// 注意：如果 Handle 已经成功并返回了 Result，这里不应该释放，应该交给 Service 的 Release 逻辑
 				if (handle.IsValid() && handle.Status != AsyncOperationStatus.Succeeded)
 				{
 					Addressables.Release(handle);
@@ -91,16 +96,17 @@ namespace Asaki.Unity.Services.Resources.Strategies
 
 		public void UnloadAssetInternal(string location, Object asset)
 		{
-			// Addressables 释放资源需要传入 Asset 实例 或 Handle
-			// 只要当初是用 LoadAssetAsync 加载出来的对象，直接 Release 对象即可，
-			// Addressables 内部会查找对应的 Handle 并减少引用计数。
 			if (asset != null)
 			{
+				// Addressables 能够通过实例反查 Handle 并释放
 				Addressables.Release(asset);
 			}
 		}
+
 		public async Task UnloadUnusedAssets(CancellationToken token)
 		{
+			// 注意：Addressables 自身没有 UnloadUnusedAssets 概念，它依赖引用计数。
+			// 但底层仍是 Unity 资源，所以调用 Resources.UnloadUnusedAssets 依然有助于清理无引用的原生资源
 			var op = UnityEngine.Resources.UnloadUnusedAssets();
 			if (_coroutine != null)
 			{
@@ -116,12 +122,11 @@ namespace Asaki.Unity.Services.Resources.Strategies
 			}
 		}
 
-		// --- 辅助：将 Addressables Task 包装为支持取消的 Task ---
-		private async Task<Object> WrapTask(AsyncOperationHandle<Object> handle, CancellationToken token)
+		// [修改] 泛型化 WrapTask 以适配不同的 Handle 类型
+		private async Task<Object> WrapTask<T>(AsyncOperationHandle<T> handle, CancellationToken token) where T : Object
 		{
 			var tcs = new TaskCompletionSource<Object>();
 
-			// 注册取消回调
 			using (token.Register(() =>
 				{
 					if (handle.IsValid()) Addressables.Release(handle);
@@ -130,14 +135,16 @@ namespace Asaki.Unity.Services.Resources.Strategies
 			{
 				try
 				{
-					Object result = await handle.Task;
-					return result;
+					// 等待泛型 Task 完成
+					T result = await handle.Task;
+          
+					return result; 
 				}
 				catch (Exception ex)
 				{
-					// Addressables 内部异常
 					if (handle.IsValid()) Addressables.Release(handle);
-					throw ex;
+					ALog.Error("Addressables failed to load", ex);
+					throw;
 				}
 			}
 		}

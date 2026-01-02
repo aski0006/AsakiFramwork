@@ -121,7 +121,7 @@ namespace Asaki.Unity.Services.Logging
         /// <para>发生严重错误。如果传入 Exception 对象，将记录完整堆栈。</para>
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static void Error(string message, Exception ex = null,
+        public static void Error(string message, Exception ex,
             [CallerFilePath] string file = "", [CallerLineNumber] int line = 0)
         {
             var s = Service;

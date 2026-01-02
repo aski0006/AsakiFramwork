@@ -45,11 +45,12 @@ namespace Asaki.Unity.Configuration
 		}
 		// 运行时缓存 (不序列化)
 		private Dictionary<int, UIInfo> _lookup;
-
 		public void InitializeLookup()
 		{
 			if (_lookup != null) return;
+		
 			_lookup = new Dictionary<int, UIInfo>(UIList.Count);
+		
 			foreach (UIInfo item in UIList)
 			{
 				_lookup.TryAdd(item.ID, item);

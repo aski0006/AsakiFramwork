@@ -79,7 +79,7 @@ namespace Asaki.Unity.Services.Configuration
 		{
 			if (_configStore.TryGetValue(typeof(T), out var dict))
 			{
-				if (dict.TryGetValue(id, out IAsakiConfig val)) return (T)val;
+				if (dict.TryGetValue(id, out IAsakiConfig val)) return (T)val.CloneConfig();
 			}
 			return null;
 		}

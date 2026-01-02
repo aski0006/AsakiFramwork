@@ -15,6 +15,16 @@ MonoBehaviour:
   m_GroupName: Default Local Group
   m_GUID: 7d0f52f7b49c55f44b91ea4fb7a100f4
   m_SerializeEntries:
+  - m_GUID: 62067c662a9228541b0be8c7e11a751a
+    m_Address: Assets/Asset/Floor.png
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: cf35bd8ce4bf8c04f87e474283d22dfa
+    m_Address: Assets/Asset/Prefabs/CardView.prefab
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: debbbb132dc29ff49876438e7ad20e89
     m_Address: Assets/Prefabs/AsakiSourceAgent.prefab
     m_ReadOnly: 0

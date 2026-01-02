@@ -1,164 +1,253 @@
-﻿using System.Collections.Generic;
+﻿// 文件位置：BatchRenameService.cs
+
+using Asaki.Editor.UI;
+using System;
+using System.Collections.Generic;
+using System.Globalization;
+using System.IO;
 using System.Linq;
+using System.Text.RegularExpressions;
 using UnityEngine;
 
 namespace Asaki.Editor.Utilities.Tools.BatchRename
 {
-	/// <summary>
-	/// 批量重命名业务服务
-	/// 设计原则：纯逻辑层，零GUI依赖，便于单元测试和复用
-	/// </summary>
-	public class BatchRenameService
-	{
-		/// <summary>
-		/// 命名策略接口：预留扩展点（序号、查找替换等）
-		/// </summary>
-		public interface INamingStrategy
-		{
-			/// <summary>
-			/// 生成新名称
-			/// </summary>
-			/// <param name="original">原始名称</param>
-			/// <param name="prefix">用户输入的前缀</param>
-			/// <param name="suffix">用户输入的后缀</param>
-			string GenerateName(string original, string prefix, string suffix);
-		}
+    public interface IBatchRenameStrategy
+    {
+        RenameOperation[] GeneratePreview(GameObject[] targets);
+    }
 
-		/// <summary>
-		/// 默认策略：简单前缀+后缀拼接
-		/// </summary>
-		public class DefaultNamingStrategy : INamingStrategy
-		{
-			public string GenerateName(string original, string prefix, string suffix)
-			{
-				// 防御性处理：空字符串不添加分隔符
-				return $"{prefix}{original}{suffix}";
-			}
-		}
+    // ==================== 复合策略 ====================
 
-		/// <summary>
-		/// 序号策略：为每个对象添加递增序号
-		/// 示例：Cube → Prefix_Cube_001_Suffix
-		/// </summary>
-		public class SerialNamingStrategy : INamingStrategy
-		{
-			private int _startIndex;
-			private int _padding;
+    public class CompositeStrategy : IBatchRenameStrategy
+    {
+        private readonly List<IBatchRenameStrategy> _strategies;
 
-			public SerialNamingStrategy(int startIndex = 1, int padding = 3)
-			{
-				_startIndex = startIndex;
-				_padding = padding;
-			}
+        public CompositeStrategy(List<IBatchRenameStrategy> strategies)
+        {
+            _strategies = strategies;
+        }
 
-			public string GenerateName(string original, string prefix, string suffix)
-			{
-				string serial = (_startIndex++).ToString().PadLeft(_padding, '0');
-				return $"{prefix}{original}_{serial}{suffix}";
-			}
-		}
+        public RenameOperation[] GeneratePreview(GameObject[] targets)
+        {
+            if (_strategies.Count == 0) return targets.Select(t => new RenameOperation(t, t.name)).ToArray();
 
-		/// <summary>
-		/// 生成预览操作列表
-		/// 性能：O(n)时间复杂度，单次遍历
-		/// 过滤：自动移除null和已销毁对象
-		/// </summary>
-		/// <param name="targets">选中的GameObject数组</param>
-		/// <param name="prefix">前缀</param>
-		/// <param name="suffix">后缀</param>
-		/// <param name="strategy">命名策略（可选）</param>
-		public RenameOperation[] GeneratePreview(
-			GameObject[] targets,
-			string prefix,
-			string suffix,
-			INamingStrategy strategy = null)
-		{
-			strategy ??= new DefaultNamingStrategy();
+            // 链式执行策略
+            var ops = _strategies[0].GeneratePreview(targets);
+            for (int i = 1; i < _strategies.Count; i++)
+            {
+                var intermediateTargets = ops.Select(o => 
+                {
+                    var go = new GameObject();
+                    go.name = o.NewName;
+                    return go;
+                }).ToArray();
+                
+                var newOps = _strategies[i].GeneratePreview(intermediateTargets);
+                
+                // 合并结果
+                for (int j = 0; j < ops.Length; j++)
+                {
+                    ops[j].SetNewName(newOps[j].NewName);
+                }
+                
+                // 清理临时对象
+                foreach (var temp in intermediateTargets) UnityEngine.Object.DestroyImmediate(temp);
+            }
+            
+            return ops;
+        }
+    }
 
-			// 防御性编程：处理targets为null的情况
-			if (targets == null || targets.Length == 0)
-				return new RenameOperation[0];
+    // ==================== 具体策略 ====================
 
-			// 性能优化：预分配数组，避免Linq迭代器GC压力
-			var operations = new List<RenameOperation>(targets.Length);
-			foreach (GameObject go in targets)
-			{
-				if (go == null) continue; // 过滤已销毁对象
+    public class FindReplaceStrategy : IBatchRenameStrategy
+    {
+        private readonly string _find, _replace;
+        private readonly bool _useRegex;
+        private readonly bool _caseSensitive;
 
-				string newName = strategy.GenerateName(go.name, prefix, suffix);
-				operations.Add(RenameOperation.CreateFrom(go, newName));
-			}
+        public FindReplaceStrategy(string find, string replace, bool useRegex, bool caseSensitive)
+        {
+            _find = find;
+            _replace = replace;
+            _useRegex = useRegex;
+            _caseSensitive = caseSensitive;
+        }
 
-			return operations.ToArray();
-		}
+        public RenameOperation[] GeneratePreview(GameObject[] targets)
+        {
+            var comparison = _caseSensitive ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase;
+            
+            return targets.Select(t => {
+                string newName = t.name;
+                if (!string.IsNullOrEmpty(_find))
+                {
+                    if (_useRegex)
+                    {
+                        var options = _caseSensitive ? RegexOptions.None : RegexOptions.IgnoreCase;
+                        newName = Regex.Replace(t.name, _find, _replace, options);
+                    }
+                    else
+                    {
+                        newName = t.name.Replace(_find, _replace, comparison);
+                    }
+                }
+                return new RenameOperation(t, newName);
+            }).ToArray();
+        }
+    }
 
-		/// <summary>
-		/// 检测命名冲突
-		/// 算法：GroupBy分组，筛选count>1的组，O(n log n)复杂度
-		/// 返回：冲突对象的InstanceID → 冲突名称映射表
-		/// </summary>
-		public Dictionary<int, string> DetectConflicts(RenameOperation[] operations)
-		{
-			var conflicts = new Dictionary<int, string>();
+    public class TemplateStrategy : IBatchRenameStrategy
+    {
+        private readonly string _template, _prefix, _suffix;
+        private readonly bool _addSerial;
+        private readonly int _start, _step, _padding;
+        private readonly BatchRenameEditorWindow.SerialPosition _pos;
 
-			if (operations == null || operations.Length == 0)
-				return conflicts;
+        public TemplateStrategy(string template, string prefix, string suffix, bool addSerial, 
+            int start, int step, int padding, BatchRenameEditorWindow.SerialPosition pos)
+        {
+            _template = string.IsNullOrWhiteSpace(template) ? "{name}" : template;
+            _prefix = prefix;
+            _suffix = suffix;
+            _addSerial = addSerial;
+            _start = start;
+            _step = step;
+            _padding = padding;
+            _pos = pos;
+        }
 
-			// 使用GroupBy检测重复名称
-			var duplicateGroups = operations
-			                      .GroupBy(op => op.NewName)
-			                      .Where(g => g.Count() > 1);
+        public RenameOperation[] GeneratePreview(GameObject[] targets)
+        {
+            return targets.Select((t, i) => {
+                string name = t.name;
+                int serial = _start + i * _step;
+                string serialStr = serial.ToString().PadLeft(_padding, '0');
 
-			// 将冲突项加入字典
-			foreach (var group in duplicateGroups)
-			{
-				foreach (RenameOperation op in group)
-				{
-					conflicts[op.InstanceId] = op.NewName;
-				}
-			}
+                // 执行模板替换
+                string newName = _template
+                    .Replace("{name}", name)
+                    .Replace("{index}", serialStr)
+                    .Replace("{date}", DateTime.Now.ToString("yyyyMMdd"));
 
-			return conflicts;
-		}
+                // 添加前缀/后缀
+                if (!string.IsNullOrEmpty(_prefix))
+                    newName = $"{_prefix}{newName}";
 
-		/// <summary>
-		/// 验证操作的有效性
-		/// 检查：对象是否存在、名称是否未变更、是否有冲突
-		/// </summary>
-		public ValidationResult ValidateOperation(RenameOperation op, Dictionary<int, string> conflictMap)
-		{
-			if (op == null)
-				return ValidationResult.Invalid("操作对象为空");
+                if (!string.IsNullOrEmpty(_suffix))
+                    newName = $"{newName}{_suffix}";
 
-			if (!op.TryGetGameObject(out _))
-				return ValidationResult.Invalid("目标对象已销毁或不存在");
+                // 序列号位置控制
+                if (_addSerial)
+                {
+                    newName = _pos switch
+                    {
+                        BatchRenameEditorWindow.SerialPosition.Prefix => $"[{serialStr}]{newName}",
+                        BatchRenameEditorWindow.SerialPosition.Suffix => $"{newName}[{serialStr}]",
+                        BatchRenameEditorWindow.SerialPosition.Replace => serialStr,
+                        _ => newName
+                    };
+                }
 
-			if (op.OriginalName == op.NewName)
-				return ValidationResult.Invalid("名称未变更");
+                return new RenameOperation(t, newName);
+            }).ToArray();
+        }
+    }
 
-			if (conflictMap?.ContainsKey(op.InstanceId) ?? false)
-				return ValidationResult.Invalid($"命名冲突: {op.NewName}");
+    public class RemoveCharsStrategy : IBatchRenameStrategy
+    {
+        private readonly string _charsToRemove;
 
-			return ValidationResult.Valid;
-		}
+        public RemoveCharsStrategy(string chars) => _charsToRemove = chars ?? "";
 
-		/// <summary>
-		/// 验证结果结构体
-		/// </summary>
-		public struct ValidationResult
-		{
-			public bool IsValid;
-			public string ErrorMessage;
+        public RenameOperation[] GeneratePreview(GameObject[] targets)
+        {
+            return targets.Select(t => {
+                string newName = t.name;
+                foreach (char c in _charsToRemove)
+                    newName = newName.Replace(c.ToString(), "");
+                return new RenameOperation(t, newName);
+            }).ToArray();
+        }
+    }
 
-			public static ValidationResult Valid => new ValidationResult { IsValid = true };
-			public static ValidationResult Invalid(string message)
-			{
-				return new ValidationResult
-				{
-					IsValid = false,
-					ErrorMessage = message,
-				};
-			}
-		}
-	}
+    public class KeepLastNCharsStrategy : IBatchRenameStrategy
+    {
+        private readonly int _count;
+
+        public KeepLastNCharsStrategy(int count) => _count = Mathf.Max(0, count);
+
+        public RenameOperation[] GeneratePreview(GameObject[] targets)
+        {
+            return targets.Select(t => {
+                string newName = _count == 0 ? t.name : 
+                    (t.name.Length <= _count ? t.name : t.name.Substring(t.name.Length - _count));
+                return new RenameOperation(t, newName);
+            }).ToArray();
+        }
+    }
+
+    public class CaseConversionStrategy : IBatchRenameStrategy
+    {
+        private readonly BatchRenameEditorWindow.CaseConversion _conversion;
+
+        public CaseConversionStrategy(BatchRenameEditorWindow.CaseConversion conversion) => _conversion = conversion;
+
+        public RenameOperation[] GeneratePreview(GameObject[] targets)
+        {
+            return targets.Select(t => {
+                string newName = t.name;
+                newName = _conversion switch
+                {
+                    BatchRenameEditorWindow.CaseConversion.Upper => newName.ToUpper(),
+                    BatchRenameEditorWindow.CaseConversion.Lower => newName.ToLower(),
+                    BatchRenameEditorWindow.CaseConversion.TitleCase => CultureInfo.CurrentCulture.TextInfo.ToTitleCase(newName),
+                    BatchRenameEditorWindow.CaseConversion.PascalCase => ToPascalCase(newName),
+                    BatchRenameEditorWindow.CaseConversion.CamelCase => ToCamelCase(newName),
+                    _ => newName
+                };
+                return new RenameOperation(t, newName);
+            }).ToArray();
+        }
+
+        private string ToPascalCase(string input)
+        {
+            string[] words = input.Split(new[] {'_', ' ', '-'}, StringSplitOptions.RemoveEmptyEntries);
+            return string.Concat(words.Select(w => char.ToUpper(w[0]) + w.Substring(1).ToLower()));
+        }
+
+        private string ToCamelCase(string input)
+        {
+            string pascal = ToPascalCase(input);
+            return char.ToLower(pascal[0]) + pascal.Substring(1);
+        }
+    }
+
+    // ==================== 冲突检测 ====================
+
+    public static class BatchRenameService
+    {
+        public static Dictionary<int, ConflictType> DetectConflicts(RenameOperation[] ops)
+        {
+            var conflicts = new Dictionary<int, ConflictType>();
+            
+            // 重复名称检测
+            var duplicates = ops.GroupBy(o => o.NewName).Where(g => g.Count() > 1);
+            foreach (var group in duplicates)
+                foreach (var op in group)
+                    conflicts[op.InstanceId] = ConflictType.DuplicateName;
+
+            // 非法字符检测
+            foreach (var op in ops)
+            {
+                if (op.NewName.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0)
+                    conflicts[op.InstanceId] = ConflictType.InvalidCharacters;
+                
+                if (op.NewName.Length > 200) // Unity最大名称长度
+                    conflicts[op.InstanceId] = ConflictType.NameTooLong;
+            }
+
+            return conflicts;
+        }
+    }
 }

@@ -18,37 +18,37 @@ namespace Asaki.Unity.Modules
 		typeof(AsakiSimulationModule))]
 	public class AsakiUIModule : IAsakiModule
 	{
-		private AsakiUIManager _uiManager;
+		private AsakiUIManageService _uiManageService;
 
 		public void OnInit()
 		{
 			AsakiConfig config = AsakiContext.Get<AsakiConfig>();
 			IAsakiEventService eventService = AsakiContext.Get<IAsakiEventService>();
-			IAsakiResService resService = AsakiContext.Get<IAsakiResService>();
+			IAsakiResourceService resourceService = AsakiContext.Get<IAsakiResourceService>();
 			IAsakiPoolService poolService = AsakiContext.Get<IAsakiPoolService>();
 			// 如果没配置 UI，直接跳过
 			if (!config) return;
 
-			_uiManager = new AsakiUIManager(
+			_uiManageService = new AsakiUIManageService(
 				config.UIConfig,
 				config.UIConfig.ReferenceResolution,
 				config.UIConfig.MatchWidthOrHeight,
 				eventService,
-				resService,
+				resourceService,
 				poolService
 			);
 
 			// 内部 OnInit 会调用 Resources 接口，此时 Resources 已注册
-			_uiManager.OnInit();
+			_uiManageService.OnInit();
 
-			AsakiContext.Register<IAsakiUIService>(_uiManager);
+			AsakiContext.Register<IAsakiUIService>(_uiManageService);
 		}
 
 		public async Task OnInitAsync()
 		{
-			if (_uiManager != null)
+			if (_uiManageService != null)
 			{
-				await _uiManager.OnInitAsync();
+				await _uiManageService.OnInitAsync();
 			}
 		}
 

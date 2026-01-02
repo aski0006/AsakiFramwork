@@ -20,12 +20,17 @@ namespace Asaki.Editor.Debugging
 		private FieldInfo cacheField;
 		private FieldInfo lockField;
 		private FieldInfo strategyField;
+		
+		// ResRecord 字段
 		private FieldInfo locationField;
+		private FieldInfo assetTypeField; // [新增]
+		private FieldInfo cacheKeyField;  // [新增]
 		private FieldInfo assetField;
 		private FieldInfo refCountField;
-		private FieldInfo dependencyLocationsField;
+		private FieldInfo dependencyKeysField; // [修改] Locations -> Keys
 		private FieldInfo loadingTcsField;
 		private FieldInfo progressCallbacksField;
+		
 		private PropertyInfo taskProperty;
 		private PropertyInfo strategyNameProperty;
 
@@ -34,10 +39,13 @@ namespace Asaki.Editor.Debugging
 		private MethodInfo getServiceMethod;
 
 		// ==================== 窗口状态 ====================
-		private IAsakiResService targetService;
+		private IAsakiResourceService targetService;
 		private Vector2 leftScrollPos;
 		private Vector2 rightScrollPos;
-		private string selectedLocation;
+		
+		// [修改] 使用 int Key 作为选中标识
+		private int selectedKey = 0; 
+		
 		private float splitterPos = 300f;
 		private bool isReflectionInitialized = false;
 		private double lastRefreshTime;
@@ -56,7 +64,7 @@ namespace Asaki.Editor.Debugging
 		public static void ShowWindow()
 		{
 			AsakiResDebuggerWindow window = GetWindow<AsakiResDebuggerWindow>("Resources Debugger");
-			window.minSize = new Vector2(700, 500);
+			window.minSize = new Vector2(800, 500);
 			window.Show();
 		}
 
@@ -95,12 +103,8 @@ namespace Asaki.Editor.Debugging
 		{
 			try
 			{
-				// 初始化 AsakiContext 反射
 				InitializeContextReflection();
-
-				// 初始化 AsakiResService 反射
 				InitializeServiceReflection();
-
 				isReflectionInitialized = true;
 			}
 			catch (Exception ex)
@@ -115,7 +119,6 @@ namespace Asaki.Editor.Debugging
 
 		private void InitializeContextReflection()
 		{
-			// 尝试多种方式查找AsakiContext类型
 			string[] possibleTypeNames = new[]
 			{
 				"Asaki.Core.AsakiContext, Asaki.Core",
@@ -130,7 +133,6 @@ namespace Asaki.Editor.Debugging
 				if (asakiContextType != null) break;
 			}
 
-			// 如果还找不到，扫描所有程序集
 			if (asakiContextType == null)
 			{
 				foreach (Assembly assembly in AppDomain.CurrentDomain.GetAssemblies())
@@ -146,53 +148,44 @@ namespace Asaki.Editor.Debugging
 
 			if (asakiContextType == null)
 			{
-				throw new Exception("无法在任何程序集中找到 AsakiContext 类型。请确保包含 Asaki.Core 命名空间。");
+				throw new Exception("无法在任何程序集中找到 AsakiContext 类型。");
 			}
 
-			// 获取 Get<T> 方法
 			MethodInfo genericGetMethod = asakiContextType.GetMethod("Get", BindingFlags.Public | BindingFlags.Static);
-			if (genericGetMethod == null)
-			{
-				throw new Exception($"AsakiContext 中未找到 Get<T> 方法。");
-			}
+			if (genericGetMethod == null) throw new Exception($"AsakiContext 中未找到 Get<T> 方法。");
 
-			getServiceMethod = genericGetMethod.MakeGenericMethod(typeof(IAsakiResService));
+			getServiceMethod = genericGetMethod.MakeGenericMethod(typeof(IAsakiResourceService));
 		}
 
 		private void InitializeServiceReflection()
 		{
-			Type serviceType = typeof(AsakiResService);
+			Type serviceType = typeof(AsakiResourceService);
 
-			// 获取私有字段
 			cacheField = serviceType.GetField("_cache", BindingFlags.NonPublic | BindingFlags.Instance);
 			lockField = serviceType.GetField("_lock", BindingFlags.NonPublic | BindingFlags.Instance);
 			strategyField = serviceType.GetField("_strategy", BindingFlags.NonPublic | BindingFlags.Instance);
 
-			if (cacheField == null)
-			{
-				throw new Exception("未找到 '_cache' 字段。请检查 AsakiResService 定义。");
-			}
+			if (cacheField == null) throw new Exception("未找到 '_cache' 字段。");
 
-			// 获取ResRecord嵌套类型
 			Type recordType = serviceType.GetNestedType("ResRecord", BindingFlags.NonPublic);
-			if (recordType == null)
-			{
-				throw new Exception("未找到 ResRecord 嵌套类型。");
-			}
+			if (recordType == null) throw new Exception("未找到 ResRecord 嵌套类型。");
 
-			// 获取记录字段
+			// 获取记录字段 (适配新结构)
 			locationField = recordType.GetField("Location");
+			assetTypeField = recordType.GetField("AssetType"); // [新增]
+			cacheKeyField = recordType.GetField("CacheKey");   // [新增]
 			assetField = recordType.GetField("Asset");
 			refCountField = recordType.GetField("RefCount");
-			dependencyLocationsField = recordType.GetField("DependencyLocations");
+			dependencyKeysField = recordType.GetField("DependencyKeys"); // [修改]
 			loadingTcsField = recordType.GetField("LoadingTcs");
 			progressCallbacksField = recordType.GetField("ProgressCallbacks");
 
-			// 获取Task属性
-			Type tcsType = loadingTcsField.FieldType;
-			taskProperty = tcsType.GetProperty("Task");
+			if (loadingTcsField != null)
+			{
+				Type tcsType = loadingTcsField.FieldType;
+				taskProperty = tcsType.GetProperty("Task");
+			}
 
-			// 获取策略名称属性
 			if (strategyField != null)
 			{
 				Type strategyType = strategyField.FieldType;
@@ -231,7 +224,7 @@ namespace Asaki.Editor.Debugging
 
 			if (targetService != null && GUILayout.Button("Clear Selection", EditorStyles.toolbarButton, GUILayout.Width(90)))
 			{
-				selectedLocation = null;
+				selectedKey = 0;
 			}
 
 			if (targetService != null)
@@ -241,7 +234,6 @@ namespace Asaki.Editor.Debugging
 
 			GUILayout.FlexibleSpace();
 
-			// 停止/开始自动获取按钮
 			if (GUILayout.Button(isAutoFetching ? "Stop Auto Fetch" : "Start Auto Fetch",
 				EditorStyles.toolbarButton, GUILayout.Width(120)))
 			{
@@ -277,34 +269,18 @@ namespace Asaki.Editor.Debugging
 			}
 			else
 			{
-				EditorGUILayout.HelpBox("无法自动从 AsakiContext 获取服务。\n\n" +
-				                        "可能的原因：\n" +
-				                        "1. AsakiContext 未初始化\n" +
-				                        "2. IAsakiResService 未注册到上下文\n" +
-				                        "3. 命名空间或程序集名称不匹配\n\n" +
-				                        "临时方案：手动拖拽服务实例到下方字段", MessageType.Warning);
+				EditorGUILayout.HelpBox("无法自动从 AsakiContext 获取服务。\n请手动拖拽实例或检查上下文初始化。", MessageType.Warning);
 			}
 
-			// 备用手动赋值方案
 			EditorGUILayout.Space();
 			Object obj = EditorGUILayout.ObjectField("手动指定服务", null, typeof(Object), true);
 			if (obj != null)
 			{
-				if (obj is IAsakiResService service && service.GetType() == typeof(AsakiResService))
+				if (obj is IAsakiResourceService service && service.GetType() == typeof(AsakiResourceService))
 				{
 					targetService = service;
 					isAutoFetching = false;
-					selectedLocation = null;
-				}
-				else if (obj is IAsakiResService)
-				{
-					EditorUtility.DisplayDialog("类型错误",
-						$"服务类型不匹配: {obj.GetType().Name}\n需要: AsakiResService", "确定");
-				}
-				else
-				{
-					EditorUtility.DisplayDialog("类型错误",
-						"对象未实现 IAsakiResService 接口", "确定");
+					selectedKey = 0;
 				}
 			}
 
@@ -322,8 +298,6 @@ namespace Asaki.Editor.Debugging
 		{
 			if (getServiceMethod == null)
 			{
-				fetchStatusMessage = "AsakiContext.Get<T> 方法未找到";
-				fetchStatusType = MessageType.Error;
 				isAutoFetching = false;
 				return;
 			}
@@ -331,57 +305,38 @@ namespace Asaki.Editor.Debugging
 			try
 			{
 				object result = getServiceMethod.Invoke(null, null);
-				if (result is IAsakiResService service && service.GetType() == typeof(AsakiResService))
+				if (result is IAsakiResourceService service && service.GetType() == typeof(AsakiResourceService))
 				{
 					targetService = service;
 					fetchStatusMessage = "✓ 服务获取成功";
 					fetchStatusType = MessageType.Info;
 					isAutoFetching = false;
 				}
-				else if (result != null)
-				{
-					fetchStatusMessage = $"服务类型不匹配: {result.GetType().Name}";
-					fetchStatusType = MessageType.Warning;
-				}
 			}
-			catch (TargetInvocationException targetEx)
+			catch (Exception)
 			{
-				Exception innerEx = targetEx.InnerException;
-				fetchStatusMessage = $"获取失败: {innerEx?.Message ?? targetEx.Message}";
-				fetchStatusType = MessageType.Error;
-			}
-			catch (Exception ex)
-			{
-				fetchStatusMessage = $"获取异常: {ex.Message}";
-				fetchStatusType = MessageType.Error;
-				isAutoFetching = false;
+				// 忽略瞬时错误
 			}
 		}
 
 		private void DrawSplitterLayout()
 		{
 			EditorGUILayout.BeginHorizontal();
-
-			// 左侧面板
 			GUILayout.BeginVertical(GUILayout.Width(splitterPos));
 			DrawLeftPanel();
 			GUILayout.EndVertical();
-
-			// 使用分隔条
+			
 			GUILayoutExtensions.Splitter(ref splitterPos, MIN_LEFT_WIDTH, position.width - MIN_RIGHT_WIDTH);
 
-			// 右侧面板
 			GUILayout.BeginVertical();
 			DrawRightPanel();
 			GUILayout.EndVertical();
-
 			EditorGUILayout.EndHorizontal();
 		}
 
 		private void DrawLeftPanel()
 		{
 			EditorGUILayout.LabelField("Loaded Resources", EditorStyles.boldLabel);
-
 			leftScrollPos = EditorGUILayout.BeginScrollView(leftScrollPos);
 
 			try
@@ -389,17 +344,26 @@ namespace Asaki.Editor.Debugging
 				IDictionary cache = GetCacheDictionary();
 				if (cache != null && cache.Count > 0)
 				{
-					// 正确遍历非泛型IDictionary
+					// 转换为列表以便排序
 					var entries = new List<DictionaryEntry>();
-					foreach (DictionaryEntry entry in cache)
-					{
-						entries.Add(entry);
-					}
+					foreach (DictionaryEntry entry in cache) entries.Add(entry);
 
-					// 按引用计数排序
-					foreach (DictionaryEntry entry in entries.OrderByDescending(e => GetRefCount(e.Value)))
+					// 排序：按 Path 字母顺序 -> 类型名称 -> 引用计数
+					var sortedEntries = entries.OrderBy(e => 
 					{
-						DrawResourceButton((string)entry.Key, entry.Value);
+						object record = e.Value;
+						string loc = locationField.GetValue(record) as string;
+						return loc;
+					}).ThenBy(e => 
+					{
+						object record = e.Value;
+						Type t = assetTypeField.GetValue(record) as Type;
+						return t?.Name ?? "";
+					});
+
+					foreach (DictionaryEntry entry in sortedEntries)
+					{
+						DrawResourceButton((int)entry.Key, entry.Value);
 					}
 				}
 				else
@@ -409,77 +373,77 @@ namespace Asaki.Editor.Debugging
 			}
 			catch (Exception ex)
 			{
-				EditorGUILayout.HelpBox($"渲染资源列表失败: {ex.Message}", MessageType.Error);
+				EditorGUILayout.HelpBox($"列表渲染失败: {ex.Message}", MessageType.Error);
 			}
 
 			EditorGUILayout.EndScrollView();
 		}
 
-		private void DrawResourceButton(string location, object record)
+		private void DrawResourceButton(int key, object record)
 		{
+			string location = locationField.GetValue(record) as string;
 			int refCount = (int)refCountField.GetValue(record);
+			Type type = assetTypeField.GetValue(record) as Type;
 			Object asset = assetField.GetValue(record) as Object;
 
-			// 创建按钮内容
-			GUIContent content = new GUIContent
-			{
-				text = $"{location} [{refCount}]",
-				tooltip = asset != null ? asset.GetType().Name : "Loading...",
-			};
+			string typeName = type != null ? type.Name : (asset != null ? asset.GetType().Name : "Unkown");
+			// 显示格式: Location (Type) [RefCount]
+			string displayText = $"{location} \n<color=#888888>({typeName})</color> [{refCount}]";
 
-			// 根据状态设置样式
-			GUIStyle style = selectedLocation == location ? EditorStyles.boldLabel : EditorStyles.label;
-			Color originalColor = GUI.color;
-
-			// 状态颜色
-			if (asset == null)
+			// 样式设置
+			GUIStyle style = new GUIStyle(EditorStyles.label) { richText = true };
+			if (selectedKey == key) 
 			{
-				GUI.color = Color.yellow; // 加载中
+				style.fontStyle = FontStyle.Bold;
+				// 绘制选中背景
+				Rect r = GUILayoutUtility.GetRect(new GUIContent(displayText), style);
+				EditorGUI.DrawRect(r, new Color(0.2f, 0.6f, 1f, 0.2f));
+				
+				// 恢复Rect绘制文本
+				GUI.Label(r, displayText, style);
+				// 响应点击
+				if (Event.current.type == EventType.MouseDown && r.Contains(Event.current.mousePosition))
+				{
+					selectedKey = key;
+					Event.current.Use();
+				}
 			}
-			else if (refCount == 0)
+			else
 			{
-				GUI.color = Color.gray; // 待释放
+				if (GUILayout.Button(displayText, style))
+				{
+					selectedKey = key;
+				}
 			}
-
-			if (GUILayout.Button(content, style, GUILayout.ExpandWidth(true)))
-			{
-				selectedLocation = location;
-			}
-
-			GUI.color = originalColor;
 		}
 
 		private void DrawRightPanel()
 		{
-			if (string.IsNullOrEmpty(selectedLocation))
+			if (selectedKey == 0)
 			{
-				EditorGUILayout.HelpBox("Select a resource from the left panel to view details.", MessageType.Info);
+				EditorGUILayout.HelpBox("Select a resource to view details.", MessageType.Info);
 				return;
 			}
 
 			rightScrollPos = EditorGUILayout.BeginScrollView(rightScrollPos);
-
 			try
 			{
 				IDictionary cache = GetCacheDictionary();
-				if (cache != null)
+				if (cache != null && cache.Contains(selectedKey))
 				{
-					// 查找选中的记录
-					foreach (DictionaryEntry entry in cache)
-					{
-						if ((string)entry.Key == selectedLocation)
-						{
-							DrawRecordDetails(entry.Value);
-							break;
-						}
-					}
+					object record = cache[selectedKey];
+					DrawRecordDetails(record);
+				}
+				else
+				{
+					EditorGUILayout.HelpBox("Selected resource is no longer in cache.", MessageType.Warning);
+					if (GUILayout.Button("Clear Selection")) selectedKey = 0;
 				}
 			}
 			catch (Exception ex)
 			{
-				EditorGUILayout.HelpBox($"渲染资源详情失败: {ex.Message}", MessageType.Error);
+				EditorGUILayout.HelpBox($"详情渲染失败: {ex.Message}", MessageType.Error);
 			}
-
 			EditorGUILayout.EndScrollView();
 		}
 
@@ -498,32 +462,31 @@ namespace Asaki.Editor.Debugging
 			EditorGUILayout.BeginVertical(EditorStyles.helpBox);
 
 			string location = locationField.GetValue(record) as string;
-			EditorGUILayout.LabelField("Location", location ?? "Null");
+			EditorGUILayout.TextField("Location", location);
+			
+			// 显示 Key
+			int key = (int)cacheKeyField.GetValue(record);
+			EditorGUILayout.TextField("Cache Key (Hash)", key.ToString());
+
+			// 显示请求类型
+			Type reqType = assetTypeField.GetValue(record) as Type;
+			EditorGUILayout.TextField("Requested Type", reqType?.FullName ?? "None");
 
 			Object asset = assetField.GetValue(record) as Object;
-			EditorGUILayout.ObjectField("Asset", asset, typeof(Object), false);
+			EditorGUILayout.ObjectField("Asset Reference", asset, typeof(Object), false);
 
 			if (asset != null)
 			{
-				EditorGUILayout.LabelField("Type", asset.GetType().Name);
-
-				// 显示资源路径
+				EditorGUILayout.LabelField("Actual Type", asset.GetType().Name);
 				string path = AssetDatabase.GetAssetPath(asset);
 				if (!string.IsNullOrEmpty(path))
 				{
-					EditorGUILayout.LabelField("Asset Path", path);
+					EditorGUILayout.TextField("Physical Path", path);
 				}
 			}
 
 			int refCount = (int)refCountField.GetValue(record);
-			EditorGUILayout.LabelField("Reference Count", refCount.ToString());
-
-			// 策略信息
-			string strategyName = GetStrategyName();
-			if (!string.IsNullOrEmpty(strategyName))
-			{
-				EditorGUILayout.LabelField("Strategy", strategyName);
-			}
+			EditorGUILayout.IntField("Reference Count", refCount);
 
 			EditorGUILayout.EndVertical();
 		}
@@ -533,37 +496,51 @@ namespace Asaki.Editor.Debugging
 			EditorGUILayout.Space();
 			EditorGUILayout.LabelField("Dependencies", EditorStyles.boldLabel);
 
-			IEnumerable dependencies = dependencyLocationsField.GetValue(record) as IEnumerable;
-			if (dependencies != null)
+			// 获取依赖 keys (HashSet<int>)
+			IEnumerable depKeys = dependencyKeysField.GetValue(record) as IEnumerable;
+			
+			if (depKeys != null)
 			{
 				EditorGUILayout.BeginVertical(EditorStyles.helpBox);
 
+				IDictionary cache = GetCacheDictionary(); // 需要全量缓存来查找名字
 				bool hasDeps = false;
-				foreach (object dep in dependencies)
-				{
-					if (dep is string depStr)
-					{
-						hasDeps = true;
-						GUIStyle buttonStyle = new GUIStyle(EditorStyles.label);
-						buttonStyle.normal.textColor = Color.cyan;
 
-						if (GUILayout.Button($"• {depStr}", buttonStyle))
+				foreach (object keyObj in depKeys)
+				{
+					hasDeps = true;
+					int depKey = (int)keyObj;
+					string depName = "Unknown (Unloaded)";
+					Type depType = null;
+
+					// 在缓存中查找依赖项的详细信息
+					if (cache != null && cache.Contains(depKey))
+					{
+						object depRecord = cache[depKey];
+						depName = locationField.GetValue(depRecord) as string;
+						depType = assetTypeField.GetValue(depRecord) as Type;
+					}
+
+					GUIStyle buttonStyle = new GUIStyle(EditorStyles.label);
+					buttonStyle.normal.textColor = new Color(0.4f, 0.8f, 1f);
+
+					string btnText = $"• {depName} ({depType?.Name ?? "?"})";
+					if (GUILayout.Button(btnText, buttonStyle))
+					{
+						// 点击跳转
+						if (cache != null && cache.Contains(depKey))
 						{
-							selectedLocation = depStr;
+							selectedKey = depKey;
 						}
 					}
 				}
 
 				if (!hasDeps)
 				{
-					EditorGUILayout.LabelField("No dependencies");
+					EditorGUILayout.LabelField("No dependencies", EditorStyles.miniLabel);
 				}
 
 				EditorGUILayout.EndVertical();
-			}
-			else
-			{
-				EditorGUILayout.HelpBox("No dependencies", MessageType.Info);
 			}
 		}
 
@@ -572,23 +549,18 @@ namespace Asaki.Editor.Debugging
 			var progressCallbacks = progressCallbacksField.GetValue(record) as Action<float>;
 			if (progressCallbacks != null)
 			{
-				var invocationList = progressCallbacks.GetInvocationList();
+				var list = progressCallbacks.GetInvocationList();
 				EditorGUILayout.Space();
-				EditorGUILayout.LabelField("Progress Callbacks", $"{invocationList.Length} subscriber(s)");
+				EditorGUILayout.LabelField($"Progress Callbacks ({list.Length})", EditorStyles.boldLabel);
 
-				if (invocationList.Length > 0)
+				EditorGUILayout.BeginVertical(EditorStyles.helpBox);
+				foreach (Delegate callback in list)
 				{
-					EditorGUILayout.BeginVertical(EditorStyles.helpBox);
-					foreach (Delegate callback in invocationList)
-					{
-						string targetName = callback.Target?.ToString() ?? "Null";
-						if (targetName.Length > 50) targetName = targetName.Substring(0, 50) + "...";
-
-						string methodName = callback.Method.Name;
-						EditorGUILayout.LabelField($"• {targetName}.{methodName}");
-					}
-					EditorGUILayout.EndVertical();
+					string target = callback.Target?.ToString() ?? "Static";
+					string method = callback.Method.Name;
+					EditorGUILayout.LabelField($"• {target}.{method}");
 				}
+				EditorGUILayout.EndVertical();
 			}
 		}
 
@@ -601,25 +573,14 @@ namespace Asaki.Editor.Debugging
 				if (task != null)
 				{
 					EditorGUILayout.Space();
-					EditorGUILayout.LabelField("Loading Status", EditorStyles.boldLabel);
+					EditorGUILayout.LabelField("Task Status", EditorStyles.boldLabel);
 					EditorGUILayout.BeginVertical(EditorStyles.helpBox);
 
-					EditorGUILayout.LabelField("Status", task.Status.ToString());
-
+					EditorGUILayout.LabelField("State", task.Status.ToString());
 					if (task.IsFaulted)
 					{
-						string errorMsg = task.Exception?.InnerException?.Message ?? task.Exception?.Message ?? "Unknown error";
-						EditorGUILayout.HelpBox($"Error: {errorMsg}", MessageType.Error);
+						EditorGUILayout.HelpBox($"Exception: {task.Exception?.InnerException?.Message}", MessageType.Error);
 					}
-					else if (task.IsCanceled)
-					{
-						EditorGUILayout.HelpBox("Loading was canceled.", MessageType.Warning);
-					}
-					else if (task.IsCompletedSuccessfully)
-					{
-						EditorGUILayout.HelpBox("Loading completed successfully.", MessageType.Info);
-					}
-
 					EditorGUILayout.EndVertical();
 				}
 			}
@@ -630,20 +591,36 @@ namespace Asaki.Editor.Debugging
 			EditorGUILayout.Space();
 			EditorGUILayout.BeginHorizontal();
 
-			if (GUILayout.Button("Release This", GUILayout.Height(30)))
+			if (GUILayout.Button("Release (Safe)", GUILayout.Height(30)))
 			{
-				if (EditorUtility.DisplayDialog("Release Resource", $"Release '{selectedLocation}'?", "Yes", "No"))
+				string loc = locationField.GetValue(record) as string;
+				Type type = assetTypeField.GetValue(record) as Type;
+				
+				if (EditorUtility.DisplayDialog("Release", $"Release '{loc}' ({type?.Name})?", "Yes", "No"))
 				{
-					targetService.Release(selectedLocation);
-					selectedLocation = null;
+					// [重要] 使用反射调用 Release(string, Type)
+					MethodInfo releaseMethod = targetService.GetType().GetMethod("Release", new[] { typeof(string), typeof(Type) });
+					if (releaseMethod != null)
+					{
+						releaseMethod.Invoke(targetService, new object[] { loc, type });
+					}
+					else
+					{
+						// Fallback (虽然不应该发生)
+						targetService.Release(loc, type);
+					}
+					
+					// 如果引用归零被移除了，重置选中
+					IDictionary c = GetCacheDictionary();
+					if (c == null || !c.Contains(selectedKey)) selectedKey = 0;
 				}
 			}
 
-			GUI.backgroundColor = Color.red;
-			if (GUILayout.Button("Force Unload", GUILayout.Height(30)))
+			GUI.backgroundColor = new Color(1f, 0.4f, 0.4f);
+			if (GUILayout.Button("Force Unload (Internal)", GUILayout.Height(30)))
 			{
-				if (EditorUtility.DisplayDialog("Force Unload",
-					$"Force unload '{selectedLocation}'? This bypasses reference counting and may cause issues!", "Yes", "Cancel"))
+				if (EditorUtility.DisplayDialog("Danger",
+					"Force Unload bypasses reference counting. It calls Strategy.UnloadAssetInternal directly.\nAre you sure?", "Yes", "Cancel"))
 				{
 					ForceUnloadResource(record);
 				}
@@ -657,123 +634,73 @@ namespace Asaki.Editor.Debugging
 		{
 			Object asset = assetField.GetValue(record) as Object;
 			string location = locationField.GetValue(record) as string;
-
-			if (asset == null)
-			{
-				EditorUtility.DisplayDialog("Force Unload", "Asset is null, cannot unload.", "OK");
-				return;
-			}
-
-			object strategy = strategyField?.GetValue(targetService);
-			if (strategy == null)
-			{
-				EditorUtility.DisplayDialog("Error", "Strategy is null.", "OK");
-				return;
-			}
-
+			
+			// 直接调用 Strategy 的 Unload
+			object strategy = strategyField.GetValue(targetService);
 			MethodInfo unloadMethod = strategy.GetType().GetMethod("UnloadAssetInternal");
+			
 			if (unloadMethod != null)
 			{
-				try
-				{
-					unloadMethod.Invoke(strategy, new object[] { location, asset });
-					Debug.Log($"[AsakiResDebugger] Force unloaded: {location}");
-					Repaint();
-				}
-				catch (Exception ex)
-				{
-					Debug.LogError($"[AsakiResDebugger] Force unload failed: {ex.Message}");
-					EditorUtility.DisplayDialog("Error", $"Force unload failed: {ex.Message}", "OK");
-				}
-			}
-			else
-			{
-				EditorUtility.DisplayDialog("Error", "未找到 UnloadAssetInternal 方法", "OK");
+				unloadMethod.Invoke(strategy, new object[] { location, asset });
+				
+				// 还需要手动从 Cache 移除，否则 Service 状态会错乱
+				// 这里为了简单，我们只调用 Unload，让 Service 下次 Release 时自行处理（可能会报错），或者手动移除 key
+				// 真正的 Force Unload 比较复杂，这里仅作 Strategy 层的卸载演示
+				Debug.LogWarning("[Debugger] Force unloaded asset from memory, but Cache Record remains.");
 			}
 		}
 
 		private void ReleaseAllResources()
 		{
 			IDictionary cache = GetCacheDictionary();
-			if (cache != null && cache.Count > 0)
+			if (cache == null) return;
+			
+			// 收集所有需要释放的信息
+			var list = new List<(string loc, Type type)>();
+			foreach (DictionaryEntry entry in cache)
 			{
-				int count = cache.Count;
-				var locations = new List<string>();
-				foreach (DictionaryEntry entry in cache)
-				{
-					locations.Add((string)entry.Key);
-				}
-
-				foreach (string location in locations)
-				{
-					targetService.Release(location);
-				}
-				Debug.Log($"[AsakiResDebugger] Released all {count} resources.");
-				selectedLocation = null;
-				Repaint();
+				object rec = entry.Value;
+				string l = locationField.GetValue(rec) as string;
+				Type t = assetTypeField.GetValue(rec) as Type;
+				list.Add((l, t));
 			}
+
+			// 反射获取 Release 方法
+			MethodInfo releaseMethod = targetService.GetType().GetMethod("Release", new[] { typeof(string), typeof(Type) });
+
+			foreach (var item in list)
+			{
+				if (releaseMethod != null)
+					releaseMethod.Invoke(targetService, new object[] { item.loc, item.type });
+				else
+					targetService.Release(item.loc, item.type);
+			}
+			
+			selectedKey = 0;
+			Repaint();
 		}
 
 		private string GetStrategyName()
 		{
-			if (strategyField == null || targetService == null) return "Unknown";
-
-			try
-			{
-				object strategy = strategyField.GetValue(targetService);
-				return strategyNameProperty?.GetValue(strategy) as string ?? "Unknown Strategy";
-			}
-			catch
-			{
-				return "Unknown";
-			}
+			if (strategyField == null || targetService == null) return "-";
+			object st = strategyField.GetValue(targetService);
+			return strategyNameProperty?.GetValue(st) as string ?? "Unknown";
 		}
 
-		// 关键修复：返回 IDictionary 而不是 Dictionary<string, object>
 		private IDictionary GetCacheDictionary()
 		{
 			if (targetService == null) return null;
-
-			object lockObj = GetLockObject();
-			if (lockObj == null) return null;
-
+			object lockObj = lockField.GetValue(targetService);
+			
 			lock (lockObj)
 			{
-				try
-				{
-					object cache = cacheField.GetValue(targetService);
-					return cache as IDictionary;
-				}
-				catch (Exception ex)
-				{
-					Debug.LogError($"[AsakiResDebugger] Failed to get cache: {ex.Message}");
-					return null;
-				}
-			}
-		}
-
-		private object GetLockObject()
-		{
-			try
-			{
-				return lockField?.GetValue(targetService) ?? new object();
-			}
-			catch
-			{
-				return new object();
+				return cacheField.GetValue(targetService) as IDictionary;
 			}
 		}
 
 		private int GetRefCount(object record)
 		{
-			try
-			{
-				return (int)refCountField.GetValue(record);
-			}
-			catch
-			{
-				return 0;
-			}
+			return (int)refCountField.GetValue(record);
 		}
 	}
 }

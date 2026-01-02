@@ -1,29 +1,37 @@
 ﻿using Asaki.Core.Simulation;
+using Asaki.Unity.Services.Logging;
+using System;
 using UnityEngine;
 
 namespace Asaki.Unity.Bridge
 {
 	public class AsakiMonoDriver : MonoBehaviour
 	{
-		private AsakiSimulationManager _simManager;
-		public void Initialize(AsakiSimulationManager simManager)
+		private IAsakiSimulationService _simulationService;
+		public void Initialize(IAsakiSimulationService simService)
 		{
-			_simManager = simManager;
+			_simulationService = simService;
+			if (_simulationService != null) return; 
+			ALog.Error("[AsakiSimulation] SimulationManager not found in context!");
+			enabled = false;
 		}
 		private void Update()
 		{
-			if (_simManager == null) return;
-
-			// [关键] 在这里获取 Unity 的时间，传给 Core
-			// 这是整个框架唯一允许读取 Time.deltaTime 的地方
-			_simManager.Tick(Time.deltaTime);
+			_simulationService?.Tick(Time.deltaTime);
 		}
-
 		private void FixedUpdate()
 		{
-			if (_simManager == null) return;
+			_simulationService?.FixedTick(Time.fixedDeltaTime);
+		}
 
-			_simManager.FixedTick(Time.fixedDeltaTime);
+		private void LateUpdate()
+		{
+			_simulationService?.LateTick(Time.deltaTime);
+		}
+
+		private void OnDestroy()
+		{
+			_simulationService = null;
 		}
 	}
 }

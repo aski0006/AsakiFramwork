@@ -32,7 +32,7 @@ namespace Asaki.Unity.Services.Audio
 		// ==========================================================
 		// 2. 运行时状态
 		// ==========================================================
-		private IAsakiResService _resService;
+		private IAsakiResourceService _resourceService;
 		private IAsakiPoolService _poolService;
 		private CancellationTokenSource _serviceCts;
 		private int _handleCounter = 0;
@@ -48,13 +48,13 @@ namespace Asaki.Unity.Services.Audio
 		/// 由于不再是 MonoBehaviour，无法使用 Inspector 赋值，必须由 ModuleSystem 传入。
 		/// </summary>
 		public AsakiAudioService(
-			IAsakiResService resService,
+			IAsakiResourceService resourceService,
 			IAsakiPoolService poolService,
 			AsakiAudioConfig config,
 			string agentAssetKey = "Asaki/SoundAgent",
 			int initialPoolSize = 16)
 		{
-			_resService = resService;
+			_resourceService = resourceService;
 			_poolService = poolService;
 			_config = config;
 			_agentAssetKey = agentAssetKey;
@@ -111,7 +111,7 @@ namespace Asaki.Unity.Services.Audio
 		public AsakiAudioHandle Play(int assetId, AsakiAudioParams p = default(AsakiAudioParams), CancellationToken token = default(CancellationToken))
 		{
 			// 1. 状态检查
-			if (_resService == null || _poolService == null || _rootTransform == null) return AsakiAudioHandle.Invalid;
+			if (_resourceService == null || _poolService == null || _rootTransform == null) return AsakiAudioHandle.Invalid;
 
 			// 2. 获取资源路径
 			if (!_config.TryGet(assetId, out AudioItem item))
@@ -176,7 +176,7 @@ namespace Asaki.Unity.Services.Audio
 			try
 			{
 				// 将 poolService 传给 Agent
-				await agent.PlayAsync(path, p, _resService, _poolService, token, poolKey);
+				await agent.PlayAsync(path, p, _resourceService, _poolService, token, poolKey);
 			}
 			finally
 			{
