@@ -1,7 +1,7 @@
 ﻿using Asaki.Core.Context;
-using Asaki.Core.Coroutines;
+using Asaki.Core.Async;
 using Asaki.Core.Network;
-using Asaki.Core.Tasks;
+using Asaki.Unity.Services.Async;
 using Asaki.Unity.Services.Logging;
 using System;
 using System.IO;
@@ -13,13 +13,13 @@ namespace Game.Examples
 	public class AsakiDownloadTest : MonoBehaviour
 	{
 		private IAsakiDownloadService _downloader;
-		private IAsakiCoroutineService _asakiCoroutineService;
+		private IAsakiAsyncService _asakiAsyncService;
 		private CancellationTokenSource _cts;
 
 		private void Start()
 		{
 			_downloader = AsakiContext.Get<IAsakiDownloadService>();
-			_asakiCoroutineService = AsakiContext.Get<IAsakiCoroutineService>();
+			_asakiAsyncService = AsakiContext.Get<IAsakiAsyncService>();
 		}
 
 		[ContextMenu("Test Download Image")]
@@ -43,8 +43,8 @@ namespace Game.Examples
 
 			_cts = new CancellationTokenSource();
 
-			// [Fix] 修正 API 调用：使用 IAsakiCoroutineService 定义的 CreateLinkedToken
-			var linkedToken = _asakiCoroutineService.CreateLinkedToken(_cts.Token);
+			// [Fix] 修正 API 调用：使用 IAsakiAsyncService 定义的 CreateLinkedToken
+			var linkedToken = _asakiAsyncService.CreateLinkedToken(_cts.Token);
 
 			try
 			{

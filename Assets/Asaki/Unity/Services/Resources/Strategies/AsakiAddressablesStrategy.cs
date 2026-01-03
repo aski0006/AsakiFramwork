@@ -1,6 +1,6 @@
 ﻿#if ASAKI_USE_ADDRESSABLE
 
-using Asaki.Core.Coroutines;
+using Asaki.Core.Async;
 using Asaki.Core.Resources;
 using Asaki.Unity.Services.Logging;
 using System;
@@ -17,11 +17,11 @@ namespace Asaki.Unity.Services.Resources.Strategies
 	{
 		public string StrategyName => "Addressables (Pro)";
 
-		private readonly IAsakiCoroutineService _coroutine;
+		private readonly IAsakiAsyncService _async;
 
-		public AsakiAddressablesStrategy(IAsakiCoroutineService coroutine)
+		public AsakiAddressablesStrategy(IAsakiAsyncService async)
 		{
-			_coroutine = coroutine;
+			_async = async;
 		}
 
 		public async Task InitializeAsync()
@@ -69,7 +69,7 @@ namespace Asaki.Unity.Services.Resources.Strategies
 					}
 
 					onProgress.Invoke(handle.PercentComplete);
-					await _coroutine.WaitFrame(token);
+					await _async.WaitFrame(token);
 				}
 
 				if (handle.Status == AsyncOperationStatus.Succeeded)
@@ -108,12 +108,12 @@ namespace Asaki.Unity.Services.Resources.Strategies
 			// 注意：Addressables 自身没有 UnloadUnusedAssets 概念，它依赖引用计数。
 			// 但底层仍是 Unity 资源，所以调用 Resources.UnloadUnusedAssets 依然有助于清理无引用的原生资源
 			var op = UnityEngine.Resources.UnloadUnusedAssets();
-			if (_coroutine != null)
+			if (_async != null)
 			{
 				while (!op.isDone) 
 				{
 					if (token.IsCancellationRequested) return;
-					await _coroutine.WaitFrame(token);
+					await _async.WaitFrame(token);
 				}
 			}
 			else

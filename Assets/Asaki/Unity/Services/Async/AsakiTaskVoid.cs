@@ -1,9 +1,8 @@
 ﻿using System;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
-using UnityEngine;
 
-namespace Asaki.Core.Tasks
+namespace Asaki.Unity.Services.Async
 {
 	/// <summary>
 	/// [Asaki Native] 轻量级异步 void 替代方案。

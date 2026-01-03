@@ -5,7 +5,7 @@ using UnityEngine;
 
 namespace Asaki.Unity.Services.Coroutines
 {
-	public partial class AsakiCoroutineProvider
+	public partial class AsakiAsyncProvider
 	{
 		// =========================================================
 		// Core Bridge: IEnumerator -> Task

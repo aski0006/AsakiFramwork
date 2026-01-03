@@ -1,5 +1,5 @@
 ﻿using Asaki.Core.Broker;
-using Asaki.Core.Coroutines;
+using Asaki.Core.Async;
 using Asaki.Core.Resources;
 using Asaki.Unity.Services.Resources.Lookup;
 using Asaki.Unity.Services.Resources.Strategies;
@@ -30,12 +30,12 @@ namespace Asaki.Unity.Services.Resources
 		/// 创建 Resources 服务实例
 		/// </summary>
 		/// <param name="mode">运行模式</param>
-		/// <param name="coroutineService">异步驱动服务 (必须已初始化)</param>
+		/// <param name="asyncService">异步驱动服务 (必须已初始化)</param>
 		/// <returns>初始化好的资源服务</returns>
-		public static IAsakiResourceService Create(AsakiResKitMode mode, IAsakiCoroutineService coroutineService, IAsakiEventService eventService)
+		public static IAsakiResourceService Create(AsakiResKitMode mode, IAsakiAsyncService asyncService, IAsakiEventService eventService)
 		{
-			if (coroutineService == null)
-				throw new ArgumentNullException(nameof(coroutineService), "[ResKitFactory] RoutineService cannot be null.");
+			if (asyncService == null)
+				throw new ArgumentNullException(nameof(asyncService), "[ResKitFactory] RoutineService cannot be null.");
 
 			IAsakiResStrategy strategy = null;
 			IAsakiResDependencyLookup lookup = null;
@@ -44,7 +44,7 @@ namespace Asaki.Unity.Services.Resources
 			{
 				case AsakiResKitMode.Resources:
 					// 策略：原生 Resources
-					strategy = new AsakiResourcesStrategy(coroutineService);
+					strategy = new AsakiResourcesStrategy(asyncService);
 					// 依赖：Resources 自动管理，不需要手动 Lookup
 					lookup = AsakiNullResDependencyLookup.Instance;
 					break;
@@ -52,7 +52,7 @@ namespace Asaki.Unity.Services.Resources
 				case AsakiResKitMode.Addressables:
 					#if ASAKI_USE_ADDRESSABLE
 					// 策略：Addressables
-					strategy = new AsakiAddressablesStrategy(coroutineService);
+					strategy = new AsakiAddressablesStrategy(asyncService);
 					// 依赖：Addressables 内部 Catalog 自动管理
 					lookup = AsakiNullResDependencyLookup.Instance;
 					#else
@@ -75,7 +75,7 @@ namespace Asaki.Unity.Services.Resources
 			}
 
 			// 组装并返回
-			AsakiResourceService service = new AsakiResourceService(strategy, coroutineService, lookup);
+			AsakiResourceService service = new AsakiResourceService(strategy, asyncService, lookup);
 			return service;
 		}
 	}

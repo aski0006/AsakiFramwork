@@ -1,7 +1,7 @@
 ﻿using Asaki.Core;
 using Asaki.Core.Broker;
 using Asaki.Core.Context;
-using Asaki.Core.Coroutines;
+using Asaki.Core.Async;
 using Asaki.Core.Resources;
 using Asaki.Core.Scene;
 using Asaki.Unity.Services.Scene;
@@ -20,7 +20,7 @@ namespace Asaki.Unity.Modules
 		{
 			var eventService = AsakiContext.Get<IAsakiEventService>();
 			var resService = AsakiContext.Get<IAsakiResourceService>();
-			var coroutineService = AsakiContext.Get<IAsakiCoroutineService>();
+			var coroutineService = AsakiContext.Get<IAsakiAsyncService>();
 			_asakiSceneService = new AsakiSceneService(
 				eventService,
 				coroutineService,

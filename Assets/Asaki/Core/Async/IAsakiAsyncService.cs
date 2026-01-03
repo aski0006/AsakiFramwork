@@ -3,13 +3,13 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Asaki.Core.Coroutines
+namespace Asaki.Core.Async
 {
 	/// <summary>
 	/// [异步服务接口] (v3.0 Enhanced)
 	/// 提供完整的时间控制、条件等待和任务管理能力。
 	/// </summary>
-	public interface IAsakiCoroutineService : IAsakiService
+	public interface IAsakiAsyncService : IAsakiService
 	{
 		// === 基本等待方法 ===
 

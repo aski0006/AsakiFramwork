@@ -3,7 +3,7 @@
 namespace Asaki.Unity.Services.Coroutines
 {
 	[AddComponentMenu("")]
-	internal class AsakiCoroutineRunner : MonoBehaviour
+	internal class AsakiAsyncCoroutineRunner : MonoBehaviour
 	{
 		private void Awake()
 		{

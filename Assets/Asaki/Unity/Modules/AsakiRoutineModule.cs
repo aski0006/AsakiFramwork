@@ -1,6 +1,6 @@
 ﻿using Asaki.Core;
 using Asaki.Core.Context;
-using Asaki.Core.Coroutines;
+using Asaki.Core.Async;
 using System.Threading.Tasks;
 
 namespace Asaki.Unity.Modules
@@ -8,14 +8,14 @@ namespace Asaki.Unity.Modules
 	[AsakiModule(100)]
 	public class AsakiRoutineModule : IAsakiModule
 	{
-		private Services.Coroutines.AsakiCoroutineProvider _provider;
+		private Services.Coroutines.AsakiAsyncProvider _provider;
 		public void OnInit()
 		{
 			// 1. 创建具体服务实现
-			_provider = new Services.Coroutines.AsakiCoroutineProvider();
+			_provider = new Services.Coroutines.AsakiAsyncProvider();
 
-			// 2. 注册服务接口 (供其他模块通过 Get<IAsakiCoroutineService> 获取)
-			AsakiContext.Register<IAsakiCoroutineService>(_provider);
+			// 2. 注册服务接口 (供其他模块通过 Get<IAsakiAsyncService> 获取)
+			AsakiContext.Register<IAsakiAsyncService>(_provider);
 		}
 		public Task OnInitAsync()
 		{

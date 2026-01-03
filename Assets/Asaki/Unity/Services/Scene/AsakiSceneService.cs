@@ -1,5 +1,5 @@
 ﻿using Asaki.Core.Broker;
-using Asaki.Core.Coroutines;
+using Asaki.Core.Async;
 using Asaki.Core.Resources;
 using Asaki.Core.Scene;
 using Asaki.Unity.Services.Logging;
@@ -15,7 +15,7 @@ namespace Asaki.Unity.Services.Scene
 	public class AsakiSceneService : IAsakiSceneService
 	{
 		private readonly IAsakiEventService _asakiEventService;
-		private readonly IAsakiCoroutineService _asakiCoroutineService;
+		private readonly IAsakiAsyncService _asakiAsyncService;
 		private readonly IAsakiResourceService _asakiResourceService;
 		private HashSet<string> _validScene;
 		private bool _isLoading;
@@ -25,11 +25,11 @@ namespace Asaki.Unity.Services.Scene
 
 		public AsakiSceneService(
 			IAsakiEventService asakiEventService,
-			IAsakiCoroutineService asakiCoroutineService,
+			IAsakiAsyncService asakiAsyncService,
 			IAsakiResourceService asakiResourceService)
 		{
 			_asakiEventService = asakiEventService;
-			_asakiCoroutineService = asakiCoroutineService;
+			_asakiAsyncService = asakiAsyncService;
 			_asakiResourceService = asakiResourceService;
 		}
 
@@ -98,7 +98,7 @@ namespace Asaki.Unity.Services.Scene
 				if (transition != null) await transition.EnterAsync(ct);
 				if (mode == AsakiLoadSceneMode.Single)
 				{
-					await _asakiCoroutineService.WaitFrame(ct);
+					await _asakiAsyncService.WaitFrame(ct);
 					await _asakiResourceService.UnloadUnusedAssets(ct);
 					GC.Collect();
 				}
@@ -129,7 +129,7 @@ namespace Asaki.Unity.Services.Scene
 						AsakiBroker.Publish(new AsakiSceneProgressEvent(targetScene, normalized));
 						transitionProgress?.Invoke(normalized);
 					}
-					await _asakiCoroutineService.WaitFrame(ct);
+					await _asakiAsyncService.WaitFrame(ct);
 				}
 
 				AsakiBroker.Publish(new AsakiSceneProgressEvent(targetScene, 1.0f));
@@ -151,7 +151,7 @@ namespace Asaki.Unity.Services.Scene
 				{
 					if (ct.IsCancellationRequested)
 						return CancelSceneLoadOperation(targetScene);
-					await _asakiCoroutineService.WaitFrame(ct);
+					await _asakiAsyncService.WaitFrame(ct);
 				}
 
 				LastLoadedSceneName = targetScene;

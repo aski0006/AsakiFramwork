@@ -1,7 +1,7 @@
 using Asaki.Core;
 using Asaki.Core.Broker;
 using Asaki.Core.Context;
-using Asaki.Core.Coroutines;
+using Asaki.Core.Async;
 using Asaki.Core.Resources;
 using Asaki.Unity.Configuration;
 using Asaki.Unity.Services.Logging;
@@ -22,7 +22,7 @@ namespace Asaki.Unity.Modules
 		public void OnInit()
 		{
 			AsakiConfig config = AsakiContext.Get<AsakiConfig>();
-			IAsakiCoroutineService routine = AsakiContext.Get<IAsakiCoroutineService>();
+			IAsakiAsyncService routine = AsakiContext.Get<IAsakiAsyncService>();
 			IAsakiEventService eventService = AsakiContext.Get<IAsakiEventService>();
 			// 2. 创建工厂
 			AsakiResKitMode mode = config ? config.ResConfig.Mode : AsakiResKitMode.Resources;

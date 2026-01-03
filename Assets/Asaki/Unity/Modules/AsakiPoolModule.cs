@@ -1,7 +1,7 @@
 ﻿using Asaki.Core;
 using Asaki.Core.Broker;
 using Asaki.Core.Context;
-using Asaki.Core.Coroutines;
+using Asaki.Core.Async;
 using Asaki.Core.Pooling;
 using Asaki.Core.Resources;
 using Asaki.Unity.Services.Logging;
@@ -25,7 +25,7 @@ namespace Asaki.Unity.Modules
 		public void OnInit()
 		{
 			// 1. 获取依赖
-			IAsakiCoroutineService routine = AsakiContext.Get<IAsakiCoroutineService>();
+			IAsakiAsyncService routine = AsakiContext.Get<IAsakiAsyncService>();
 			IAsakiResourceService resource = AsakiContext.Get<IAsakiResourceService>();
 			IAsakiEventService eventService = AsakiContext.Get<IAsakiEventService>();
 			_poolService = new AsakiPoolService(routine, resource, eventService);

@@ -1,4 +1,4 @@
-﻿using Asaki.Core.Coroutines;
+﻿using Asaki.Core.Async;
 using System;
 using System.Threading;
 using System.Threading.Tasks;
@@ -8,16 +8,16 @@ using Object = UnityEngine.Object;
 namespace Asaki.Unity.Services.Coroutines
 {
 	// [修改点 1] 增加 IDisposable 接口，养成良好习惯
-	public partial class AsakiCoroutineProvider : IAsakiCoroutineService, IDisposable
+	public partial class AsakiAsyncProvider : IAsakiAsyncService, IDisposable
 	{
 		private CancellationTokenSource _serviceCts = new CancellationTokenSource();
 		private int _runningTaskCount = 0;
 
 		// [修改点 2] 持有 Runner 的引用
-		private AsakiCoroutineRunner _runner;
+		private AsakiAsyncCoroutineRunner _runner;
 
 		// [修改点 3] 构造函数初始化
-		public AsakiCoroutineProvider()
+		public AsakiAsyncProvider()
 		{
 			InitializeRunner();
 		}
@@ -32,7 +32,7 @@ namespace Asaki.Unity.Services.Coroutines
 			Object.DontDestroyOnLoad(go);
 
 			// 挂载驱动器
-			_runner = go.AddComponent<AsakiCoroutineRunner>();
+			_runner = go.AddComponent<AsakiAsyncCoroutineRunner>();
 		}
 
 		public int RunningTaskCount => _runningTaskCount;

@@ -1,4 +1,4 @@
-using Asaki.Core.Coroutines;
+using Asaki.Core.Async;
 using Asaki.Core.Resources;
 using Asaki.Unity.Extensions;
 using System;
@@ -14,7 +14,7 @@ namespace Asaki.Unity.Services.Resources
 	public class AsakiResourceService : IAsakiResourceService
 	{
 		private readonly IAsakiResStrategy _strategy;
-		private readonly IAsakiCoroutineService _coroutineService;
+		private readonly IAsakiAsyncService _asyncService;
 		private readonly IAsakiResDependencyLookup _asakiResDependencyLookup;
 
 		private class ResRecord
@@ -43,10 +43,10 @@ namespace Asaki.Unity.Services.Resources
 		private int _timeoutSeconds = DefaultTimeoutSeconds;
 		private const int DefaultTimeoutSeconds = 10000;
 
-		public AsakiResourceService(IAsakiResStrategy strategy, IAsakiCoroutineService coroutineService, IAsakiResDependencyLookup asakiResDependencyLookup)
+		public AsakiResourceService(IAsakiResStrategy strategy, IAsakiAsyncService asyncService, IAsakiResDependencyLookup asakiResDependencyLookup)
 		{
 			_strategy = strategy;
-			_coroutineService = coroutineService;
+			_asyncService = asyncService;
 			_asakiResDependencyLookup = asakiResDependencyLookup;
 		}
 
@@ -253,7 +253,7 @@ namespace Asaki.Unity.Services.Resources
 
 				// [关键修改] 将 record.AssetType 传递给 Strategy
 				// 这样 Unity Resources.Load 就能收到正确的 Sprite 类型
-				Object asset = await _coroutineService.RunTask(async () => await _strategy.LoadAssetInternalAsync(
+				Object asset = await _asyncService.RunTask(async () => await _strategy.LoadAssetInternalAsync(
 					record.Location,
 					record.AssetType, 
 					record.ReportProgress,

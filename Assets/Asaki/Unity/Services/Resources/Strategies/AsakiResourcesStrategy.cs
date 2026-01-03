@@ -1,4 +1,4 @@
-﻿using Asaki.Core.Coroutines;
+﻿using Asaki.Core.Async;
 using Asaki.Core.Resources;
 using Asaki.Unity.Utils;
 using System;
@@ -12,10 +12,10 @@ namespace Asaki.Unity.Services.Resources.Strategies
 	public class AsakiResourcesStrategy : IAsakiResStrategy
 	{
 		public string StrategyName => "Resources (Native)";
-		private IAsakiCoroutineService _coroutine;
-		public AsakiResourcesStrategy(IAsakiCoroutineService coroutine)
+		private IAsakiAsyncService _async;
+		public AsakiResourcesStrategy(IAsakiAsyncService async)
 		{
-			_coroutine = coroutine;
+			_async = async;
 		}
 		public Task InitializeAsync()
 		{
@@ -46,7 +46,7 @@ namespace Asaki.Unity.Services.Resources.Strategies
 				onProgress.Invoke(request.progress);
 
 				// 等待下一帧
-				await _coroutine.WaitFrame(token);
+				await _async.WaitFrame(token);
 			}
 
 			// 完成
@@ -61,12 +61,12 @@ namespace Asaki.Unity.Services.Resources.Strategies
 		public async Task UnloadUnusedAssets(CancellationToken token)
 		{
 			var op = UnityEngine.Resources.UnloadUnusedAssets();
-			if (_coroutine != null)
+			if (_async != null)
 			{
 				while (!op.isDone) 
 				{
 					if (token.IsCancellationRequested) return;
-					await _coroutine.WaitFrame(token);
+					await _async.WaitFrame(token);
 				}
 			}
 			else

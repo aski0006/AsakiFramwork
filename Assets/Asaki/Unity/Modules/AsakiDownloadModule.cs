@@ -1,7 +1,7 @@
 ﻿using Asaki.Core;
 using Asaki.Core.Broker;
 using Asaki.Core.Context;
-using Asaki.Core.Coroutines;
+using Asaki.Core.Async;
 using Asaki.Core.Network;
 using Asaki.Unity.Services.Network;
 using System.Threading.Tasks;
@@ -17,9 +17,9 @@ namespace Asaki.Unity.Modules
 		public void OnInit()
 		{
 			IAsakiEventService eventsService = AsakiContext.Get<IAsakiEventService>();
-			IAsakiCoroutineService coroutineService = AsakiContext.Get<IAsakiCoroutineService>();
+			IAsakiAsyncService asyncService = AsakiContext.Get<IAsakiAsyncService>();
 			_asakiDownloadService = new AsakiDownloadService(
-				coroutineService,
+				asyncService,
 				eventsService
 			);
 			AsakiContext.Register<IAsakiDownloadService>(_asakiDownloadService);

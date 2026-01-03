@@ -1,5 +1,5 @@
 using Asaki.Core.Broker;
-using Asaki.Core.Coroutines;
+using Asaki.Core.Async;
 using Asaki.Core.Resources; // 引用 Phase 1 定义的资源模块
 using System;
 using System.Collections.Generic;
@@ -20,7 +20,7 @@ namespace Asaki.Core.Pooling
 		// =========================================================
 
 		// 强依赖：分帧生成服务
-		private readonly IAsakiCoroutineService _coroutineService;
+		private readonly IAsakiAsyncService _asyncService;
 
 		// 强依赖：资源加载服务
 		private readonly IAsakiResourceService _resourceService;
@@ -46,12 +46,12 @@ namespace Asaki.Core.Pooling
 		/// <summary>
 		/// 构造函数由 Bootstrapper 或 Module 手动注入依赖
 		/// </summary>
-		public AsakiPoolService(IAsakiCoroutineService coroutineService,
+		public AsakiPoolService(IAsakiAsyncService asyncService,
 		                        IAsakiResourceService resourceService, 
 		                        IAsakiEventService eventService)
 		{
 			// 守卫子句：确保依赖不为空
-			_coroutineService = coroutineService ?? throw new ArgumentNullException(nameof(coroutineService));
+			_asyncService = asyncService ?? throw new ArgumentNullException(nameof(asyncService));
 			_resourceService = resourceService ?? throw new ArgumentNullException(nameof(resourceService));
 			_eventService = eventService ?? throw new ArgumentNullException(nameof(eventService));
 
@@ -116,7 +116,7 @@ namespace Asaki.Core.Pooling
 
 			// [Step C] 分帧实例化 (利用 Asaki Native 桥接技术)
 			// 我们将耗时的 Instantiate 操作委托给 RoutineService，避免卡死主线程
-			await _coroutineService.RunTask(async () =>
+			await _asyncService.RunTask(async () =>
 			{
 				int batchCount = 0;
 				GameObject prefab = poolData.PrefabHandle.Asset; // 从句柄中取出 Prefab
@@ -139,7 +139,7 @@ namespace Asaki.Core.Pooling
 					if (batchCount >= itemsPerFrame)
 					{
 						batchCount = 0;
-						await _coroutineService.WaitFrame();
+						await _asyncService.WaitFrame();
 					}
 				}
 			});

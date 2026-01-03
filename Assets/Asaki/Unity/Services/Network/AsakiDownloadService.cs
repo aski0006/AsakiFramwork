@@ -1,5 +1,5 @@
 using Asaki.Core.Broker;
-using Asaki.Core.Coroutines;
+using Asaki.Core.Async;
 using Asaki.Core.Network;
 using System;
 using System.IO;
@@ -20,13 +20,13 @@ namespace Asaki.Unity.Services.Network
 
     public class AsakiDownloadService : IAsakiDownloadService
     {
-        private readonly IAsakiCoroutineService _asakiCoroutineService;
+        private readonly IAsakiAsyncService _asakiAsyncService;
         private readonly IAsakiEventService _asakiEventService;
 
         // [M-003] 构造函数依赖检查
-        public AsakiDownloadService(IAsakiCoroutineService asakiCoroutineService, IAsakiEventService asakiEventService)
+        public AsakiDownloadService(IAsakiAsyncService asakiAsyncService, IAsakiEventService asakiEventService)
         {
-            _asakiCoroutineService = asakiCoroutineService ?? throw new ArgumentNullException(nameof(asakiCoroutineService));
+            _asakiAsyncService = asakiAsyncService ?? throw new ArgumentNullException(nameof(asakiAsyncService));
             _asakiEventService = asakiEventService ?? throw new ArgumentNullException(nameof(asakiEventService));
         }
 
@@ -105,7 +105,7 @@ namespace Asaki.Unity.Services.Network
                         }
                     }
 
-                    await _asakiCoroutineService.WaitFrame(token);
+                    await _asakiAsyncService.WaitFrame(token);
                 }
 
                 // 3. 处理结果

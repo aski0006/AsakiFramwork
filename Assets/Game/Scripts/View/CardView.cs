@@ -1,7 +1,7 @@
 using Asaki.Core;
 using Asaki.Core.MVVM;
 using Asaki.Core.Resources;
-using Asaki.Core.Tasks;
+using Asaki.Unity.Services.Async;
 using Asaki.Unity.Services.UI.Observers;
 using Game.Scripts.Data;
 using System;

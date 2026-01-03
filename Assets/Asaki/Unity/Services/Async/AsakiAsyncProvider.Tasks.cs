@@ -1,4 +1,4 @@
-﻿using Asaki.Core.Coroutines;
+﻿using Asaki.Core.Async;
 using Cysharp.Threading.Tasks;
 using System;
 using System.Collections; // 引入 IEnumerator
@@ -11,7 +11,7 @@ namespace Asaki.Unity.Services.Coroutines
 	/// <summary>
 	/// [异步服务实现] Part 3: Tasks & Orchestration (Native Refactored)
 	/// </summary>
-	public partial class AsakiCoroutineProvider
+	public partial class AsakiAsyncProvider
 	{
 		// =========================================================
 		// 1. 任务执行包装
@@ -199,10 +199,10 @@ namespace Asaki.Unity.Services.Coroutines
 
 		private class AsakiWaitBuilder : IWaitBuilder
 		{
-			private readonly IAsakiCoroutineService _service;
+			private readonly IAsakiAsyncService _service;
 			private readonly List<Func<CancellationToken, Task>> _steps = new List<Func<CancellationToken, Task>>();
 
-			public AsakiWaitBuilder(IAsakiCoroutineService service)
+			public AsakiWaitBuilder(IAsakiAsyncService service)
 			{
 				_service = service;
 			}

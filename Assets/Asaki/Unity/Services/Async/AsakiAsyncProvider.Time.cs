@@ -11,7 +11,7 @@ namespace Asaki.Unity.Services.Coroutines
 	/// [异步服务实现] Part 2: Time & Wait (Native Refactored)
 	/// <para>V5.0 重构版：抛弃 Task.Yield 轮询，全面拥抱 Unity 原生 Coroutine。</para>
 	/// </summary>
-	public partial class AsakiCoroutineProvider
+	public partial class AsakiAsyncProvider
 	{
 		// =========================================================
 		// 1. 辅助协程实现 (Impls)

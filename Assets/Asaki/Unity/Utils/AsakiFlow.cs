@@ -1,4 +1,4 @@
-﻿using Asaki.Core.Coroutines;
+﻿using Asaki.Core.Async;
 using System.Threading;
 using UnityEngine;
 
@@ -52,7 +52,7 @@ namespace Asaki.Unity.Utils
 		/// </summary>
 		/// <param name="service">异步服务实例</param>
 		/// <param name="component">绑定的 Unity 组件</param>
-		public static CancellationToken Link(this IAsakiCoroutineService service, MonoBehaviour component)
+		public static CancellationToken Link(this IAsakiAsyncService service, MonoBehaviour component)
 		{
 			CancellationToken componentToken = component.GetToken();
 
@@ -64,19 +64,19 @@ namespace Asaki.Unity.Utils
 		/// <summary>
 		/// 链接另一个外部 Token (通常用于 UI 窗口关闭按钮)
 		/// </summary>
-		public static CancellationToken Link(this IAsakiCoroutineService service, CancellationToken externalToken)
+		public static CancellationToken Link(this IAsakiAsyncService service, CancellationToken externalToken)
 		{
 			return service.CreateLinkedToken(externalToken);
 		}
 
-		public static CancellationToken Link(this IAsakiCoroutineService service, MonoBehaviour component, CancellationToken additionalToken)
+		public static CancellationToken Link(this IAsakiAsyncService service, MonoBehaviour component, CancellationToken additionalToken)
 		{
 			CancellationToken componentToken = component.GetToken();
 			CancellationTokenSource linkedSource = CancellationTokenSource.CreateLinkedTokenSource(componentToken, additionalToken);
 			return service.CreateLinkedToken(linkedSource.Token);
 		}
 
-		public static CancellationToken Link(this IAsakiCoroutineService service, params CancellationToken[] tokens)
+		public static CancellationToken Link(this IAsakiAsyncService service, params CancellationToken[] tokens)
 		{
 			if (tokens == null || tokens.Length == 0) return service.CreateLinkedToken();
 
@@ -84,7 +84,7 @@ namespace Asaki.Unity.Utils
 			return service.CreateLinkedToken(linkedSource.Token);
 		}
 
-		public static CancellationToken Link(this IAsakiCoroutineService service, MonoBehaviour component, params CancellationToken[] others)
+		public static CancellationToken Link(this IAsakiAsyncService service, MonoBehaviour component, params CancellationToken[] others)
 		{
 			CancellationToken componentToken = component.GetToken();
 
