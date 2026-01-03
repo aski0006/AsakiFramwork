@@ -1,9 +1,9 @@
 using Asaki.Core.Broker;
+using Asaki.Core.Configs;
 using Asaki.Core.Context;
 using Asaki.Core.Logging;
 using Asaki.Core.Simulation;
 using Asaki.Unity.Bridge;
-using Asaki.Unity.Configuration;
 using Asaki.Unity.Services.Logging;
 using System;
 using UnityEngine;

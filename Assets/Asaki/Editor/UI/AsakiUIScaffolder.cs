@@ -1,6 +1,6 @@
 using Asaki.Core;
+using Asaki.Core.Configs;
 using Asaki.Core.UI;
-using Asaki.Unity.Configuration;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;

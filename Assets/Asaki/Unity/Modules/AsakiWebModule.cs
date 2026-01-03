@@ -1,7 +1,7 @@
 ﻿using Asaki.Core;
+using Asaki.Core.Configs;
 using Asaki.Core.Context;
 using Asaki.Core.Network;
-using Asaki.Unity.Configuration;
 using Asaki.Unity.Services.Network;
 using System.Threading.Tasks;
 

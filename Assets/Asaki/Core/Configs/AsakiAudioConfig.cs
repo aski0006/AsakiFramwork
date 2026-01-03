@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-namespace Asaki.Unity.Configuration
+namespace Asaki.Core.Configs
 {
 	public enum AsakiAudioGroup
 	{

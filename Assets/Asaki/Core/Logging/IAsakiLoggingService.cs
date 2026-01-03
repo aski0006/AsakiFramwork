@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Asaki.Core.Configs;
+using System;
 using Asaki.Core.Context;
 
 namespace Asaki.Core.Logging

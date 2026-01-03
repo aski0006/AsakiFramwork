@@ -1,8 +1,8 @@
-﻿using System;
+﻿using Asaki.Core.Resources;
+using System;
 using UnityEngine;
-using Asaki.Unity.Services.Resources;
 
-namespace Asaki.Unity.Configuration
+namespace Asaki.Core.Configs
 {
 	[Serializable]
 	public class AsakiResConfig

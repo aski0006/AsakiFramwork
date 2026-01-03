@@ -1,7 +1,8 @@
-﻿using System;
+﻿using Asaki.Core.Logging;
+using System;
 using UnityEngine;
 
-namespace Asaki.Core.Logging
+namespace Asaki.Core.Configs
 {
 	[Serializable]
 	public class AsakiLogConfig

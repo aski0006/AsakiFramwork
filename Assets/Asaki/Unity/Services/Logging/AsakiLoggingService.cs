@@ -1,7 +1,9 @@
-﻿using System;
+﻿using Asaki.Core.Configs;
+using System;
 using UnityEngine; // 仅用于 Update 驱动
 using Asaki.Core.Logging;
-using Asaki.Unity.Configuration; // IAsakiLoggingService, LogAggregator
+
+// IAsakiLoggingService, LogAggregator
 
 namespace Asaki.Unity.Services.Logging
 {

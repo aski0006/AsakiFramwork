@@ -1,9 +1,9 @@
 ﻿using Asaki.Core;
 using Asaki.Core.Audio;
+using Asaki.Core.Configs;
 using Asaki.Core.Context;
 using Asaki.Core.Pooling;
 using Asaki.Core.Resources;
-using Asaki.Unity.Configuration;
 using Asaki.Unity.Services.Audio;
 using System.Threading.Tasks;
 

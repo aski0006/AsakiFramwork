@@ -1,11 +1,11 @@
-﻿using System;
+﻿using Asaki.Core.Configs;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading;
 using Asaki.Core.Logging;
-using Asaki.Unity.Configuration;
 using UnityEngine;
 
 namespace Asaki.Unity.Services.Logging

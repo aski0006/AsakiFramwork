@@ -1,8 +1,8 @@
 using Asaki.Core.Audio;
+using Asaki.Core.Configs;
 using Asaki.Core.Logging;
 using Asaki.Core.Pooling;
 using Asaki.Core.Resources;
-using Asaki.Unity.Configuration;
 using Asaki.Unity.Utils;
 using Cysharp.Threading.Tasks;
 using System;

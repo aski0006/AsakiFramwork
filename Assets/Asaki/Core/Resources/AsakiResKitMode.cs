@@ -1,4 +1,4 @@
-﻿namespace Asaki.Unity.Services.Resources
+﻿namespace Asaki.Core.Resources
 {
 	/// <summary>
 	/// [Resources 运行模式]

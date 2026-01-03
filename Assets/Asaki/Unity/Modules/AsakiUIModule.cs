@@ -1,10 +1,10 @@
 using Asaki.Core;
 using Asaki.Core.Broker;
+using Asaki.Core.Configs;
 using Asaki.Core.Context;
 using Asaki.Core.Pooling;
 using Asaki.Core.Resources;
 using Asaki.Core.UI;
-using Asaki.Unity.Configuration;
 using Asaki.Unity.Services.UI;
 using System.Threading.Tasks;
 

@@ -1,8 +1,8 @@
 ﻿using System.Threading.Tasks;
 using Asaki.Core;
+using Asaki.Core.Configs;
 using Asaki.Core.Context;
 using Asaki.Core.Logging;
-using Asaki.Unity.Configuration;
 using Asaki.Unity.Services.Logging;
 
 namespace Asaki.Unity.Modules

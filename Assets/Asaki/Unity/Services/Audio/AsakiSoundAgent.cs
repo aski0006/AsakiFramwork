@@ -2,7 +2,6 @@ using Asaki.Core.Audio;
 using Asaki.Core.Logging;
 using Asaki.Core.Pooling;
 using Asaki.Core.Resources;
-using Asaki.Unity.Configuration;
 using Asaki.Unity.Utils;
 using System;
 using System.Threading;

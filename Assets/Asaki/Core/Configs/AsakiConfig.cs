@@ -1,11 +1,9 @@
 ﻿using Asaki.Core.Context;
 using Asaki.Core.Logging;
 using Asaki.Core.Network;
-using Asaki.Unity.Services.Resources;
 using UnityEngine;
-using System;
 
-namespace Asaki.Unity.Configuration
+namespace Asaki.Core.Configs
 {
     [CreateAssetMenu(fileName = "AsakiConfig", menuName = "Asaki/AsakiConfig")]
     public class AsakiConfig : ScriptableObject, IAsakiService
@@ -45,7 +43,7 @@ namespace Asaki.Unity.Configuration
         [Header("Modules: Logging")]
         [SerializeField] private AsakiLogConfig logConfig = new AsakiLogConfig();
         public AsakiLogConfig LogConfig => logConfig;
-
+        
         // =========================================================
         // 3. Runtime Initialization
         // =========================================================

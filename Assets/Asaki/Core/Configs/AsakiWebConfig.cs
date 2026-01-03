@@ -1,7 +1,8 @@
-﻿using System;
+﻿using Asaki.Core.Network;
+using System;
 using UnityEngine;
 
-namespace Asaki.Core.Network
+namespace Asaki.Core.Configs
 {
 	[Serializable]
 	public class AsakiWebConfig
