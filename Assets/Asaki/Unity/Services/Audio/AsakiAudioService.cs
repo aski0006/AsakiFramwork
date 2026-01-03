@@ -1,5 +1,5 @@
 using Asaki.Core.Audio;
-using Asaki.Core.Context;
+using Asaki.Core.Logging;
 using Asaki.Core.Pooling;
 using Asaki.Core.Resources;
 using Asaki.Unity.Configuration;
@@ -116,7 +116,7 @@ namespace Asaki.Unity.Services.Audio
 			// 2. 获取资源路径
 			if (!_config.TryGet(assetId, out AudioItem item))
 			{
-				Debug.LogWarning($"[AsakiAudio] AudioID {assetId} not registered in Config.");
+				ALog.Warn($"[AsakiAudio] AudioID {assetId} not registered in Config.");
 				return AsakiAudioHandle.Invalid;
 			}
 			string path = item.AssetPath;
@@ -155,7 +155,7 @@ namespace Asaki.Unity.Services.Audio
 			PlayInternal(agent, handle, path, finalParams, linkedToken, _agentAssetKey).FireAndForget(ex =>
 			{
 				if (ex is not OperationCanceledException)
-					Debug.LogError($"[AsakiAudio] Loop Error: {ex}");
+					ALog.Error($"[AsakiAudio] Loop Error: {ex.Message}", ex);
 			});
 
 			return handle;

@@ -1,5 +1,6 @@
 using Asaki.Core.Broker;
 using Asaki.Core.Async;
+using Asaki.Core.Logging;
 using Asaki.Core.Network;
 using System;
 using System.IO;
@@ -191,8 +192,7 @@ namespace Asaki.Unity.Services.Network
                 }
                 catch (Exception ex)
                 {
-                    // 吞掉IO异常，防止崩溃，但应该记录日志
-                    Debug.LogWarning($"[Downloader] Delete file failed: {ex.Message}");
+                    ALog.Warn($"[Downloader] Delete file failed: {ex.Message}");
                 }
             });
         }

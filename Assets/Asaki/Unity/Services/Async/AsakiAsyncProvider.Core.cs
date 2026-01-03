@@ -1,4 +1,5 @@
 ﻿using Asaki.Core.Async;
+using Asaki.Core.Logging;
 using System;
 using System.Threading;
 using System.Threading.Tasks;
@@ -67,7 +68,7 @@ namespace Asaki.Unity.Services.Coroutines
 			}
 			catch (Exception e)
 			{
-				Debug.LogException(e);
+				ALog.Error($"[AsakiAsync] Task error: {e.Message}", e);
 				throw;
 			}
 			finally

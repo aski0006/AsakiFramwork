@@ -31,6 +31,7 @@ namespace Asaki.Unity.Services.Resources
 		/// </summary>
 		/// <param name="mode">运行模式</param>
 		/// <param name="asyncService">异步驱动服务 (必须已初始化)</param>
+		/// <param name="eventService">事件服务 (必须已初始化)</param>
 		/// <returns>初始化好的资源服务</returns>
 		public static IAsakiResourceService Create(AsakiResKitMode mode, IAsakiAsyncService asyncService, IAsakiEventService eventService)
 		{

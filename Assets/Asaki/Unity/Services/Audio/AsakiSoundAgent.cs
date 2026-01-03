@@ -1,4 +1,5 @@
 using Asaki.Core.Audio;
+using Asaki.Core.Logging;
 using Asaki.Core.Pooling;
 using Asaki.Core.Resources;
 using Asaki.Unity.Configuration;
@@ -109,7 +110,7 @@ namespace Asaki.Unity.Services.Audio
 				// 检查资源有效性 (Handle.IsValid && Asset != null)
 				if (_clipHandle == null || !_clipHandle.IsValid)
 				{
-					Debug.LogWarning($"[AsakiAudio] Failed to load clip: {resourcePath}");
+					ALog.Warn($"[AsakiAudio] Failed to load clip: {resourcePath}");
 					return;
 				}
 
@@ -148,7 +149,7 @@ namespace Asaki.Unity.Services.Audio
 			}
 			catch (Exception e)
 			{
-				Debug.LogError($"[AsakiAudio] Play error: {e}");
+				ALog.Error($"[AsakiAudio] Play error: {e.Message}", e);
 			}
 			finally
 			{
@@ -204,7 +205,7 @@ namespace Asaki.Unity.Services.Audio
 				// 忽略 OperationCanceledException，那是我们自己取消的
 				if (ex is not OperationCanceledException)
 				{
-					Debug.LogError($"[AsakiAudio] FadeOut error: {ex}");
+					ALog.Error($"[AsakiAudio] FadeOut error: {ex.Message}", ex);
 				}
 			});
 		}

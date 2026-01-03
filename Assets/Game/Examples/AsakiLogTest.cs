@@ -1,4 +1,5 @@
-﻿using UnityEngine;
+﻿using Asaki.Core.Logging;
+using UnityEngine;
 using Asaki.Unity.Services.Logging;
 using System.Text;
 

@@ -1,4 +1,5 @@
 using Asaki.Core.Async;
+using Asaki.Core.Logging;
 using Asaki.Core.Resources;
 using Asaki.Unity.Extensions;
 using System;
@@ -326,7 +327,10 @@ namespace Asaki.Unity.Services.Resources
 					if (record.Asset != null)
 					{
 						try { _strategy.UnloadAssetInternal(record.Location, record.Asset); }
-						catch (Exception e) { Debug.LogError(e); }
+						catch (Exception e)
+						{
+							ALog.Error("[Resources] Unload Asset Failed", e);
+						}
 					}
 
 					_cache.Remove(currentKey);

@@ -1,5 +1,6 @@
 ﻿using Asaki.Core.Context;
 using Asaki.Core.Async;
+using Asaki.Core.Logging;
 using Asaki.Core.Network;
 using Asaki.Unity.Services.Async;
 using Asaki.Unity.Services.Logging;

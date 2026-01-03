@@ -1,3 +1,4 @@
+using Asaki.Core.Logging;
 using Asaki.Core.Network;
 using Asaki.Core.Serialization;
 using Asaki.Unity.Extensions;
@@ -171,7 +172,7 @@ namespace Asaki.Unity.Services.Network
 			}
 			catch (Exception ex)
 			{
-				Debug.LogError($"[AsakiWeb] Parse Error: {ex.Message}\n{json}"); // TODO: [Asaki] -> Asaki.ALog.Error
+				ALog.Error($"[AsakiWeb] Parse Error: {ex.Message}\n", json);
 				throw;
 			}
 		}

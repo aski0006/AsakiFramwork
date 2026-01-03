@@ -1,5 +1,6 @@
 using Asaki.Core;
 using Asaki.Core.Context;
+using Asaki.Core.Logging;
 using Asaki.Unity.Services.Logging;
 using System;
 using System.Collections.Generic;

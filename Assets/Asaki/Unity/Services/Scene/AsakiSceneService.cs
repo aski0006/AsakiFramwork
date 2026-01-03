@@ -1,5 +1,6 @@
 ﻿using Asaki.Core.Broker;
 using Asaki.Core.Async;
+using Asaki.Core.Logging;
 using Asaki.Core.Resources;
 using Asaki.Core.Scene;
 using Asaki.Unity.Services.Logging;

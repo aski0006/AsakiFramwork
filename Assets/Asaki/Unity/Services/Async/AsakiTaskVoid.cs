@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Asaki.Core.Logging;
+using System;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 
@@ -87,8 +88,7 @@ namespace Asaki.Unity.Services.Async
 	{
 		public static void Log(Exception ex)
 		{
-			// 你可以在这里扩展，比如上报到服务器或弹出错误窗口
-			UnityEngine.Debug.LogException(ex);
+			ALog.Error($"[AsakiAsync] Task error: {ex.Message}", ex);
 		}
 	}
 }

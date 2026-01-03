@@ -1,4 +1,5 @@
 using Asaki.Core.Broker;
+using Asaki.Core.Logging;
 using Asaki.Core.Serialization;
 using Asaki.Unity.Utils;
 using Cysharp.Threading.Tasks;
@@ -110,7 +111,7 @@ namespace Asaki.Unity.Services.Serialization
 			}
 			catch (Exception ex)
 			{
-				Debug.LogError($"[AsakiSave] Slot {slotId} Save Failed: {ex.Message}"); // TODO: [Asaki] -> Asaki.ALog.Error
+				ALog.Error($"[AsakiSave] Slot {slotId} Save Failed: {ex.Message}", ex);
 				_eventService.Publish(new AsakiSaveFailedEvent { Filename = $"Slot_{slotId}", ErrorMessage = ex.Message });
 				throw;
 			}
@@ -162,9 +163,7 @@ namespace Asaki.Unity.Services.Serialization
 			}
 			catch (Exception ex)
 			{
-				// 建议集成 ALog
-				// ALog.Error($"[AsakiSave] Slot {slotId} Load Failed", ex);
-				Debug.LogError($"[AsakiSave] Slot {slotId} Load Failed: {ex.Message}");
+				ALog.Error($"[AsakiSave] Slot {slotId} Load Failed: {ex.Message}", ex);
 				throw;
 			}
 		}

@@ -1,6 +1,7 @@
 ﻿#if ASAKI_USE_ADDRESSABLE
 
 using Asaki.Core.Async;
+using Asaki.Core.Logging;
 using Asaki.Core.Resources;
 using Asaki.Unity.Services.Logging;
 using System;

@@ -1,5 +1,6 @@
 using Asaki.Core.Broker;
 using Asaki.Core.Context;
+using Asaki.Core.Logging;
 using Asaki.Core.Pooling;
 using Asaki.Core.Resources;
 using Asaki.Core.Simulation;
@@ -77,7 +78,7 @@ namespace Asaki.Unity.Services.UI
 			}
 			else
 			{
-				Debug.LogWarning("[AsakiUI] No UIConfig assigned in AsakiConfig!"); // TODO: [Asaki] -> Asaki.ALog.Warn
+				ALog.Warn("[AsakiUI] No UIConfig assigned in AsakiConfig!");
 			}
 			return Task.CompletedTask;
 		}
@@ -90,7 +91,7 @@ namespace Asaki.Unity.Services.UI
 
 			if (_uiConfig == null || !_uiConfig.TryGet(uiId, out UIInfo info))
 			{
-				Debug.LogError($"[AsakiUI] UIID {uiId} not found.");
+				ALog.Warn($"[AsakiUI] UI ID {uiId} not found.");
 				return null;
 			}
 
@@ -181,7 +182,7 @@ namespace Asaki.Unity.Services.UI
 				}
 				rawHandle?.Dispose();
 
-				Debug.LogError($"[AsakiUI] OpenUI Failed: {e}");
+				ALog.Error($"[AsakiUI] OpenUI Failed: {e.Message}", e);
 				return null;
 			}
 		}
@@ -202,7 +203,7 @@ namespace Asaki.Unity.Services.UI
 			}
 			else
 			{
-				Debug.LogWarning($"[AsakiUI] Window {typeof(T).Name} not found in stack.");
+				ALog.Warn($"[AsakiUI] Window {typeof(T).Name} not found in stack.");
 			}
 		}
 
@@ -281,7 +282,7 @@ namespace Asaki.Unity.Services.UI
 			var target = _normalStack.FirstOrDefault(w => w is T);
 			if (target == null)
 			{
-				Debug.LogWarning($"[AsakiUI] Target window {typeof(T).Name} not in stack.");
+				ALog.Warn($"[AsakiUI] Target window {typeof(T).Name} not in stack.");
 				return;
 			}
 			BackTo(target);
@@ -292,7 +293,7 @@ namespace Asaki.Unity.Services.UI
 			var target = _windowInstanceMap.GetValueOrDefault(uiId);
 			if (target == null || !_normalStack.Contains(target))
 			{
-				Debug.LogWarning($"[AsakiUI] UIID {uiId} not in navigation stack.");
+				ALog.Warn($"[AsakiUI] UI ID {uiId} not in navigation stack.");
 				return;
 			}
 			BackTo(target);

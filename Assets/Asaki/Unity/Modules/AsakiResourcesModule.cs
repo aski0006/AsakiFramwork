@@ -2,6 +2,7 @@ using Asaki.Core;
 using Asaki.Core.Broker;
 using Asaki.Core.Context;
 using Asaki.Core.Async;
+using Asaki.Core.Logging;
 using Asaki.Core.Resources;
 using Asaki.Unity.Configuration;
 using Asaki.Unity.Services.Logging;

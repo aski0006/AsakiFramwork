@@ -1,6 +1,7 @@
 using Asaki.Core;
 using Asaki.Core.Configuration;
 using Asaki.Core.Context;
+using Asaki.Core.Logging;
 using Asaki.Unity.Services.Logging;
 using UnityEngine;
 

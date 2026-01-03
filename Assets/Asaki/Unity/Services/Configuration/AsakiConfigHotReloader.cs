@@ -2,6 +2,7 @@
 
 using Asaki.Core.Configuration;
 using Asaki.Core.Context;
+using Asaki.Core.Logging;
 using Asaki.Unity.Services.Logging;
 using System;
 using System.Collections.Concurrent;
@@ -99,8 +100,8 @@ namespace Asaki.Unity.Services.Configuration
 
 			if (configType != null)
 			{
-				Debug.Log($"[AsakiConfig] File Changed: {fileName}, Reloading...");
-				
+				ALog.Trace($"[AsakiConfig] File Changed: {fileName}, Reloading...");
+
 				IAsakiConfigService service = AsakiContext.Get<IAsakiConfigService>();
 				if (service != null)
 				{
@@ -117,7 +118,10 @@ namespace Asaki.Unity.Services.Configuration
 							Task.Run(async () =>
 							{
 								try { await task; }
-								catch (Exception ex) { Debug.LogError(ex.Message); }
+								catch (Exception ex)
+								{
+									ALog.Error($"[AsakiConfig] Failed to reload '{fileName}'. Error: {ex.Message}", ex);
+								}
 							});
 						}
 					}

@@ -1,4 +1,5 @@
-﻿using Asaki.Core.Simulation;
+﻿using Asaki.Core.Logging;
+using Asaki.Core.Simulation;
 using Asaki.Unity.Services.Logging;
 using System;
 using UnityEngine;

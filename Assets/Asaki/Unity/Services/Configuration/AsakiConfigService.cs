@@ -1,5 +1,6 @@
 using Asaki.Core.Broker;
 using Asaki.Core.Configuration;
+using Asaki.Core.Logging;
 using Asaki.Unity.Services.Logging;
 using Asaki.Unity.Services.Serialization;
 using Asaki.Unity.Utils;
@@ -300,7 +301,7 @@ namespace Asaki.Unity.Services.Configuration
 				}
 				else
 				{
-					Debug.LogWarning($"[AsakiConfig] Skipped '{fileName}'. No registry entry found.");
+					ALog.Warn($"[AsakiConfig] Skip loading '{fileName}'. No registry entry found.");
 				}
 			}
 
@@ -331,7 +332,7 @@ namespace Asaki.Unity.Services.Configuration
 					}
 					else
 					{
-						Debug.LogWarning($"[AsakiConfig] Detected stale binary for '{fileName}'. Re-baking from CSV...");
+						ALog.Warn($"[AsakiConfig] Detected stale binary for '{fileName}'. Re-baking from CSV...");
 					}
 				}
 				else
@@ -348,8 +349,8 @@ namespace Asaki.Unity.Services.Configuration
 				}
 				catch (Exception ex)
 				{
-					Debug.LogError($"[AsakiConfig] Failed to load binary '{fileName}', falling back to CSV. Error: {ex.Message}"); // TODO: [Asaki] -> Asaki.ALog.Error
-					results = null;                                                                                                // 加载失败，回退到 CSV
+					ALog.Error($"[AsakiConfig] Failed to load binary '{fileName}', falling back to CSV. Error : {ex.Message}", ex); 
+					results = null;                                                                                                
 				}
 			}
 
@@ -430,7 +431,7 @@ namespace Asaki.Unity.Services.Configuration
 			string csvPath = Path.Combine(_csvRootPath, typeof(T).Name + ".csv");
 			if (File.Exists(csvPath))
 			{
-				Debug.Log($"[AsakiConfig] Hot Reloading: {typeof(T).Name}...");
+				ALog.Info($"[AsakiConfig] Hot Reloading: {typeof(T).Name}...");
 
 				// 1. 读取最新的 CSV 内容
 				#if ASAKI_USE_UNITASK
