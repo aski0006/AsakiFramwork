@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace Asaki.Core
+namespace Asaki.Core.Attributes
 {
 	[AttributeUsage(AttributeTargets.Class, AllowMultiple = false, Inherited = true)]
 	public class AsakiGraphContextAttribute : Attribute

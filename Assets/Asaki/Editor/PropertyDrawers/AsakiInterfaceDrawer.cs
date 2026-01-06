@@ -1,4 +1,5 @@
 ﻿using Asaki.Core;
+using Asaki.Core.Attributes;
 using System;
 using System.Collections.Generic;
 using System.Linq;

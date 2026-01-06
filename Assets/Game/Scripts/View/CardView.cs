@@ -1,4 +1,5 @@
-using Asaki.Core;
+using Asaki.Core.Attributes;
+using Asaki.Core.Context;
 using Asaki.Core.MVVM;
 using Asaki.Core.Resources;
 using Asaki.Unity.Services.Async;
@@ -19,7 +20,7 @@ namespace Game.Scripts.View
 		[field: SerializeField] public AsakiProperty<int> CardDef { get; private set; } = new();
 	}
 
-	public class CardView : MonoBehaviour
+	public class CardView : MonoBehaviour, IAsakiInit<IAsakiResourceService>
 	{
 		[SerializeField] private TMP_Text CardCostText;
 		[SerializeField] private TMP_Text CardAtkText;
@@ -37,14 +38,17 @@ namespace Game.Scripts.View
 			_cardAtkObserver = new AsakiTMPTextIntObserver(CardAtkText);
 			_cardDefObserver = new AsakiTMPTextIntObserver(CardDefText);
 		}
+		public void Init(IAsakiResourceService args)
+		{
+			_asakiResourceService = args;
+		}
 
-		public async AsakiTaskVoid LoadCardData(CardData cardData,
-		                                        IAsakiResourceService asakiResourceService)
+		public async AsakiTaskVoid LoadCardData(CardData cardData)
 		{
 			ViewModel.CardCost.Value = cardData.Cost;
 			ViewModel.CardAtk.Value = cardData.Atk;
 			ViewModel.CardDef.Value = cardData.Def;
-			CardSprite.sprite =  await asakiResourceService.LoadAsync<Sprite>(cardData.CardSpriteAssetKey, destroyCancellationToken);
+			CardSprite.sprite =  await _asakiResourceService.LoadAsync<Sprite>(cardData.CardSpriteAssetKey, destroyCancellationToken);
 			CardDescription.text = cardData.CardDescription;
 		}
 
@@ -61,5 +65,6 @@ namespace Game.Scripts.View
 			ViewModel.CardAtk.Unbind(_cardAtkObserver);
 			ViewModel.CardDef.Unbind(_cardDefObserver);
 		}
+	
 	}
 }

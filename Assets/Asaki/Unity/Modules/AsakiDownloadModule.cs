@@ -2,6 +2,7 @@
 using Asaki.Core.Broker;
 using Asaki.Core.Context;
 using Asaki.Core.Async;
+using Asaki.Core.Attributes;
 using Asaki.Core.Network;
 using Asaki.Unity.Services.Network;
 using System.Threading.Tasks;
@@ -10,19 +11,26 @@ namespace Asaki.Unity.Modules
 {
 	[AsakiModule(125,
 		typeof(AsakiEventBusModule),
-		typeof(AsakiRoutineModule))]
+		typeof(AsakiAsyncModule))]
 	public class AsakiDownloadModule : IAsakiModule
 	{
-		private AsakiDownloadService _asakiDownloadService;
+		private IAsakiDownloadService _asakiDownloadService;
+		private IAsakiEventService _eventService;
+		private IAsakiAsyncService _asyncService;
+		[AsakiInject]
+		public void Init(IAsakiEventService eventService, IAsakiAsyncService asyncService)
+		{
+			_eventService = eventService;
+			_asyncService = asyncService;
+		}
 		public void OnInit()
 		{
-			IAsakiEventService eventsService = AsakiContext.Get<IAsakiEventService>();
-			IAsakiAsyncService asyncService = AsakiContext.Get<IAsakiAsyncService>();
+		
 			_asakiDownloadService = new AsakiDownloadService(
-				asyncService,
-				eventsService
+				_asyncService,
+				_eventService
 			);
-			AsakiContext.Register<IAsakiDownloadService>(_asakiDownloadService);
+			AsakiContext.Register(_asakiDownloadService);
 		}
 		public Task OnInitAsync()
 		{

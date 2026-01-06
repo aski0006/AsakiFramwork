@@ -1,7 +1,7 @@
 ﻿using Asaki.Core.UI;
 using System;
 
-namespace Asaki.Core
+namespace Asaki.Core.Attributes
 {
 	[AttributeUsage(AttributeTargets.Field | AttributeTargets.Property, AllowMultiple = false, Inherited = true)]
 	public class AsakiUIBuilderAttribute : Attribute

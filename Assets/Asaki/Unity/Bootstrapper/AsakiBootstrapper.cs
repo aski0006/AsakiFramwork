@@ -1,9 +1,8 @@
+using Asaki.Core.Attributes;
 using Asaki.Core.Broker;
 using Asaki.Core.Configs;
 using Asaki.Core.Context;
 using Asaki.Core.Logging;
-using Asaki.Core.Simulation;
-using Asaki.Unity.Bridge;
 using Asaki.Unity.Services.Logging;
 using System;
 using UnityEngine;
@@ -16,10 +15,17 @@ namespace Asaki.Unity.Bootstrapper
 	[DefaultExecutionOrder(-9999)]
 	public class AsakiBootstrapper : MonoBehaviour
 	{
+		[Header("Settings")]
+		[Tooltip("是否自动扫描全场景？如果关闭，则需手动拖拽到 List 中 (最快)")]
+		[SerializeField] private bool _autoScan = true;
+
+		[Tooltip("手动列表 (高性能模式)")]
+		[SerializeField] private MonoBehaviour[] _manualTargets;
+
 		[Header("Configuration")]
 		[SerializeField] private AsakiConfig _config;
 		private static AsakiBootstrapper _instance;
-		
+
 		// 引用日志服务，用于生命周期管理
 		private IAsakiLoggingService _logService;
 
@@ -36,20 +42,20 @@ namespace Asaki.Unity.Bootstrapper
 			// ============================================
 			// 第0阶段：极早期初始化 - 上下文清理
 			// ============================================
-			
+
 			AsakiContext.ClearAll();
 			Application.targetFrameRate = _config ? _config.TickRate : 60;
 
 			// ============================================
 			// 第1阶段：日志服务 V2 启动 (直连模式)
 			// ============================================
-			
+
 			// 1. 创建服务 (V2 构造函数无参，立即就绪)
 			_logService = new AsakiLoggingService();
-			
+
 			// 2. 注册到全局上下文 (ALog 依赖此步骤)
 			AsakiContext.Register<IAsakiLoggingService>(_logService);
-			
+
 			// 3. 如果有配置，应用初始等级 (避免 Debug 刷屏)
 			if (_config != null)
 			{
@@ -64,9 +70,9 @@ namespace Asaki.Unity.Bootstrapper
 			ALog.Info("=======================================");
 			ALog.Info("== ASAKI FRAMEWORK V2 BOOT START ==");
 			ALog.Info("=======================================");
-			
+
 			ALog.Info($"Bootstrapper ready. Platform: {Application.platform}");
-			
+
 			// 注册全局配置
 			if (_config != null)
 			{
@@ -94,6 +100,8 @@ namespace Asaki.Unity.Bootstrapper
 
 				AsakiBroker.Publish(new FrameworkReadyEvent());
 				ALog.Info("== ASAKI FRAMEWORK READY ==");
+
+				SceneInjector();
 			}
 			catch (Exception ex)
 			{
@@ -102,7 +110,39 @@ namespace Asaki.Unity.Bootstrapper
 				throw;
 			}
 		}
-		
+		private void SceneInjector()
+		{
+			ALog.Info("Scene Injector");
+
+			if (_autoScan)
+			{
+				var targets = FindObjectsByType<MonoBehaviour>(FindObjectsSortMode.None);
+				foreach (var target in targets)
+				{
+					// 只处理实现了标记接口的对象
+					if (target is IAsakiAutoInject)
+					{
+						ALog.Trace("Auto Inject: " + target.name);
+						InjectTarget(target);
+					}
+
+				}
+			}
+			else
+			{
+				foreach (MonoBehaviour target in _manualTargets)
+				{
+					if (target != null) InjectTarget(target);
+				}
+			}
+			
+			ALog.Info(@"Scene Injector complete!");
+		}
+		private void InjectTarget(MonoBehaviour target)
+		{
+			AsakiGlobalInjector.Inject(target);
+		}
+
 		private void OnDestroy()
 		{
 			if (_instance == this)

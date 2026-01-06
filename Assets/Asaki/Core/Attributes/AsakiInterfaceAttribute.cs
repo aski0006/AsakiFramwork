@@ -1,7 +1,7 @@
-﻿using UnityEngine;
-using System;
+﻿using System;
+using UnityEngine;
 
-namespace Asaki.Core
+namespace Asaki.Core.Attributes
 {
 	/// <summary>
 	/// [Asaki Native] 接口序列化标记。

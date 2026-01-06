@@ -2,6 +2,7 @@
 using Asaki.Core.Broker;
 using Asaki.Core.Context;
 using Asaki.Core.Async;
+using Asaki.Core.Attributes;
 using Asaki.Core.Resources;
 using Asaki.Core.Scene;
 using Asaki.Unity.Services.Scene;
@@ -11,19 +12,28 @@ namespace Asaki.Unity.Modules
 {
 	[AsakiModule(priority: 200,
 		typeof(AsakiEventBusModule),
-		typeof(AsakiRoutineModule),
+		typeof(AsakiAsyncModule),
 		typeof(AsakiResourcesModule))]
 	public class AsakiSceneModule : IAsakiModule
 	{
 		private IAsakiSceneService _asakiSceneService;
+		private IAsakiEventService eventService;
+		private IAsakiResourceService resService;
+		private IAsakiAsyncService asyncService;
+
+		[AsakiInject]
+		public void Init(IAsakiEventService eventService, IAsakiResourceService resService, IAsakiAsyncService asyncService)
+		{
+			this.eventService = eventService;
+			this.resService = resService;
+			this.asyncService = asyncService;
+		}
 		public void OnInit()
 		{
-			var eventService = AsakiContext.Get<IAsakiEventService>();
-			var resService = AsakiContext.Get<IAsakiResourceService>();
-			var coroutineService = AsakiContext.Get<IAsakiAsyncService>();
+			
 			_asakiSceneService = new AsakiSceneService(
 				eventService,
-				coroutineService,
+				asyncService,
 				resService);
 			_asakiSceneService.PerBuildScene();
 			AsakiContext.Register<IAsakiSceneService>(_asakiSceneService);

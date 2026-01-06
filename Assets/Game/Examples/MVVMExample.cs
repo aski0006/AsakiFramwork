@@ -1,4 +1,5 @@
 using Asaki.Core;
+using Asaki.Core.Attributes;
 using Asaki.Core.MVVM;
 using System;
 using UnityEngine;

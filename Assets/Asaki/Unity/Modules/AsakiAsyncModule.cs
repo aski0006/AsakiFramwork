@@ -1,12 +1,13 @@
 ﻿using Asaki.Core;
 using Asaki.Core.Context;
 using Asaki.Core.Async;
+using Asaki.Core.Attributes;
 using System.Threading.Tasks;
 
 namespace Asaki.Unity.Modules
 {
 	[AsakiModule(100)]
-	public class AsakiRoutineModule : IAsakiModule
+	public class AsakiAsyncModule : IAsakiModule
 	{
 		private Services.Coroutines.AsakiAsyncProvider _provider;
 		public void OnInit()

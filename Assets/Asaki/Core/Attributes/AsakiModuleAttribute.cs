@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace Asaki.Core
+namespace Asaki.Core.Attributes
 {
 	/// <summary>
 	/// [Asaki 架构核心] 模块标记特性。

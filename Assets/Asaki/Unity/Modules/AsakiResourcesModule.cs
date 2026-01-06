@@ -1,34 +1,39 @@
-using Asaki.Core;
-using Asaki.Core.Broker;
 using Asaki.Core.Context;
 using Asaki.Core.Async;
+using Asaki.Core.Attributes;
+using Asaki.Core.Broker;
 using Asaki.Core.Configs;
 using Asaki.Core.Logging;
 using Asaki.Core.Resources;
-using Asaki.Unity.Services.Logging;
 using Asaki.Unity.Services.Resources;
 using System.Threading.Tasks;
-using UnityEngine;
 
 namespace Asaki.Unity.Modules
 {
 	// 优先级 200，且显式依赖 RoutineModule
 	[AsakiModule(125,
-		typeof(AsakiRoutineModule),
+		typeof(AsakiAsyncModule),
 		typeof(AsakiEventBusModule))]
 	public class AsakiResourcesModule : IAsakiModule
 	{
 		private IAsakiResourceService _resourceService;
-
+		private IAsakiAsyncService _asyncService;
+		private IAsakiEventService _eventService;
+		
+		[AsakiInject]
+		public void Init(IAsakiAsyncService asyncService, IAsakiEventService eventService)
+		{
+			_asyncService = asyncService;
+			_eventService = eventService;
+		}
 		public void OnInit()
 		{
 			AsakiConfig config = AsakiContext.Get<AsakiConfig>();
-			IAsakiAsyncService routine = AsakiContext.Get<IAsakiAsyncService>();
-			IAsakiEventService eventService = AsakiContext.Get<IAsakiEventService>();
+			
 			// 2. 创建工厂
 			AsakiResKitMode mode = config ? config.ResConfig.Mode : AsakiResKitMode.Resources;
 			int timeoutSeconds = config.ResConfig.TimeoutSeconds;
-			_resourceService = AsakiResKitFactory.Create(mode, routine, eventService);
+			_resourceService = AsakiResKitFactory.Create(mode, _asyncService, _eventService);
 			_resourceService.SetTimeoutSeconds(timeoutSeconds);
 			// 3. 注册服务
 			AsakiContext.Register(_resourceService);

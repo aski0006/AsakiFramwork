@@ -1,4 +1,5 @@
 ﻿using Asaki.Core;
+using Asaki.Core.Attributes;
 using Asaki.Core.Audio;
 using Asaki.Core.Configs;
 using Asaki.Core.Context;
@@ -17,17 +18,24 @@ namespace Asaki.Unity.Modules
 	public class AsakiAudioModule : IAsakiModule
 	{
 		private IAsakiAudioService _audioService;
-
+		private IAsakiResourceService resource;
+		private IAsakiPoolService poolService;
+		
+		[AsakiInject]
+		public void Init(IAsakiResourceService resource, IAsakiPoolService poolService)
+		{
+			this.resource = resource;
+			this.poolService = poolService;
+		}
+		
 		public void OnInit()
 		{
 			AsakiConfig config = AsakiContext.Get<AsakiConfig>();
-			IAsakiResourceService resource = AsakiContext.Get<IAsakiResourceService>();
-			IAsakiPoolService pool = AsakiContext.Get<IAsakiPoolService>();
 			if (!config) return;
 
 			_audioService = new AsakiAudioService(
 				resource,
-				pool,
+				poolService,
 				config.AudioConfig,
 				config.AudioConfig.SoundAgentPrefabAssetKey,
 				config.AudioConfig.InitialPoolSize

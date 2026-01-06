@@ -1,4 +1,5 @@
 using Asaki.Core;
+using Asaki.Core.Attributes;
 using Asaki.Core.Broker;
 using Asaki.Core.Configs;
 using Asaki.Core.Context;
@@ -19,13 +20,20 @@ namespace Asaki.Unity.Modules
 	public class AsakiUIModule : IAsakiModule
 	{
 		private AsakiUIManageService _uiManageService;
-
+		private IAsakiEventService eventService;
+		private IAsakiResourceService resourceService;
+		private IAsakiPoolService poolService;
+		
+		[AsakiInject]
+		public void Init(IAsakiEventService eventService, IAsakiResourceService resourceService, IAsakiPoolService poolService)
+		{
+			this.eventService = eventService;
+			this.resourceService = resourceService;
+			this.poolService = poolService;
+		}
 		public void OnInit()
 		{
 			AsakiConfig config = AsakiContext.Get<AsakiConfig>();
-			IAsakiEventService eventService = AsakiContext.Get<IAsakiEventService>();
-			IAsakiResourceService resourceService = AsakiContext.Get<IAsakiResourceService>();
-			IAsakiPoolService poolService = AsakiContext.Get<IAsakiPoolService>();
 			// 如果没配置 UI，直接跳过
 			if (!config) return;
 

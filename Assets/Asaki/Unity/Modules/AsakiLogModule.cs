@@ -1,5 +1,6 @@
 ﻿using System.Threading.Tasks;
 using Asaki.Core;
+using Asaki.Core.Attributes;
 using Asaki.Core.Configs;
 using Asaki.Core.Context;
 using Asaki.Core.Logging;

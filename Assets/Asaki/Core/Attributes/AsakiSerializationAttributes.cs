@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace Asaki.Core
+namespace Asaki.Core.Attributes
 {
 	/// <summary>
 	/// 标记一个类或结构体需要自动生成 IAsakiSavable 实现

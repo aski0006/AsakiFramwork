@@ -1,4 +1,5 @@
 using Asaki.Core;
+using Asaki.Core.Attributes;
 using Asaki.Unity.Services.Serialization;
 using System.Collections.Generic;
 using System.Text;

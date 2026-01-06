@@ -1,4 +1,5 @@
 using Asaki.Core;
+using Asaki.Core.Attributes;
 using Asaki.Core.Context;
 using Asaki.Core.Logging;
 using Asaki.Unity.Services.Logging;
@@ -34,6 +35,11 @@ namespace Asaki.Unity.Bootstrapper
 				if (Activator.CreateInstance(type) is not IAsakiModule module)
 					continue;
 
+				// 2. [新增] 静态依赖注入
+				// 使用反射作为“开发期回退”，防止第一次编译时 Generated 代码不存在导致报错
+				// 正式构建时，Roslyn 会生成 Asaki.Generated.AsakiModuleInjector
+				InjectDependenciesSafe(module);
+
 				// [关键设计] 托管注册：将具体类型注册进容器
 				// 这样下游模块可以通过 AsakiContext.Get<ResKitModule>() 获取它
 				AsakiContext.Register(type, module);
@@ -42,7 +48,7 @@ namespace Asaki.Unity.Bootstrapper
 				module.OnInit();
 
 				activeModules.Add(module);
-				ALog.Info($" -> [OK] {type.Name}");
+				ALog.Info($"{type.Name} -> [OK] ");
 			}
 
 			// 4. 异步初始化 (Phase 2: Async Init)
@@ -53,6 +59,10 @@ namespace Asaki.Unity.Bootstrapper
 			}
 
 			ALog.Info("== [Asaki] Framework Ready ==");
+		}
+		private static void InjectDependenciesSafe(IAsakiModule module)
+		{
+			AsakiGlobalInjector.Inject(module);
 		}
 
 		/// <summary>
@@ -139,5 +149,6 @@ namespace Asaki.Unity.Bootstrapper
 
 			return result;
 		}
+
 	}
 }

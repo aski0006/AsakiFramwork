@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace Asaki.Core
+namespace Asaki.Core.Attributes
 {
 	[AttributeUsage(AttributeTargets.Class, Inherited = false, AllowMultiple = false)]
 	public sealed class AsakiBindAttribute : Attribute

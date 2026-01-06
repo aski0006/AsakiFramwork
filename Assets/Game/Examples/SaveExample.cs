@@ -1,4 +1,5 @@
 using Asaki.Core;
+using Asaki.Core.Attributes;
 using Asaki.Core.Context;
 using Asaki.Core.Serialization;
 using Asaki.Unity.Services.Async;
