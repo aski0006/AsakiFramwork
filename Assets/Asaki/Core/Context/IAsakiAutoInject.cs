@@ -1,4 +1,6 @@
-﻿namespace Asaki.Core.Context
+﻿using Asaki.Core.Context.Resolvers;
+
+namespace Asaki.Core.Context
 {
 	public interface IAsakiAutoInject { }
 	
@@ -12,6 +14,6 @@
 		/// <summary>
 		/// 尝试为目标注入依赖。
 		/// </summary>
-		void Inject(object target);
+		void Inject(object target, IAsakiResolver resolver = null);
 	}
 }
