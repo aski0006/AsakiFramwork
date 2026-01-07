@@ -60,10 +60,10 @@ namespace Asaki.Unity.Services.Resources.Strategies
 		}
 		public async Task UnloadUnusedAssets(CancellationToken token)
 		{
-			var op = UnityEngine.Resources.UnloadUnusedAssets();
+			AsyncOperation op = UnityEngine.Resources.UnloadUnusedAssets();
 			if (_async != null)
 			{
-				while (!op.isDone) 
+				while (!op.isDone)
 				{
 					if (token.IsCancellationRequested) return;
 					await _async.WaitFrame(token);

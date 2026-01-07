@@ -1,4 +1,5 @@
 ﻿// File: Asaki/Core/Time/IAsakiTimerService.cs
+
 using System;
 using Asaki.Core.Context;
 using Asaki.Core.Simulation;

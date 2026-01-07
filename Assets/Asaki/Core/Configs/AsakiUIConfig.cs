@@ -14,7 +14,7 @@ namespace Asaki.Core.Configs
 		public string AssetPath;
 		public bool UsePool;
 	}
-	
+
 	[Serializable]
 	public struct WidgetTemplate
 	{
@@ -48,9 +48,9 @@ namespace Asaki.Core.Configs
 		public void InitializeLookup()
 		{
 			if (_lookup != null) return;
-		
+
 			_lookup = new Dictionary<int, UIInfo>(UIList.Count);
-		
+
 			foreach (UIInfo item in UIList)
 			{
 				_lookup.TryAdd(item.ID, item);

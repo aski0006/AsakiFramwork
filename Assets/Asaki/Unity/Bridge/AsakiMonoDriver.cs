@@ -12,7 +12,7 @@ namespace Asaki.Unity.Bridge
 		public void Initialize(IAsakiSimulationService simService)
 		{
 			_simulationService = simService;
-			if (_simulationService != null) return; 
+			if (_simulationService != null) return;
 			ALog.Error("[AsakiSimulation] SimulationManager not found in context!");
 			enabled = false;
 		}

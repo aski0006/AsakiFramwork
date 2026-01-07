@@ -11,14 +11,14 @@ using UnityEngine;
 
 namespace Game.Scripts
 {
-	public class TestCardViewManager : MonoBehaviour,IAsakiAutoInject
-		,IAsakiInit<IAsakiPoolService, IAsakiConfigService, IAsakiResourceService>
+	public class TestCardViewManager : MonoBehaviour, IAsakiAutoInject, IAsakiSceneContextService,
+		IAsakiInit<IAsakiPoolService, IAsakiConfigService, IAsakiResourceService>
 	{
 		public string CardViewPrefabPath = "CardView";
 		private IAsakiPoolService _asakiPoolService;
 		private IAsakiConfigService _asakiConfigService;
 		private IAsakiResourceService _asakiResourceService;
-		
+
 		[AsakiInject]
 		public void Init(IAsakiPoolService args1, IAsakiConfigService args2, IAsakiResourceService args3)
 		{
@@ -27,7 +27,7 @@ namespace Game.Scripts
 			_asakiResourceService = args3;
 			Prewarn().Forget();
 		}
-		
+
 		private async AsakiTaskVoid Prewarn()
 		{
 			await _asakiPoolService.PrewarmAsync(CardViewPrefabPath, 8);
@@ -39,6 +39,6 @@ namespace Game.Scripts
 			CardView cv = _asakiPoolService.Spawn<CardView, IAsakiResourceService>(CardViewPrefabPath, _asakiResourceService);
 			cv.LoadCardData(_asakiConfigService.Get<CardData>(0)).Forget();
 		}
-	
+
 	}
 }

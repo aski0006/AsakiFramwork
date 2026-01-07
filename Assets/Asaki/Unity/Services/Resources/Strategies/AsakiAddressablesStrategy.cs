@@ -39,7 +39,7 @@ namespace Asaki.Unity.Services.Resources.Strategies
 			{
 				return await LoadAssetGenericAsync<Sprite>(location, onProgress, token);
 			}
-			
+
 			// 默认情况 (包括 Texture2D, GameObject, ScriptableObject 等)
 			return await LoadAssetGenericAsync<Object>(location, onProgress, token);
 		}
@@ -108,10 +108,10 @@ namespace Asaki.Unity.Services.Resources.Strategies
 		{
 			// 注意：Addressables 自身没有 UnloadUnusedAssets 概念，它依赖引用计数。
 			// 但底层仍是 Unity 资源，所以调用 Resources.UnloadUnusedAssets 依然有助于清理无引用的原生资源
-			var op = UnityEngine.Resources.UnloadUnusedAssets();
+			AsyncOperation op = UnityEngine.Resources.UnloadUnusedAssets();
 			if (_async != null)
 			{
-				while (!op.isDone) 
+				while (!op.isDone)
 				{
 					if (token.IsCancellationRequested) return;
 					await _async.WaitFrame(token);
@@ -138,8 +138,8 @@ namespace Asaki.Unity.Services.Resources.Strategies
 				{
 					// 等待泛型 Task 完成
 					T result = await handle.Task;
-          
-					return result; 
+
+					return result;
 				}
 				catch (Exception ex)
 				{

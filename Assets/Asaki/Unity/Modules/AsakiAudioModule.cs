@@ -20,14 +20,14 @@ namespace Asaki.Unity.Modules
 		private IAsakiAudioService _audioService;
 		private IAsakiResourceService resource;
 		private IAsakiPoolService poolService;
-		
+
 		[AsakiInject]
 		public void Init(IAsakiResourceService resource, IAsakiPoolService poolService)
 		{
 			this.resource = resource;
 			this.poolService = poolService;
 		}
-		
+
 		public void OnInit()
 		{
 			AsakiConfig config = AsakiContext.Get<AsakiConfig>();

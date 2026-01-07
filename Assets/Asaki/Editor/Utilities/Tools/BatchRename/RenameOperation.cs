@@ -17,7 +17,10 @@ namespace Asaki.Editor.Utilities.Tools.BatchRename
 		public string NewName => _newName;
 		public int InstanceId => _instanceId;
 
-		public void SetNewName(string newName) => _newName = newName;
+		public void SetNewName(string newName)
+		{
+			_newName = newName;
+		}
 
 		public RenameOperation(GameObject target, string newName)
 		{

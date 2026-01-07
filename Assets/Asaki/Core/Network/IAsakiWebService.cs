@@ -31,7 +31,7 @@ namespace Asaki.Core.Network
 	{
 		void OnRequest(UnityEngine.Networking.UnityWebRequest uwr);
 		bool OnResponse(UnityEngine.Networking.UnityWebRequest uwr);
-		void OnError(UnityEngine.Networking.UnityWebRequest uwr, System.Exception ex);
+		void OnError(UnityEngine.Networking.UnityWebRequest uwr, Exception ex);
 	}
 
 }

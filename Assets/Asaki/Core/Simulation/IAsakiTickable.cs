@@ -8,7 +8,7 @@ namespace Asaki.Core.Simulation
 		void Tick(float deltaTime);
 	}
 
-	public interface IAsakiFixedTickable 
+	public interface IAsakiFixedTickable
 	{
 		void FixedTick(float fixedDeltaTime);
 	}

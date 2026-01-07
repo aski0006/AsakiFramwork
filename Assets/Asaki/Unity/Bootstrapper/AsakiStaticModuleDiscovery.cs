@@ -1,7 +1,6 @@
 ﻿using Asaki.Core.Context;
 using System;
 using System.Collections.Generic;
-using UnityEngine;
 
 namespace Asaki.Unity.Bootstrapper
 {

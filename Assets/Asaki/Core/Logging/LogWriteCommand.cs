@@ -10,15 +10,15 @@ namespace Asaki.Core.Logging
 		public enum CmdType { Def, Inc }
 		public CmdType Type;
 		public int Id;
-        
+
 		// Def Data
 		public int LevelInt; // 存 int 避免枚举转换开销
 		public long Timestamp;
 		public string Message;
-		public string Payload;     // 预处理好的 JSON/String
+		public string Payload; // 预处理好的 JSON/String
 		public string Path;
 		public int Line;
-		public string StackJson;   // 预处理好的堆栈
+		public string StackJson; // 预处理好的堆栈
 
 		// Inc Data
 		public int IncAmount;
@@ -41,7 +41,7 @@ namespace Asaki.Core.Logging
 
 		public static LogWriteCommand Get()
 		{
-			return _pool.TryPop(out var cmd) ? cmd : new LogWriteCommand();
+			return _pool.TryPop(out LogWriteCommand cmd) ? cmd : new LogWriteCommand();
 		}
 
 		public static void Return(LogWriteCommand cmd)

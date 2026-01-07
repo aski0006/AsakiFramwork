@@ -82,7 +82,7 @@ namespace Asaki.Editor.Utilities.Extensions
 			style.borderTopWidth = value;
 			style.borderBottomWidth = value;
 		}
-		
+
 		// =========================================================
 		// Border Color 拓展
 		// =========================================================
@@ -94,7 +94,7 @@ namespace Asaki.Editor.Utilities.Extensions
 		/// <param name="color">要设置的颜色</param>
 		public static void SetBorderColor(this IStyle style, UnityEngine.Color color)
 		{
-			
+
 			style.borderLeftColor = color;
 			style.borderRightColor = color;
 			style.borderTopColor = color;

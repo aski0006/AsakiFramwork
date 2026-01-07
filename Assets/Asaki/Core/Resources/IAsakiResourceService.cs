@@ -46,7 +46,7 @@ namespace Asaki.Core.Resources
 
 		Task UnloadUnusedAssets(CancellationToken token = default(CancellationToken));
 		public void SetTimeoutSeconds(int timeoutSeconds);
-		
-		
+
+
 	}
 }

@@ -122,7 +122,7 @@ namespace Asaki.Unity.Services.Scene
 					float normalized = Mathf.Clamp01(raw / 0.9f);
 					float timeNow = UnityEngine.Time.realtimeSinceStartup;
 
-					if (normalized > lastProgress + 0.01f || (timeNow - lastReportTime) > 0.1f)
+					if (normalized > lastProgress + 0.01f || timeNow - lastReportTime > 0.1f)
 					{
 						lastProgress = normalized;
 						lastReportTime = timeNow;
@@ -140,8 +140,8 @@ namespace Asaki.Unity.Services.Scene
 				{
 					_activationTaskSignal = new TaskCompletionSource<bool>();
 					var signalTask = _activationTaskSignal.Task;
-					var waitTask = Task.Delay(-1, ct);
-					var completed = await Task.WhenAny(signalTask, waitTask);
+					Task waitTask = Task.Delay(-1, ct);
+					Task completed = await Task.WhenAny(signalTask, waitTask);
 					if (completed == waitTask)
 						return CancelSceneLoadOperation(targetScene);
 				}

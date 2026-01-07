@@ -8,12 +8,12 @@ using System.Threading.Tasks;
 
 namespace Asaki.Unity.Modules
 {
-	[AsakiModule(priority: 200, typeof(AsakiSimulationModule))]
+	[AsakiModule(200, typeof(AsakiSimulationModule))]
 	public class AsakiTimeModule : IAsakiModule
 	{
 		private IAsakiTimerService _asakiTimerService;
 		private IAsakiSimulationService simulation;
-		
+
 		[AsakiInject]
 		public void Init(IAsakiSimulationService simulation)
 		{

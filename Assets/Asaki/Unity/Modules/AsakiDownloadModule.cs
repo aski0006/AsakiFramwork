@@ -25,7 +25,7 @@ namespace Asaki.Unity.Modules
 		}
 		public void OnInit()
 		{
-		
+
 			_asakiDownloadService = new AsakiDownloadService(
 				_asyncService,
 				_eventService

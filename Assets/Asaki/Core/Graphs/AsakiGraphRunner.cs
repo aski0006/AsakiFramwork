@@ -1,6 +1,7 @@
 using Asaki.Core.Blackboard;
 using Asaki.Core.Context;
 using System;
+using System.Reflection;
 using UnityEngine;
 
 namespace Asaki.Core.Graphs
@@ -58,11 +59,11 @@ namespace Asaki.Core.Graphs
 		{
 			if (GraphAsset == null || _context.Blackboard == null) return;
 			string globalAssetPath = "Assets/Asaki/Resources/GlobalBlackboard.asset";
-			var globalAsset = UnityEngine.Resources.Load<AsakiGlobalBlackboardAsset>("GlobalBlackboard");
+			AsakiGlobalBlackboardAsset globalAsset = UnityEngine.Resources.Load<AsakiGlobalBlackboardAsset>("GlobalBlackboard");
 			if (globalAsset != null)
 			{
 				// 先加载全局变量（作为父作用域）
-				foreach (var globalVar in globalAsset.GlobalVariables)
+				foreach (AsakiVariableDef globalVar in globalAsset.GlobalVariables)
 				{
 					// 如果局部没有同名变量，则继承全局值
 					if (!GraphAsset.Variables.Exists(v => v.Name == globalVar.Name))
@@ -71,7 +72,7 @@ namespace Asaki.Core.Graphs
 					}
 				}
 			}
-			foreach (var variable in GraphAsset.Variables)
+			foreach (AsakiVariableDef variable in GraphAsset.Variables)
 			{
 				WriteVariableToRuntime(variable.Name, variable);
 			}
@@ -156,7 +157,7 @@ namespace Asaki.Core.Graphs
 				if (_context.Blackboard == null) return default(T);
 
 				T value = _context.Blackboard.GetValue<T>(getVarNode.VariableName);
-				
+
 				return value;
 			}
 
@@ -242,7 +243,7 @@ namespace Asaki.Core.Graphs
 					case Vector3 v3:
 						_context.Blackboard.SetValue(key, v3);
 						break;
-            
+
 					// 补充其他常用 Unity 类型
 					case Vector2 v2:
 						_context.Blackboard.SetValue(key, v2);
@@ -270,19 +271,19 @@ namespace Asaki.Core.Graphs
 				Debug.LogError($"[AsakiRunner] SetVariable Failed: Key={key}, Type={value.GetType().Name}, Value={value}. Error: {e.Message}");
 			}
 		}
-		
+
 		private void WriteGenericToBlackboard(string key, object value)
 		{
 			// 获取 SetValue<T> 方法的元数据
 			// 注意：这里假设 IAsakiBlackboard 接口或实现类上有 SetValue<T>
 			// 如果是用接口调用，需要获取 InterfaceMapping 或直接从实例类型获取
-			var methodInfo = _context.Blackboard.GetType().GetMethod("SetValue");
-    
+			MethodInfo methodInfo = _context.Blackboard.GetType().GetMethod("SetValue");
+
 			if (methodInfo != null)
 			{
 				// 构造 SetValue<MyCustomType>
-				var genericMethod = methodInfo.MakeGenericMethod(value.GetType());
-        
+				MethodInfo genericMethod = methodInfo.MakeGenericMethod(value.GetType());
+
 				// 调用
 				genericMethod.Invoke(_context.Blackboard, new object[] { key, value });
 			}

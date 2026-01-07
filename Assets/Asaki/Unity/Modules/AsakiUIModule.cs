@@ -23,7 +23,7 @@ namespace Asaki.Unity.Modules
 		private IAsakiEventService eventService;
 		private IAsakiResourceService resourceService;
 		private IAsakiPoolService poolService;
-		
+
 		[AsakiInject]
 		public void Init(IAsakiEventService eventService, IAsakiResourceService resourceService, IAsakiPoolService poolService)
 		{

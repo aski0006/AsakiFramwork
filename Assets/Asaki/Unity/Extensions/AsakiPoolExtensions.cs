@@ -21,7 +21,7 @@ namespace Asaki.Unity.Extensions
 
 			// 2. 获取组件 (这是池化不可避免的开销，除非把 Component 缓存在 PoolItem 里)
 			// 优化建议：如果 T 是特定高频类，可以考虑修改 PoolItem 泛型化，但现在这样足够通用。
-			if (!go.TryGetComponent<T>(out var component))
+			if (!go.TryGetComponent<T>(out T component))
 			{
 				Debug.LogError($"[AsakiPool] Object '{go.name}' missing component '{typeof(T).Name}'!");
 				pool.Despawn(go, key); // 错误回退
@@ -41,12 +41,12 @@ namespace Asaki.Unity.Extensions
 			GameObject go = pool.Spawn(key, null, null, parent);
 			if (go == null) return null;
 
-			if (go.TryGetComponent<T>(out var component))
+			if (go.TryGetComponent<T>(out T component))
 			{
 				component.Init(arg1, arg2);
 				return component;
 			}
-            
+
 			pool.Despawn(go, key);
 			return null;
 		}
@@ -56,30 +56,30 @@ namespace Asaki.Unity.Extensions
 			GameObject go = pool.Spawn(key, null, null, parent);
 			if (go == null) return null;
 
-			if (go.TryGetComponent<T>(out var component))
+			if (go.TryGetComponent<T>(out T component))
 			{
 				component.Init(arg1, arg2, arg3);
 				return component;
 			}
-            
+
 			pool.Despawn(go, key);
 			return null;
-			
+
 		}
-		
+
 		public static T Spawn<T, TArg1, TArg2, TArg3, TArg4>(this IAsakiPoolService pool, string key, TArg1 arg1, TArg2 arg2, TArg3 arg3, TArg4 arg4, Transform parent = null)
 			where T : Component, IAsakiInit<TArg1, TArg2, TArg3, TArg4>
 		{
 			GameObject go = pool.Spawn(key, null, null, parent);
 			if (go == null) return null;
 
-			if (go.TryGetComponent<T>(out var component))
+			if (go.TryGetComponent<T>(out T component))
 			{
 				component.Init(arg1, arg2, arg3, arg4);
 				return component;
 			}
 			pool.Despawn(go, key);
-			
+
 			return null;
 		}
 
@@ -89,7 +89,7 @@ namespace Asaki.Unity.Extensions
 			GameObject go = pool.Spawn(key, null, null, parent);
 			if (go == null) return null;
 
-			if (go.TryGetComponent<T>(out var component))
+			if (go.TryGetComponent<T>(out T component))
 			{
 				component.Init(arg1, arg2, arg3, arg4, arg5);
 				return component;

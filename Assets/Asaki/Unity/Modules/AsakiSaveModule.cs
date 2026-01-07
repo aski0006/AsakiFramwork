@@ -13,13 +13,13 @@ namespace Asaki.Unity.Modules
 	{
 		private IAsakiSaveService _asakiSaveService;
 		private IAsakiEventService eventService;
-		
+
 		[AsakiInject]
 		public void Init(IAsakiEventService eventService)
 		{
 			this.eventService = eventService;
 		}
-		
+
 		public void OnInit()
 		{
 			_asakiSaveService = new AsakiSaveService(eventService);

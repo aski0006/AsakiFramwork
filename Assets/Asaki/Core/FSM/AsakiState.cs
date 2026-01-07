@@ -10,7 +10,7 @@
 		/// 状态持有者上下文
 		/// </summary>
 		protected TContext Context { get; private set; }
-        
+
 		/// <summary>
 		/// 所属状态机引用 (用于内部切换状态)
 		/// </summary>

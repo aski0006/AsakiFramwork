@@ -1,3 +1,4 @@
+using Asaki.Core.Blackboard;
 using Asaki.Core.Graphs;
 using System.Collections.Generic;
 using System.Linq;
@@ -14,7 +15,7 @@ namespace Asaki.Editor.GraphEditors
 		public AsakiGraphBase GraphAsset => _graph;
 		private SerializedObject _serializedGraph; // 缓存 Graphs 的 SO
 		public AsakiBlackboardProvider BlackboardProvider;
-		
+
 		public AsakiGraphView(AsakiGraphBase graph)
 		{
 			_graph = graph;
@@ -89,11 +90,11 @@ namespace Asaki.Editor.GraphEditors
 		private void OnDragPerform(DragPerformEvent evt)
 		{
 			// 接收包装类
-			var dragData = DragAndDrop.GetGenericData("AsakiVariable") as DragVariableData;
+			DragVariableData dragData = DragAndDrop.GetGenericData("AsakiVariable") as DragVariableData;
 			if (dragData != null)
 			{
 				Vector2 localPos = contentViewContainer.WorldToLocal(evt.mousePosition);
-        
+
 				// 弹出菜单供用户选择 Get 或 Set
 				ShowVariableMenu(dragData, localPos);
 
@@ -141,7 +142,7 @@ namespace Asaki.Editor.GraphEditors
 		/// </summary>
 		private void CreateVariableNode<T>(DragVariableData dragData, Vector2 position) where T : AsakiNodeBase, new()
 		{
-			var variable = dragData.Variable;
+			AsakiVariableDef variable = dragData.Variable;
 			bool isGlobal = dragData.IsGlobal;
 
 			T nodeData = AsakiGraphIOUtils.AddNode<T>(_graph, position);
@@ -150,7 +151,7 @@ namespace Asaki.Editor.GraphEditors
 			{
 				getNode.VariableName = variable.Name;
 				// [Fix] 使用 TypeName 字符串，而非旧的 Enum
-				getNode.VariableTypeName = variable.TypeName; 
+				getNode.VariableTypeName = variable.TypeName;
 				getNode.IsGlobalVariable = isGlobal;
 			}
 			else if (nodeData is AsakiSetVariableNode setNode)
@@ -166,7 +167,7 @@ namespace Asaki.Editor.GraphEditors
 
 			CreateNodeView(nodeData);
 		}
-		
+
 		private void OnNodeCreationRequest(NodeCreationContext context)
 		{
 			AsakiNodeSearchWindow searchWindow = ScriptableObject.CreateInstance<AsakiNodeSearchWindow>();

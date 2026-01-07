@@ -232,7 +232,7 @@ namespace Asaki.Unity.Services.UI
 		}
 
 		#region 查询接口实现
-		
+
 		public bool IsOpened(int uiId)
 		{
 			return _windowInstanceMap.ContainsKey(uiId);
@@ -249,7 +249,7 @@ namespace Asaki.Unity.Services.UI
 
 		public IAsakiWindow GetWindow(int uiId)
 		{
-			return _windowInstanceMap.TryGetValue(uiId, out var window) ? window : null;
+			return _windowInstanceMap.TryGetValue(uiId, out IAsakiWindow window) ? window : null;
 		}
 
 		public IReadOnlyList<IAsakiWindow> GetOpenedWindows(AsakiUILayer? layer = null)
@@ -279,7 +279,7 @@ namespace Asaki.Unity.Services.UI
 
 		public void BackTo<T>() where T : IAsakiWindow
 		{
-			var target = _normalStack.FirstOrDefault(w => w is T);
+			IAsakiWindow target = _normalStack.FirstOrDefault(w => w is T);
 			if (target == null)
 			{
 				ALog.Warn($"[AsakiUI] Target window {typeof(T).Name} not in stack.");
@@ -290,7 +290,7 @@ namespace Asaki.Unity.Services.UI
 
 		public void BackTo(int uiId)
 		{
-			var target = _windowInstanceMap.GetValueOrDefault(uiId);
+			IAsakiWindow target = _windowInstanceMap.GetValueOrDefault(uiId);
 			if (target == null || !_normalStack.Contains(target))
 			{
 				ALog.Warn($"[AsakiUI] UI ID {uiId} not in navigation stack.");
@@ -316,13 +316,13 @@ namespace Asaki.Unity.Services.UI
 			_returnValueStack.Push(returnValue);
 
 			// 触发关闭（动画完成后会自动处理返回值）
-			var topWindow = _normalStack.Peek();
+			IAsakiWindow topWindow = _normalStack.Peek();
 			await topWindow.OnCloseAsync(CancellationToken.None);
 
 			// 通知下方窗口接收返回值
 			if (_normalStack.Count > 0)
 			{
-				var nextWindow = _normalStack.Peek();
+				IAsakiWindow nextWindow = _normalStack.Peek();
 				// 约定：窗口实现 IAsakiWindowWithResult 接口来接收
 				(nextWindow as IAsakiWindowWithResult)?.OnReturnValue(returnValue);
 			}
@@ -335,7 +335,7 @@ namespace Asaki.Unity.Services.UI
 			// 清空Normal层
 			while (_normalStack.Count > 0)
 			{
-				var window = _normalStack.Pop();
+				IAsakiWindow window = _normalStack.Pop();
 				_pendingDestroyQueue.Enqueue(window);
 			}
 
@@ -347,7 +347,7 @@ namespace Asaki.Unity.Services.UI
 				                   .Select(kvp => kvp.Key)
 				                   .ToList();
 
-				foreach (var popup in popupWindows)
+				foreach (IAsakiWindow popup in popupWindows)
 				{
 					_pendingDestroyQueue.Enqueue(popup);
 				}
@@ -359,7 +359,7 @@ namespace Asaki.Unity.Services.UI
 			// 关闭当前栈顶
 			if (_normalStack.Count > 0)
 			{
-				var oldWindow = _normalStack.Peek();
+				IAsakiWindow oldWindow = _normalStack.Peek();
 				await oldWindow.OnCloseAsync(CancellationToken.None);
 			}
 
@@ -401,7 +401,7 @@ namespace Asaki.Unity.Services.UI
 
 			// 3. 执行关闭
 			HandleCloseAsync(window).FireAndForget();
-			
+
 			foreach (var pair in _windowInstanceMap)
 			{
 				if (pair.Value == window)

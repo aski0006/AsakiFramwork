@@ -16,7 +16,7 @@ namespace Asaki.Core.Resources
 		Task<UnityEngine.Object> LoadAssetInternalAsync(string location, Type type, Action<float> onProgress, CancellationToken token);
 
 		void UnloadAssetInternal(string location, UnityEngine.Object asset);
-		
+
 		Task UnloadUnusedAssets(CancellationToken token);
 	}
 }

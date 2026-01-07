@@ -128,12 +128,12 @@ namespace Asaki.Unity.Services.Serialization
 				#if ASAKI_USE_UNITASK
 				await UniTask.SwitchToThreadPool();
 				#endif
-        
+
 				// 并行读取 IO，进一步提升速度
 				var dataTask = File.ReadAllBytesAsync(GetDataPath(slotId));
 				var metaTask = File.ReadAllTextAsync(GetMetaPath(slotId));
 				await Task.WhenAll(dataTask, metaTask);
-        
+
 				byte[] dataBuffer = dataTask.Result;
 				string metaJson = metaTask.Result;
 

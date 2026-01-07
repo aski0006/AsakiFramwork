@@ -8,6 +8,6 @@
 		Warning = 3,
 		Error = 4,
 		Fatal = 5,
-		None = 99
+		None = 99,
 	}
 }

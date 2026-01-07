@@ -2,6 +2,7 @@ using Asaki.Core.Attributes;
 using Asaki.Core.Broker;
 using Asaki.Core.Configs;
 using Asaki.Core.Context;
+using Asaki.Core.Context.Resolvers;
 using Asaki.Core.Logging;
 using Asaki.Unity.Services.Logging;
 using System;
@@ -112,35 +113,46 @@ namespace Asaki.Unity.Bootstrapper
 		}
 		private void SceneInjector()
 		{
-			ALog.Info("Scene Injector");
+			ALog.Info("Scene Injector Running...");
+
+			// [关键修改 1] 获取当前场景的上下文作为解析器
+			// 如果场景中没有 AsakiSceneContext，则 resolver 为 null，注入器会自动 fallback 到全局
+			IAsakiResolver sceneResolver = FindFirstObjectByType<AsakiSceneContext>();
+            
+			if (sceneResolver != null)
+			{
+				ALog.Info($"[Asaki] Context found: {((UnityEngine.Object)sceneResolver).name}. Using Scene+Global resolution.");
+			}
+			else
+			{
+				ALog.Info("[Asaki] No Scene Context found. Using Global-Only resolution.");
+			}
 
 			if (_autoScan)
 			{
 				var targets = FindObjectsByType<MonoBehaviour>(FindObjectsSortMode.None);
 				foreach (var target in targets)
 				{
-					// 只处理实现了标记接口的对象
 					if (target is IAsakiAutoInject)
 					{
-						ALog.Trace("Auto Inject: " + target.name);
-						InjectTarget(target);
+						// [关键修改 2] 传入解析器
+						InjectTarget(target, sceneResolver);
 					}
-
 				}
 			}
 			else
 			{
 				foreach (MonoBehaviour target in _manualTargets)
 				{
-					if (target != null) InjectTarget(target);
+					if (target != null) InjectTarget(target, sceneResolver);
 				}
 			}
-			
-			ALog.Info(@"Scene Injector complete!");
+            
+			ALog.Info("Scene Injector complete!");
 		}
-		private void InjectTarget(MonoBehaviour target)
+		private void InjectTarget(MonoBehaviour target, IAsakiResolver resolver)
 		{
-			AsakiGlobalInjector.Inject(target);
+			AsakiGlobalInjector.Inject(target, resolver);
 		}
 
 		private void OnDestroy()

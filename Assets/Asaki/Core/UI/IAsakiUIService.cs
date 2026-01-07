@@ -14,9 +14,9 @@ namespace Asaki.Core.UI
 		void Back();
 		void BackTo<T>() where T : IAsakiWindow;
 		void BackTo(int uiId);
-		Task Back(object returnValue); 
+		Task Back(object returnValue);
 		void ClearStack(bool includePopup = false);
-		
+
 		Task<T> ReplaceAsync<T>(int uiId, object args = null) where T : class, IAsakiWindow;
 		// 查询
 		bool IsOpened(int uiId);

@@ -16,7 +16,7 @@ namespace Asaki.Core.Configs
 
 		[Tooltip("保留的历史文件数量")]
 		public int MaxHistoryFiles = 10; // 超过这个数量会自动删除最旧的
-        
+
 		[Tooltip("日志文件名前缀")]
 		public string FilePrefix = "GameLog";
 	}

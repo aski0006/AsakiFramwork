@@ -9,9 +9,9 @@ namespace Asaki.Core.Blackboard
 	{
 		public string Name;
 
-		[SerializeReference] 
+		[SerializeReference]
 		public AsakiValueBase ValueData;
-		
+
 		public bool IsExposed { get; set; }
 
 		// 辅助属性：快速获取类型名

@@ -28,16 +28,14 @@ namespace Asaki.Unity.Bootstrapper
 		/// <summary>
 		/// [核心入口] 对目标对象执行全量注入
 		/// </summary>
-		public static void Inject(object target)
+		public static void Inject(object target, IAsakiResolver resolver = null)
 		{
 			if (target == null) return;
 
-			// 遍历所有注入器。
-			// 这种设计非常高效，因为通常整个游戏也就 2-3 个程序集 (Core, Unity, Game)
-			// 每个 Injector 内部都是 O(1) 的类型检查，如果类型不匹配会立即 return。
 			foreach (var injector in _injectors)
 			{
-				injector.Inject(target);
+				// 将 resolver 透传给具体生成的注入器
+				injector.Inject(target, resolver);
 			}
 		}
 	}

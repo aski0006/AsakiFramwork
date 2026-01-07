@@ -25,7 +25,7 @@ namespace Asaki.Unity.Services.Resources
 			public int CacheKey;   // [新增] 记录缓存Key
 			public Object Asset;
 			public int RefCount;
-			
+
 			// [修改] 使用 int 类型的 HashKey 防止重复依赖 (因为依赖也是通过 HashKey 索引的)
 			public HashSet<int> DependencyKeys = new HashSet<int>();
 			public TaskCompletionSource<Object> LoadingTcs = new TaskCompletionSource<Object>(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -156,11 +156,11 @@ namespace Asaki.Unity.Services.Resources
 				if (!_cache.TryGetValue(key, out record))
 				{
 					// [修改] 初始化记录时存储 Type 和 Key
-					record = new ResRecord 
-					{ 
-						Location = location, 
+					record = new ResRecord
+					{
+						Location = location,
 						AssetType = type,
-						CacheKey = key
+						CacheKey = key,
 					};
 					_cache.Add(key, record);
 					isOwner = true;
@@ -256,7 +256,7 @@ namespace Asaki.Unity.Services.Resources
 				// 这样 Unity Resources.Load 就能收到正确的 Sprite 类型
 				Object asset = await _asyncService.RunTask(async () => await _strategy.LoadAssetInternalAsync(
 					record.Location,
-					record.AssetType, 
+					record.AssetType,
 					record.ReportProgress,
 					CancellationToken.None
 				));
@@ -322,7 +322,7 @@ namespace Asaki.Unity.Services.Resources
 					record.RefCount--;
 
 					if (record.RefCount > 0) continue;
-					
+
 					// 引用归零，卸载
 					if (record.Asset != null)
 					{
@@ -396,7 +396,7 @@ namespace Asaki.Unity.Services.Resources
 		{
 			foreach (string location in locations) Release(location, typeof(Object));
 		}
-		
+
 		// 建议新增的泛型批量释放
 		public void ReleaseBatch<T>(IEnumerable<string> locations)
 		{

@@ -19,10 +19,25 @@ namespace Asaki.Core.Time
 
 		public static AsakiTimerHandle Invalid => new AsakiTimerHandle(0, 0);
 
-		public bool Equals(AsakiTimerHandle other) => Id == other.Id && Version == other.Version;
-		public override bool Equals(object obj) => obj is AsakiTimerHandle other && Equals(other);
-		public override int GetHashCode() => HashCode.Combine(Id, Version);
-		public static bool operator ==(AsakiTimerHandle left, AsakiTimerHandle right) => left.Equals(right);
-		public static bool operator !=(AsakiTimerHandle left, AsakiTimerHandle right) => !left.Equals(right);
+		public bool Equals(AsakiTimerHandle other)
+		{
+			return Id == other.Id && Version == other.Version;
+		}
+		public override bool Equals(object obj)
+		{
+			return obj is AsakiTimerHandle other && Equals(other);
+		}
+		public override int GetHashCode()
+		{
+			return HashCode.Combine(Id, Version);
+		}
+		public static bool operator ==(AsakiTimerHandle left, AsakiTimerHandle right)
+		{
+			return left.Equals(right);
+		}
+		public static bool operator !=(AsakiTimerHandle left, AsakiTimerHandle right)
+		{
+			return !left.Equals(right);
+		}
 	}
 }

@@ -15,8 +15,8 @@ namespace Asaki.Editor.GraphEditors
 
 		// 当前连接的 Runner 实例
 		private MonoBehaviour _currentRunner;
-		private System.Reflection.EventInfo _eventInfo;
-		private System.Delegate _handler;
+		private EventInfo _eventInfo;
+		private Delegate _handler;
 
 		public AsakiGraphDebugger(AsakiGraphView graphView)
 		{
@@ -86,8 +86,8 @@ namespace Asaki.Editor.GraphEditors
 			if (eventInfo != null)
 			{
 				// 创建委托： (AsakiNodeBase node) => OnNodeExecuted(node)
-				System.Action<AsakiNodeBase> action = OnNodeExecuted;
-				_handler = System.Delegate.CreateDelegate(eventInfo.EventHandlerType, action.Target, action.Method);
+				Action<AsakiNodeBase> action = OnNodeExecuted;
+				_handler = Delegate.CreateDelegate(eventInfo.EventHandlerType, action.Target, action.Method);
 				eventInfo.AddEventHandler(runner, _handler);
 
 				_eventInfo = eventInfo;

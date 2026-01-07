@@ -12,14 +12,17 @@ namespace Asaki.Core.Context.Resolvers
 	{
 		[Header("Local Services Configuration")]
 		[Tooltip("在此处配置纯 C# 场景服务 (Non-MonoBehaviour)。\n它们将在 Awake 时被实例化并注册。")]
-		[SerializeReference]                    
-		[AsakiInterface(typeof(IAsakiSceneContextService))] 
+		[SerializeReference]
+		[AsakiInterface(typeof(IAsakiSceneContextService))]
 		private List<IAsakiSceneContextService> _preconfiguredServices = new List<IAsakiSceneContextService>();
 		private readonly Dictionary<Type, IAsakiService> _localServices = new Dictionary<Type, IAsakiService>();
 		#if UNITY_EDITOR
-		public Dictionary<Type, IAsakiService> GetRuntimeServices() => _localServices;
+		public Dictionary<Type, IAsakiService> GetRuntimeServices()
+		{
+			return _localServices;
+		}
 		#endif
-		
+
 		private void Awake()
 		{
 			if (_preconfiguredServices == null) return;
@@ -33,7 +36,7 @@ namespace Asaki.Core.Context.Resolvers
 		{
 			_localServices[typeof(T)] = service;
 		}
-		
+
 		private void RegisterInternal(Type type, IAsakiService service)
 		{
 			if (_localServices.ContainsKey(type))
@@ -45,15 +48,15 @@ namespace Asaki.Core.Context.Resolvers
 		public T Get<T>() where T : class, IAsakiService
 		{
 			// 1. 查本地
-			if (_localServices.TryGetValue(typeof(T), out var service)) return (T)service;
-        
+			if (_localServices.TryGetValue(typeof(T), out IAsakiService service)) return (T)service;
+
 			// 2. 查全局 (降级)
 			return AsakiContext.Get<T>();
 		}
-		
+
 		public bool TryGet<T>(out T service) where T : class, IAsakiService
 		{
-			if (_localServices.TryGetValue(typeof(T), out var s))
+			if (_localServices.TryGetValue(typeof(T), out IAsakiService s))
 			{
 				service = (T)s;
 				return true;
@@ -63,9 +66,9 @@ namespace Asaki.Core.Context.Resolvers
 		private void OnDestroy()
 		{
 			// 场景卸载时，自动清理本地服务
-			foreach(var service in _localServices.Values)
+			foreach (IAsakiService service in _localServices.Values)
 			{
-				if(service is IDisposable d) d.Dispose();
+				if (service is IDisposable d) d.Dispose();
 			}
 			_localServices.Clear();
 		}

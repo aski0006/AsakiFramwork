@@ -114,7 +114,7 @@ namespace Asaki.Unity.Services.Configuration
 				yield return item;
 			}
 		}
-		
+
 		// =========================================================
 		// 条件查询 (Link)
 		// =========================================================
@@ -203,7 +203,7 @@ namespace Asaki.Unity.Services.Configuration
 
 			return false;
 		}
-		
+
 		// =========================================================
 		// 批量操作 (Batch Op)
 		// =========================================================
@@ -237,7 +237,7 @@ namespace Asaki.Unity.Services.Configuration
 
 			return result;
 		}
-		
+
 		// =========================================================
 		// 配置元数据 (Config Meta)
 		// =========================================================
@@ -267,8 +267,8 @@ namespace Asaki.Unity.Services.Configuration
 			string sourcePath = GetSourcePath<T>();
 			try
 			{
-				return File.Exists(sourcePath) 
-					? File.GetLastWriteTime(sourcePath) 
+				return File.Exists(sourcePath)
+					? File.GetLastWriteTime(sourcePath)
 					: DateTime.MinValue;
 			}
 			catch (Exception ex)
@@ -277,7 +277,7 @@ namespace Asaki.Unity.Services.Configuration
 				return DateTime.MinValue;
 			}
 		}
-		
+
 		// =========================================================
 		// 核心加载逻辑
 		// =========================================================
@@ -349,8 +349,8 @@ namespace Asaki.Unity.Services.Configuration
 				}
 				catch (Exception ex)
 				{
-					ALog.Error($"[AsakiConfig] Failed to load binary '{fileName}', falling back to CSV. Error : {ex.Message}", ex); 
-					results = null;                                                                                                
+					ALog.Error($"[AsakiConfig] Failed to load binary '{fileName}', falling back to CSV. Error : {ex.Message}", ex);
+					results = null;
 				}
 			}
 

@@ -14,17 +14,17 @@ namespace Asaki.Core.Logging
 		public long LastTimestamp;     // 最后一次发生时间
 		public int FlushedCount = 0;
 		// === 静态身份 (创建后不变) ===
-		public int ID;              // 运行时唯一ID
+		public int ID; // 运行时唯一ID
 		public AsakiLogLevel Level;
-		public string Message;      
-		public string PayloadJson;  
-        
+		public string Message;
+		public string PayloadJson;
+
 		// === 智能堆栈 (UI 渲染专用) ===
-		public List<StackFrameModel> StackFrames; 
-        
+		public List<StackFrameModel> StackFrames;
+
 		// === 快速跳转源 ===
-		public string CallerPath;   
-		public int CallerLine;      
+		public string CallerPath;
+		public int CallerLine;
 
 		public string DisplayTime => new DateTime(LastTimestamp).ToLocalTime().ToString("HH:mm:ss");
 	}

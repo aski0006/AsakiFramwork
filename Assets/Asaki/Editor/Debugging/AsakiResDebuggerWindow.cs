@@ -20,7 +20,7 @@ namespace Asaki.Editor.Debugging
 		private FieldInfo cacheField;
 		private FieldInfo lockField;
 		private FieldInfo strategyField;
-		
+
 		// ResRecord 字段
 		private FieldInfo locationField;
 		private FieldInfo assetTypeField; // [新增]
@@ -30,7 +30,7 @@ namespace Asaki.Editor.Debugging
 		private FieldInfo dependencyKeysField; // [修改] Locations -> Keys
 		private FieldInfo loadingTcsField;
 		private FieldInfo progressCallbacksField;
-		
+
 		private PropertyInfo taskProperty;
 		private PropertyInfo strategyNameProperty;
 
@@ -42,10 +42,10 @@ namespace Asaki.Editor.Debugging
 		private IAsakiResourceService targetService;
 		private Vector2 leftScrollPos;
 		private Vector2 rightScrollPos;
-		
+
 		// [修改] 使用 int Key 作为选中标识
-		private int selectedKey = 0; 
-		
+		private int selectedKey = 0;
+
 		private float splitterPos = 300f;
 		private bool isReflectionInitialized = false;
 		private double lastRefreshTime;
@@ -325,7 +325,7 @@ namespace Asaki.Editor.Debugging
 			GUILayout.BeginVertical(GUILayout.Width(splitterPos));
 			DrawLeftPanel();
 			GUILayout.EndVertical();
-			
+
 			GUILayoutExtensions.Splitter(ref splitterPos, MIN_LEFT_WIDTH, position.width - MIN_RIGHT_WIDTH);
 
 			GUILayout.BeginVertical();
@@ -349,12 +349,12 @@ namespace Asaki.Editor.Debugging
 					foreach (DictionaryEntry entry in cache) entries.Add(entry);
 
 					// 排序：按 Path 字母顺序 -> 类型名称 -> 引用计数
-					var sortedEntries = entries.OrderBy(e => 
+					var sortedEntries = entries.OrderBy(e =>
 					{
 						object record = e.Value;
 						string loc = locationField.GetValue(record) as string;
 						return loc;
-					}).ThenBy(e => 
+					}).ThenBy(e =>
 					{
 						object record = e.Value;
 						Type t = assetTypeField.GetValue(record) as Type;
@@ -386,19 +386,19 @@ namespace Asaki.Editor.Debugging
 			Type type = assetTypeField.GetValue(record) as Type;
 			Object asset = assetField.GetValue(record) as Object;
 
-			string typeName = type != null ? type.Name : (asset != null ? asset.GetType().Name : "Unkown");
+			string typeName = type != null ? type.Name : asset != null ? asset.GetType().Name : "Unkown";
 			// 显示格式: Location (Type) [RefCount]
 			string displayText = $"{location} \n<color=#888888>({typeName})</color> [{refCount}]";
 
 			// 样式设置
 			GUIStyle style = new GUIStyle(EditorStyles.label) { richText = true };
-			if (selectedKey == key) 
+			if (selectedKey == key)
 			{
 				style.fontStyle = FontStyle.Bold;
 				// 绘制选中背景
 				Rect r = GUILayoutUtility.GetRect(new GUIContent(displayText), style);
 				EditorGUI.DrawRect(r, new Color(0.2f, 0.6f, 1f, 0.2f));
-				
+
 				// 恢复Rect绘制文本
 				GUI.Label(r, displayText, style);
 				// 响应点击
@@ -463,7 +463,7 @@ namespace Asaki.Editor.Debugging
 
 			string location = locationField.GetValue(record) as string;
 			EditorGUILayout.TextField("Location", location);
-			
+
 			// 显示 Key
 			int key = (int)cacheKeyField.GetValue(record);
 			EditorGUILayout.TextField("Cache Key (Hash)", key.ToString());
@@ -498,7 +498,7 @@ namespace Asaki.Editor.Debugging
 
 			// 获取依赖 keys (HashSet<int>)
 			IEnumerable depKeys = dependencyKeysField.GetValue(record) as IEnumerable;
-			
+
 			if (depKeys != null)
 			{
 				EditorGUILayout.BeginVertical(EditorStyles.helpBox);
@@ -595,7 +595,7 @@ namespace Asaki.Editor.Debugging
 			{
 				string loc = locationField.GetValue(record) as string;
 				Type type = assetTypeField.GetValue(record) as Type;
-				
+
 				if (EditorUtility.DisplayDialog("Release", $"Release '{loc}' ({type?.Name})?", "Yes", "No"))
 				{
 					// [重要] 使用反射调用 Release(string, Type)
@@ -609,7 +609,7 @@ namespace Asaki.Editor.Debugging
 						// Fallback (虽然不应该发生)
 						targetService.Release(loc, type);
 					}
-					
+
 					// 如果引用归零被移除了，重置选中
 					IDictionary c = GetCacheDictionary();
 					if (c == null || !c.Contains(selectedKey)) selectedKey = 0;
@@ -634,15 +634,15 @@ namespace Asaki.Editor.Debugging
 		{
 			Object asset = assetField.GetValue(record) as Object;
 			string location = locationField.GetValue(record) as string;
-			
+
 			// 直接调用 Strategy 的 Unload
 			object strategy = strategyField.GetValue(targetService);
 			MethodInfo unloadMethod = strategy.GetType().GetMethod("UnloadAssetInternal");
-			
+
 			if (unloadMethod != null)
 			{
 				unloadMethod.Invoke(strategy, new object[] { location, asset });
-				
+
 				// 还需要手动从 Cache 移除，否则 Service 状态会错乱
 				// 这里为了简单，我们只调用 Unload，让 Service 下次 Release 时自行处理（可能会报错），或者手动移除 key
 				// 真正的 Force Unload 比较复杂，这里仅作 Strategy 层的卸载演示
@@ -654,7 +654,7 @@ namespace Asaki.Editor.Debugging
 		{
 			IDictionary cache = GetCacheDictionary();
 			if (cache == null) return;
-			
+
 			// 收集所有需要释放的信息
 			var list = new List<(string loc, Type type)>();
 			foreach (DictionaryEntry entry in cache)
@@ -668,14 +668,14 @@ namespace Asaki.Editor.Debugging
 			// 反射获取 Release 方法
 			MethodInfo releaseMethod = targetService.GetType().GetMethod("Release", new[] { typeof(string), typeof(Type) });
 
-			foreach (var item in list)
+			foreach ((string loc, Type type) item in list)
 			{
 				if (releaseMethod != null)
 					releaseMethod.Invoke(targetService, new object[] { item.loc, item.type });
 				else
 					targetService.Release(item.loc, item.type);
 			}
-			
+
 			selectedKey = 0;
 			Repaint();
 		}
@@ -691,7 +691,7 @@ namespace Asaki.Editor.Debugging
 		{
 			if (targetService == null) return null;
 			object lockObj = lockField.GetValue(targetService);
-			
+
 			lock (lockObj)
 			{
 				return cacheField.GetValue(targetService) as IDictionary;

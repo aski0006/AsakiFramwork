@@ -19,7 +19,7 @@ namespace Asaki.Unity.Modules
 		private IAsakiResourceService _resourceService;
 		private IAsakiAsyncService _asyncService;
 		private IAsakiEventService _eventService;
-		
+
 		[AsakiInject]
 		public void Init(IAsakiAsyncService asyncService, IAsakiEventService eventService)
 		{
@@ -29,7 +29,7 @@ namespace Asaki.Unity.Modules
 		public void OnInit()
 		{
 			AsakiConfig config = AsakiContext.Get<AsakiConfig>();
-			
+
 			// 2. 创建工厂
 			AsakiResKitMode mode = config ? config.ResConfig.Mode : AsakiResKitMode.Resources;
 			int timeoutSeconds = config.ResConfig.TimeoutSeconds;

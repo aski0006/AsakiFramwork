@@ -17,7 +17,7 @@ namespace Asaki.Core.Configs
 	{
 		public string Key; // 代码引用的 Enum Key
 		public int ID;     // Hash ID
-        
+
 		[Tooltip("编辑器引用，用于预览和生成路径")]
 		public AudioClip Clip;
 

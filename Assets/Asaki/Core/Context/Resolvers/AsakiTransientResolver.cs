@@ -13,11 +13,11 @@
 		{
 			// 1. 优先匹配参数 (InitArgs)
 			if (_param is T t) return t;
-        
+
 			// 2. 没匹配上，交给父级去查
 			return _parent.Get<T>();
 		}
-		
+
 		public bool TryGet<T>(out T service) where T : class, IAsakiService
 		{
 			// 1. 优先匹配参数 (InitArgs)

@@ -9,7 +9,7 @@ namespace Asaki.Core.Blackboard.Variables
 		public abstract void ApplyTo(IAsakiBlackboard blackboard, string key);
 		public abstract AsakiValueBase Clone();
 	}
-	
+
 	[Serializable]
 	public abstract class AsakiValue<T> : AsakiValueBase
 	{
@@ -25,12 +25,12 @@ namespace Asaki.Core.Blackboard.Variables
 			// 如果 T 是自定义结构，就会走 generic 桶
 			blackboard.SetValue<T>(key, Value);
 		}
-        
+
 		public override AsakiValueBase Clone()
 		{
 			// 创建新实例并复制值
 			var instance = Activator.CreateInstance(GetType()) as AsakiValue<T>;
-			instance.Value = this.Value;
+			instance.Value = Value;
 			return instance;
 		}
 	}

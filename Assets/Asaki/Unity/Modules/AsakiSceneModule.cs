@@ -10,7 +10,7 @@ using System.Threading.Tasks;
 
 namespace Asaki.Unity.Modules
 {
-	[AsakiModule(priority: 200,
+	[AsakiModule(200,
 		typeof(AsakiEventBusModule),
 		typeof(AsakiAsyncModule),
 		typeof(AsakiResourcesModule))]
@@ -30,7 +30,7 @@ namespace Asaki.Unity.Modules
 		}
 		public void OnInit()
 		{
-			
+
 			_asakiSceneService = new AsakiSceneService(
 				eventService,
 				asyncService,

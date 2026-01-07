@@ -23,7 +23,7 @@ namespace Asaki.Editor.GraphEditors
 		private readonly AsakiGraphView _graphView;
 		private readonly AsakiGraphBase _graphAsset;
 		private readonly SerializedObject _serializedGraph;
-		
+
 		private AsakiGlobalBlackboardAsset _globalAsset;
 		private SerializedObject _serializedGlobal; // [New] 用于全局变量的 PropertyField 绘制
 
@@ -32,7 +32,7 @@ namespace Asaki.Editor.GraphEditors
 			_graphView = graphView;
 			_graphAsset = graphAsset;
 			_serializedGraph = serializedGraph;
-			
+
 			LoadGlobalBlackboard();
 			InitializeBlackboard();
 			RefreshBlackboard();
@@ -61,26 +61,26 @@ namespace Asaki.Editor.GraphEditors
 			{
 				title = "Blackboard",
 				subTitle = "Variables",
-				
+
 				// 2. [重构] 动态生成添加菜单 (TypeCache)
 				addItemRequested = _ =>
 				{
 					GenericMenu menu = new GenericMenu();
-					
+
 					// 查找所有继承自 AsakiValueBase 的非抽象类型
-					var valueTypes = TypeCache.GetTypesDerivedFrom<AsakiValueBase>();
-					
-					foreach (var type in valueTypes)
+					TypeCache.TypeCollection valueTypes = TypeCache.GetTypesDerivedFrom<AsakiValueBase>();
+
+					foreach (Type type in valueTypes)
 					{
 						if (type.IsAbstract) continue;
-						
+
 						// 美化菜单名称：移除 "Asaki" 前缀 (e.g., AsakiInt -> Int)
 						string menuName = type.Name.Replace("Asaki", "");
 						menu.AddItem(new GUIContent(menuName), false, () => AddVariable(type));
 					}
 					menu.ShowAsContext();
 				},
-				
+
 				// 3. 配置重命名
 				editTextRequested = (bb, element, newName) =>
 				{
@@ -164,9 +164,9 @@ namespace Asaki.Editor.GraphEditors
 
 					// 1. 获取类型
 					Type valType = localVar.ValueData.GetType();
-					
+
 					// 2. 在全局创建变量
-					var globalVar = _globalAsset.GetOrCreateVariable(localVar.Name, valType);
+					AsakiVariableDef globalVar = _globalAsset.GetOrCreateVariable(localVar.Name, valType);
 
 					// 3. 复制数据 (Clone)
 					globalVar.ValueData = localVar.ValueData.Clone();
@@ -239,12 +239,12 @@ namespace Asaki.Editor.GraphEditors
 			}
 
 			// 创建定义
-			AsakiVariableDef newVar = new AsakiVariableDef 
-			{ 
-				Name = name, 
-				ValueData = valInstance 
+			AsakiVariableDef newVar = new AsakiVariableDef
+			{
+				Name = name,
+				ValueData = valInstance,
 			};
-			
+
 			_graphAsset.Variables.Add(newVar);
 			EditorUtility.SetDirty(_graphAsset);
 			RefreshBlackboard();
@@ -260,31 +260,33 @@ namespace Asaki.Editor.GraphEditors
 				// 确保 SO 是新的
 				if (_serializedGlobal == null || _serializedGlobal.targetObject != _globalAsset)
 					_serializedGlobal = new SerializedObject(_globalAsset);
-				
+
 				_serializedGlobal.Update();
 
-				var globalSection = new BlackboardSection { title = "Global Variables (Read-Only)",
-					style = { backgroundColor = new StyleColor(new Color(0.15f, 0.15f, 0.15f)) }
+				BlackboardSection globalSection = new BlackboardSection
+				{
+					title = "Global Variables (Read-Only)",
+					style = { backgroundColor = new StyleColor(new Color(0.15f, 0.15f, 0.15f)) },
 				};
 				Blackboard.Add(globalSection);
 
-				foreach (var globalVar in _globalAsset.GlobalVariables)
+				foreach (AsakiVariableDef globalVar in _globalAsset.GlobalVariables)
 				{
-					var field = CreateGlobalVariableField(globalVar);
+					VisualElement field = CreateGlobalVariableField(globalVar);
 					globalSection.Add(field);
 				}
 			}
 
 			// 2. 局部变量节
-			var localSection = new BlackboardSection { title = "Local Variables" };
+			BlackboardSection localSection = new BlackboardSection { title = "Local Variables" };
 			Blackboard.Add(localSection);
 
 			// 确保 Graph SO 更新
 			_serializedGraph.Update();
 
-			foreach (var variable in _graphAsset.Variables)
+			foreach (AsakiVariableDef variable in _graphAsset.Variables)
 			{
-				var field = CreateLocalVariableField(variable);
+				VisualElement field = CreateLocalVariableField(variable);
 				localSection.Add(field);
 			}
 		}
@@ -292,7 +294,7 @@ namespace Asaki.Editor.GraphEditors
 		// [New] 创建全局变量行
 		private VisualElement CreateGlobalVariableField(AsakiVariableDef globalVar)
 		{
-			var field = new BlackboardField
+			BlackboardField field = new BlackboardField
 			{
 				text = globalVar.Name,
 				typeText = $"[Global] {globalVar.TypeName}", // 使用 TypeName
@@ -305,30 +307,30 @@ namespace Asaki.Editor.GraphEditors
 				},
 			};
 
-			EnableDrag(field, globalVar, isGlobal: true);
-			var row = new BlackboardRow(field, CreateGlobalValueView(globalVar));
+			EnableDrag(field, globalVar, true);
+			BlackboardRow row = new BlackboardRow(field, CreateGlobalValueView(globalVar));
 			return row;
 		}
 
 		// [New] 创建局部变量行
 		private VisualElement CreateLocalVariableField(AsakiVariableDef variable)
 		{
-			var field = new BlackboardField
+			BlackboardField field = new BlackboardField
 			{
 				text = variable.Name,
 				typeText = variable.TypeName, // 使用 TypeName
 				userData = variable,
 			};
 
-			EnableDrag(field, variable, isGlobal: false);
-			var row = new BlackboardRow(field, CreateValueView(variable));
+			EnableDrag(field, variable, false);
+			BlackboardRow row = new BlackboardRow(field, CreateValueView(variable));
 			return row;
 		}
 
 		// [重构] 绘制全局变量值 (使用 PropertyField 并禁用)
 		private VisualElement CreateGlobalValueView(AsakiVariableDef variable)
 		{
-			var container = new VisualElement();
+			VisualElement container = new VisualElement();
 			container.style.paddingLeft = 10;
 			container.style.opacity = 0.7f;
 
@@ -359,7 +361,7 @@ namespace Asaki.Editor.GraphEditors
 		// [重构] 绘制局部变量值 (通用 PropertyField)
 		private VisualElement CreateValueView(AsakiVariableDef variable)
 		{
-			var container = new VisualElement();
+			VisualElement container = new VisualElement();
 			container.style.paddingLeft = 10;
 
 			// 1. 查找变量在 Graph SO 中的位置
@@ -370,10 +372,10 @@ namespace Asaki.Editor.GraphEditors
 			if (listProp != null && index < listProp.arraySize)
 			{
 				SerializedProperty varProp = listProp.GetArrayElementAtIndex(index);
-				
+
 				// 2. 定位到 ValueData
 				SerializedProperty valueDataProp = varProp.FindPropertyRelative("ValueData");
-				
+
 				// 3. 尝试定位到具体的 Value 字段 (AsakiValue<T>.Value)
 				// 这样可以跳过外层的 ValueData 折叠页，直接显示 int/float/struct 字段
 				SerializedProperty innerValueProp = valueDataProp.FindPropertyRelative("Value");
@@ -428,8 +430,8 @@ namespace Asaki.Editor.GraphEditors
 					_readyToDrag = false;
 
 					// 包装拖拽数据
-					var dragData = new DragVariableData(variable, isGlobal);
-			
+					DragVariableData dragData = new DragVariableData(variable, isGlobal);
+
 					DragAndDrop.PrepareStartDrag();
 					DragAndDrop.SetGenericData("AsakiVariable", dragData);
 					DragAndDrop.StartDrag($"Dragging {(isGlobal ? "[G]" : "")} {variable.Name}");
