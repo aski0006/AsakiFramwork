@@ -148,8 +148,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e4e79f2b1d674d4fb2a97e005abbcf32, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  _autoScan: 1
+  _autoScanOnSceneLoad: 1
   _manualTargets: []
+  _globalBehaviourServices: []
   _config: {fileID: 11400000, guid: 6018a50383e7b8540a5cbb5227dd211c, type: 2}
 --- !u!4 &459729747
 Transform:
@@ -540,7 +541,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 587700ab177046ac8cd958571152446d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  _preconfiguredServices: []
+  _pureCSharpServices: []
+  _behaviourServices:
+  - {fileID: 1928582978}
   references:
     version: 2
     RefIds: []

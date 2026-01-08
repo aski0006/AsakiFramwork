@@ -44,8 +44,6 @@ namespace Asaki.Editor.Utilities.Tools.AssetsExplore
 		// 状态栏
 		private string _statusText = "就绪";
 		private double _scanTime;
-		private bool _isDirty;
-
 		// 收藏
 		private readonly HashSet<string> _favorites = new HashSet<string>();
 
@@ -578,7 +576,6 @@ namespace Asaki.Editor.Utilities.Tools.AssetsExplore
 		// 优化：扫描期间仅缓冲资源，大幅降低Repaint频率
 		private void OnAssetFound(AssetInfo asset)
 		{
-			_isDirty = true;
 
 			// 更新分类计数
 			_categoryCounts.TryGetValue(asset.category, out int count);
@@ -619,7 +616,6 @@ namespace Asaki.Editor.Utilities.Tools.AssetsExplore
 			{
 				// 全部处理完成
 				UpdateCategoryCounts();
-				_isDirty = false;
 			}
 
 			Repaint();
@@ -630,8 +626,6 @@ namespace Asaki.Editor.Utilities.Tools.AssetsExplore
 			_scanTime = EditorApplication.timeSinceStartup - _scanTime;
 			_statusText = $"扫描完成 ({_scanTime:F1}s)";
 
-			// 标记需要处理待处理资源
-			_isDirty = true;
 
 			Repaint();
 		}
@@ -640,7 +634,6 @@ namespace Asaki.Editor.Utilities.Tools.AssetsExplore
 		{
 			Debug.LogError(error);
 			_statusText = $"扫描错误: {error}";
-			_isDirty = false;
 		}
 
 		private void UpdateCategoryCounts()

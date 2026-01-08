@@ -190,7 +190,6 @@ namespace Asaki.Editor.GraphEditors
 				}
 			}
 
-			Debug.Log($"[Asaki] Preheated {preheatedCount} node types in {stopwatch.ElapsedMilliseconds}ms");
 		}
 	}
 }

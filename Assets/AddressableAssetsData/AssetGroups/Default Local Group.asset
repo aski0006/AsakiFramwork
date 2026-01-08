@@ -21,7 +21,7 @@ MonoBehaviour:
     m_SerializedLabels: []
     FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: cf35bd8ce4bf8c04f87e474283d22dfa
-    m_Address: Assets/Asset/Prefabs/CardView.prefab
+    m_Address: CardView
     m_ReadOnly: 0
     m_SerializedLabels: []
     FlaggedDuringContentUpdateRestriction: 0
