@@ -1,0 +1,238 @@
+/* ==================== 根容器 ==================== */
+. root-container {
+    flex-grow: 1;
+    background-color: #282828;
+}
+
+/* ==================== 无选择提示 ==================== */
+. no-selection {
+    flex-grow: 1;
+    justify-content: center;
+    align-items: center;
+    display: flex;
+}
+
+. no-selection-label {
+    font-size: 14px;
+    color: #808080;
+    -unity-text-align: middle-center;
+}
+
+/* ==================== GameObject 头部 ==================== */
+. gameobject-header {
+    background-color: #3C3C3C;
+    padding: 10px;
+    border-bottom-width: 1px;
+    border-color: #1E1E1E;
+    display: none;
+}
+
+.header-container {
+    flex-direction: row;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.gameobject-icon {
+    width: 20px;
+    height: 20px;
+    margin-right: 8px;
+    flex-shrink: 0;
+}
+
+.gameobject-name {
+    flex-grow: 1;
+    font-size: 13px;
+    -unity-font-style: bold;
+}
+
+. info-container {
+    flex-direction: row;
+    justify-content: space-between;
+    margin-top: 5px;
+}
+
+.info-container > * {
+    flex-grow: 1;
+    margin-right: 5px;
+    font-size: 11px;
+}
+
+/* ==================== 选项卡容器 ==================== */
+. tab-container {
+    background-color: #3A3A3A;
+    border-bottom-width: 1px;
+    border-color: #1E1E1E;
+    display: none;
+
+    height: 28px;
+    min-height: 28px;
+    max-height: 28px;
+
+    flex-direction: row;
+    flex-wrap: nowrap;
+    overflow:  hidden;
+    padding: 2px 4px;
+    align-items: center;
+}
+
+/* ==================== 选项�� Toggle（动态宽度） ==================== */
+.tab-toggle {
+    flex-direction: row;
+    align-items: center;
+
+    /* 固定高度 */
+    height: 24px;
+    min-height: 24px;
+    max-height: 24px;
+
+    /* 动态宽度：根据内容自适应 */
+    width: auto;
+    min-width: auto;
+    max-width: none;
+
+    /* 紧凑的内边距 */
+    padding-left: 6px;
+    padding-right:  8px;
+    padding-top: 0;
+    padding-bottom: 0;
+
+    /* 标签间距 */
+    margin:  0 1px;
+
+    /* 背景和边框 */
+    background-color: #4A4A4A;
+    border-width: 0;
+    border-radius: 3px;
+
+    /* 防止被压缩，但允许内容决定宽度 */
+    flex-shrink: 0;
+    flex-grow: 0;
+
+    cursor: link;
+    transition-property: background-color;
+    transition-duration: 0.1s;
+}
+
+/* 隐藏 Toggle 的默认复选框 */
+.tab-toggle > .unity-toggle__input {
+    display: none;
+}
+
+/* 隐藏 Toggle 的 checkmark */
+.tab-toggle > .unity-toggle__checkmark {
+    display: none;
+}
+
+/* Toggle 的文本容器 */
+.tab-toggle > .unity-toggle__text {
+    display: none;
+}
+
+
+/* 激活状态 */
+.tab-toggle-active {
+    background-color:  #2C5AA0 !important;
+}
+
+/* All 标签特殊样式 */
+. tab-toggle-all {
+    background-color: #505050;
+}
+
+.tab-toggle-all. tab-toggle-active {
+    background-color: #2C5AA0 !important;
+}
+
+/* ==================== 选项卡图标（固定尺寸） ==================== */
+.tab-icon {
+    width:  16px;
+    height:  16px;
+    min-width: 16px;
+    min-height: 16px;
+    max-width: 16px;
+    max-height:  16px;
+
+    margin-right: 4px;
+
+    flex-shrink: 0;
+    flex-grow: 0;
+    align-self: center;
+}
+
+/* ==================== 选项卡文字（动态宽度） ==================== */
+.tab-label {
+    font-size: 11px;
+    color: #D4D4D4;
+    -unity-font-style: normal;
+
+    /* 不换行，但允许文字决定宽度 */
+    white-space: nowrap;
+    overflow: visible;
+
+    /* 垂直居中 */
+    align-self: center;
+
+    /* 不压缩文字 */
+    flex-shrink: 0;
+    flex-grow: 0;
+
+    /* 无额外边距 */
+    margin: 0;
+    padding: 0;
+
+    /* 确保文字完整显示 */
+    width: auto;
+}
+
+. tab-toggle-active .tab-label {
+    color: #FFFFFF;
+    -unity-font-style: bold;
+}
+
+/* ==================== 详细面板 ==================== */
+. detail-panel {
+    flex-grow: 1;
+    background-color: #252525;
+    padding: 10px;
+    overflow:  scroll;
+}
+
+/* ==================== 组件容器 ==================== */
+.component-container {
+    margin-bottom: 10px;
+    background-color:  #2D2D2D;
+    border-radius: 4px;
+    padding: 5px;
+}
+
+. component-header {
+    background-color: #3C3C3C;
+    padding: 8px;
+    border-radius:  3px;
+    margin-bottom:  5px;
+}
+
+. component-foldout {
+    margin:  0;
+}
+
+.component-foldout > .unity-foldout__toggle {
+    background-color: #3C3C3C;
+    padding:  5px;
+    border-radius:  3px;
+    -unity-font-style: bold;
+}
+
+.inspector-container {
+    flex-grow: 1;
+    padding: 10px;
+    background-color: #2D2D2D;
+}
+
+. empty-message {
+    font-size: 13px;
+    color: #808080;
+    -unity-text-align: middle-center;
+    margin-top: 50px;
+}

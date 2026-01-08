@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements">
+
+    <!-- 主容器 -->
+    <ui:VisualElement name="root-container" class="root-container">
+
+        <!-- 无选择提示 -->
+        <ui:VisualElement name="no-selection" class="no-selection">
+            <ui:Label text="Select a GameObject to inspect" class="no-selection-label" />
+        </ui:VisualElement>
+
+        <!-- GameObject 头部信息 -->
+        <ui:VisualElement name="gameobject-header" class="gameobject-header">
+            <!-- 动态生成内容 -->
+        </ui:VisualElement>
+
+        <!-- 组件选项卡容器 -->
+        <ui:VisualElement name="tab-container" class="tab-container">
+            <!-- 动态生成选项卡 -->
+        </ui:VisualElement>
+
+        <!-- 组件详细面板（带滚动） -->
+        <ui:ScrollView name="detail-scroll-view" mode="Vertical" class="detail-scroll-view">
+            <ui:VisualElement name="detail-panel" class="detail-panel">
+                <!-- 动态渲染 Inspector -->
+            </ui:VisualElement>
+        </ui:ScrollView>
+
+    </ui:VisualElement>
+
+</ui:UXML>
