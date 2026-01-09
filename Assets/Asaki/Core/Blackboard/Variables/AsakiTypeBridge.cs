@@ -1,20 +1,34 @@
 ﻿// Asaki/Core/Blackboard/Variables/AsakiTypeBridge.cs
 
+using Asaki.Core.Logging;
 using System;
 using System.Collections.Generic;
 
 namespace Asaki.Core.Blackboard.Variables
 {
+	/// <summary>
+	/// 提供类型桥接功能，用于在 <see cref="IAsakiBlackboard"/> 中设置不同类型的值。
+	/// 它通过预定义的逻辑和可注册的委托来处理不同类型值的设置操作，
+	/// 旨在简化在黑板系统中对各种类型数据的存储和检索过程。
+	/// </summary>
 	public static class AsakiTypeBridge
 	{
-		// 这是一个链式委托（或列表），每个注册者都会往里加自己的检查逻辑
-		// Action<IBlackboard, key, value> 是执行 Set 的动作
-		// Func<object, bool> 是检查 "这个 value 是不是我这个类型"
 
-		// 简化版：直接用一个 List<Action> 存储所有的 Set 尝试逻辑
+		/// <summary>
+		/// 存储所有设置值的尝试逻辑的列表。
+		/// 每个 <see cref="Action"/> 接受 <see cref="IAsakiBlackboard"/>、键和值作为参数，
+		/// 用于尝试在黑板中设置对应的值。
+		/// </summary>
 		private static readonly List<Action<IAsakiBlackboard, string, object>> _setters = new List<Action<IAsakiBlackboard, string, object>>();
 
-		// 核心入口
+		/// <summary>
+		/// 在 <see cref="IAsakiBlackboard"/> 中设置值的核心入口方法。
+		/// 此方法首先尝试通过硬编码的基本类型路径快速设置值，
+		/// 如果失败，则遍历所有注册的设置器来处理该值。
+		/// </summary>
+		/// <param name="bb">要设置值的 <see cref="IAsakiBlackboard"/> 实例。</param>
+		/// <param name="key">要设置值的键。</param>
+		/// <param name="value">要设置的值。</param>
 		public static void SetValue(IAsakiBlackboard bb, string key, object value)
 		{
 			// 1. Fast Path (Hardcoded Primitives)
@@ -29,26 +43,30 @@ namespace Asaki.Core.Blackboard.Variables
 
 			}
 
-			// 2. Dynamic Path (User Types)
-			// 遍历所有注册进来的 Setter，看看谁能处理这个 value
-			// 注意：这种遍历比 switch 慢，但比反射快。为了优化，可以后续引入 Dictionary<Type, Action>
-
-			// 优化版：使用 Type 查找
 			Type type = value.GetType();
 			if (_typeLookup.TryGetValue(type, out var setter))
 			{
 				setter(bb, key, value);
 				return;
 			}
-
-			UnityEngine.Debug.LogWarning($"[Asaki] Unknown type: {type.Name}");
+			ALog.Warn($"[Asaki Blackboard] Unknown type: {type.Name}");
 		}
 
 		// 注册表
+		/// <summary>
+		/// 用于存储类型与对应设置值逻辑的字典。
+		/// 键为类型，值为接受 <see cref="IAsakiBlackboard"/>、键和值作为参数的 <see cref="Action"/>，
+		/// 用于在黑板中设置对应类型的值。
+		/// </summary>
 		private static readonly Dictionary<Type, Action<IAsakiBlackboard, string, object>> _typeLookup
 			= new Dictionary<Type, Action<IAsakiBlackboard, string, object>>();
 
-		// ★ API供生成代码调用
+		/// <summary>
+		/// 注册一个类型的设置逻辑。
+		/// 此方法为生成代码提供的 API，用于注册特定类型的设置器。
+		/// 每个类型的设置器是一个强类型的闭包委托，它将值转换为指定类型并在 <see cref="IAsakiBlackboard"/> 中设置。
+		/// </summary>
+		/// <typeparam name="T">要注册的类型。</typeparam>
 		public static void Register<T>()
 		{
 			Type t = typeof(T);
@@ -57,8 +75,6 @@ namespace Asaki.Core.Blackboard.Variables
 				// 生成一个强类型的闭包委托
 				_typeLookup.Add(t, (bb, key, value) =>
 				{
-					// 这里虽然有 cast (T)value，但因为是从 Dictionary<Type> 查出来的，肯定是安全的
-					// 而且这是泛型方法内的逻辑，JIT 会生成高效代码
 					bb.SetValue(key, (T)value);
 				});
 			}
