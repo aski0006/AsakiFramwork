@@ -29,7 +29,7 @@ namespace Asaki.Editor.ModernInspector
         // 缓存
         private Dictionary<Component, UnityEditor.Editor> editorCache = new Dictionary<Component, UnityEditor.Editor>();
 
-        [MenuItem("Window/Modern Inspector")]
+        [MenuItem("Asaki/Tools/Modern Inspector")]
         public static void ShowWindow()
         {
             ModernInspectorWindow wnd = GetWindow<ModernInspectorWindow>();

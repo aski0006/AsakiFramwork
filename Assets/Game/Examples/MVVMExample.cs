@@ -10,6 +10,7 @@ namespace Game.Test
 	public partial class AsakiMVVMExampleModel
 	{
 		public AsakiProperty<int> Health;
+		public int Level;
 	}
 
 	/*

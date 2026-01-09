@@ -2,6 +2,10 @@
 
 namespace Asaki.Core.Context
 {
+	public interface IAsakiInit
+	{
+		void Init(); // 默认无参构造
+	}
 	public interface IAsakiInit<in T1>
 	{
 		void Init(T1 args);
@@ -25,6 +29,13 @@ namespace Asaki.Core.Context
 
 	public static class AsakiInitFactory
 	{
+		public static T Instantiate<T>(T prefab, Transform parent = null) where T : MonoBehaviour, IAsakiInit
+		{
+			T instance = Object.Instantiate(prefab, parent);
+			instance.Init();
+			return instance;
+		}
+		
 		public static T Instantiate<T, TArg1>(T prefab, TArg1 arg1, Transform parent = null)
 			where T : MonoBehaviour, IAsakiInit<TArg1>
 		{

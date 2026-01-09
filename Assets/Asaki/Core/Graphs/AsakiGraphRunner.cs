@@ -58,8 +58,8 @@ namespace Asaki.Core.Graphs
 		private void InitializeBlackboardValues()
 		{
 			if (GraphAsset == null || _context.Blackboard == null) return;
-			string globalAssetPath = "Assets/Asaki/Resources/GlobalBlackboard.asset";
-			AsakiGlobalBlackboardAsset globalAsset = UnityEngine.Resources.Load<AsakiGlobalBlackboardAsset>("GlobalBlackboard");
+			string globalAssetPath = "GlobalBlackboard";
+			AsakiGlobalBlackboardAsset globalAsset = UnityEngine.Resources.Load<AsakiGlobalBlackboardAsset>( globalAssetPath);
 			if (globalAsset != null)
 			{
 				// 先加载全局变量（作为父作用域）

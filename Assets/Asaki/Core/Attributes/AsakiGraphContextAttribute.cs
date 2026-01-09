@@ -2,6 +2,9 @@
 
 namespace Asaki.Core.Attributes
 {
+	/// <summary>
+	/// 标记一个图资产，自动生成注册语句到 AsakiGraphWindow/>
+	/// </summary>
 	[AttributeUsage(AttributeTargets.Class, AllowMultiple = false, Inherited = true)]
 	public class AsakiGraphContextAttribute : Attribute
 	{
@@ -14,6 +17,9 @@ namespace Asaki.Core.Attributes
 		}
 	}
 
+	/// <summary>
+	/// 标记一个图的输入节点，用于生成 NodeView
+	/// </summary>
 	[AttributeUsage(AttributeTargets.Field)]
 	public class AsakiNodeInputAttribute : Attribute
 	{
@@ -26,6 +32,9 @@ namespace Asaki.Core.Attributes
 		}
 	}
 
+	/// <summary>
+	/// 标记一个图的输出节点，用于生成 NodeView
+	/// </summary>
 	[AttributeUsage(AttributeTargets.Field)]
 	public class AsakiNodeOutputAttribute : Attribute
 	{
