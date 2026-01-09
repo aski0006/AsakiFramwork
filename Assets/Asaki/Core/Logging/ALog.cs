@@ -1,6 +1,6 @@
 ﻿using Asaki.Core.Context;
 using System;
-using System.Diagnostics;
+using System. Diagnostics;
 using System.Runtime.CompilerServices;
 using UnityEngine;
 
@@ -17,6 +17,13 @@ namespace Asaki.Core.Logging
         /// </summary>
         private static IAsakiLoggingService _cachedService;
 
+#if UNITY_EDITOR
+        /// <summary>
+        /// [编辑器专用] 是否已经输出过服务未就绪警告
+        /// </summary>
+        private static bool _hasLoggedServiceWarning;
+#endif
+
         /// <summary>
         /// 在运行时子系统注册阶段调用的初始化方法。
         /// 将缓存的服务实例设置为 null，以便后续重新获取。
@@ -25,6 +32,9 @@ namespace Asaki.Core.Logging
         private static void Init()
         {
             _cachedService = null;
+#if UNITY_EDITOR
+            _hasLoggedServiceWarning = false;
+#endif
         }
 
         /// <summary>
@@ -34,6 +44,9 @@ namespace Asaki.Core.Logging
         public static void Reset()
         {
             _cachedService = null;
+#if UNITY_EDITOR
+            _hasLoggedServiceWarning = false;
+#endif
         }
 
         /// <summary>
@@ -51,6 +64,58 @@ namespace Asaki.Core.Logging
                 return null;
             }
         }
+
+#if UNITY_EDITOR
+        /// <summary>
+        /// [编辑器专用] 降级处理 - 当日志服务未就绪时，转发到 Unity Debug
+        /// </summary>
+        /// <param name="level">日志级别</param>
+        /// <param name="message">日志消息</param>
+        /// <param name="payload">附加数据</param>
+        /// <param name="file">调用文件路径</param>
+        /// <param name="line">调用行号</param>
+        /// <param name="ex">异常对象（可选）</param>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static void FallbackToUnityDebug(AsakiLogLevel level, string message, object payload, string file, int line, Exception ex = null)
+        {
+            // 仅在第一次调用时输出警告，避免刷屏
+            if (!_hasLoggedServiceWarning)
+            {
+                UnityEngine.Debug.LogWarning("[ALog] Logging service not initialized, fallback to Unity Debug.");
+                _hasLoggedServiceWarning = true;
+            }
+
+            // 格式化输出信息（包含文件名和行号）
+            string fileName = string.IsNullOrEmpty(file) ? "Unknown" : System.IO.Path.GetFileName(file);
+            string payloadStr = payload != null ? $" | Payload: {FormatPayload(payload)}" : "";
+            string formatted = $"[{level}] {message}{payloadStr} <color=grey>({fileName}:{line})</color>";
+
+            // 根据日志级别选择对应的 Unity Debug 方法
+            switch (level)
+            {
+                case AsakiLogLevel.Debug:
+                case AsakiLogLevel.Info:
+                    UnityEngine.Debug.Log(formatted);
+                    break;
+
+                case AsakiLogLevel. Warning:
+                    UnityEngine.Debug.LogWarning(formatted);
+                    break;
+
+                case AsakiLogLevel.Error:
+                case AsakiLogLevel.Fatal:
+                    if (ex != null)
+                    {
+                        UnityEngine. Debug.LogError($"{formatted}\n{ex}");
+                    }
+                    else
+                    {
+                        UnityEngine.Debug.LogError(formatted);
+                    }
+                    break;
+            }
+        }
+#endif
 
         // ========================================================================
         // 1. 高频追踪 (Trace) - Update/FixedUpdate 专用
@@ -71,21 +136,25 @@ namespace Asaki.Core.Logging
                                  [CallerFilePath] string file = "", [CallerLineNumber] int line = 0)
         {
             IAsakiLoggingService s = Service;
-            if (s == null) return;
+            if (s == null)
+            {
+#if UNITY_EDITOR
+                FallbackToUnityDebug(AsakiLogLevel.Debug, message, payload, file, line);
+#endif
+                return;
+            }
 
             string pJson = FormatPayload(payload);
-
-            // 转发给 Service -> Aggregator
-            s.LogTrace(AsakiLogLevel.Debug, message, pJson, file, line);
+            s. LogTrace(AsakiLogLevel.Debug, message, pJson, file, line);
         }
 
         // ========================================================================
-        // 2. 逻辑节点 (Info/Warning) - 关键流程流转
+        // 2. 常规日志 (Info/Warn)
         // ========================================================================
 
         /// <summary>
-        /// 用于记录关键信息的日志方法。
-        /// 适用于记录流程状态变化，例如初始化完成、玩家登录等关键事件。
+        /// 用于记录信息的日志方法。
+        /// 适用于记录程序运行中的关键步骤和状态信息。
         /// </summary>
         /// <param name="message">要记录的日志消息。</param>
         /// <param name="payload">附带的数据，默认为 null。</param>
@@ -98,7 +167,13 @@ namespace Asaki.Core.Logging
                                 [CallerFilePath] string file = "", [CallerLineNumber] int line = 0)
         {
             IAsakiLoggingService s = Service;
-            if (s == null) return;
+            if (s == null)
+            {
+#if UNITY_EDITOR
+                FallbackToUnityDebug(AsakiLogLevel.Info, message, payload, file, line);
+#endif
+                return;
+            }
 
             string pJson = FormatPayload(payload);
             s.LogTrace(AsakiLogLevel.Info, message, pJson, file, line);
@@ -117,7 +192,13 @@ namespace Asaki.Core.Logging
                                 [CallerFilePath] string file = "", [CallerLineNumber] int line = 0)
         {
             IAsakiLoggingService s = Service;
-            if (s == null) return;
+            if (s == null)
+            {
+#if UNITY_EDITOR
+                FallbackToUnityDebug(AsakiLogLevel.Warning, message, payload, file, line);
+#endif
+                return;
+            }
 
             string pJson = FormatPayload(payload);
             s.LogTrace(AsakiLogLevel.Warning, message, pJson, file, line);
@@ -140,7 +221,13 @@ namespace Asaki.Core.Logging
                                  [CallerFilePath] string file = "", [CallerLineNumber] int line = 0)
         {
             IAsakiLoggingService s = Service;
-            if (s == null) return;
+            if (s == null)
+            {
+#if UNITY_EDITOR
+                FallbackToUnityDebug(AsakiLogLevel.Error, message, null, file, line, ex);
+#endif
+                return;
+            }
 
             if (ex != null)
             {
@@ -156,7 +243,6 @@ namespace Asaki.Core.Logging
 
         /// <summary>
         /// 用于记录错误信息的日志方法，不包含异常对象。
-        /// 将错误信息作为高优先级的 Trace 处理，日志级别为 Error。
         /// </summary>
         /// <param name="message">要记录的日志消息。</param>
         /// <param name="payload">附带的数据，默认为 null。</param>
@@ -167,8 +253,16 @@ namespace Asaki.Core.Logging
                                  [CallerFilePath] string file = "", [CallerLineNumber] int line = 0)
         {
             IAsakiLoggingService s = Service;
+            if (s == null)
+            {
+#if UNITY_EDITOR
+                FallbackToUnityDebug(AsakiLogLevel.Error, message, payload, file, line);
+#endif
+                return;
+            }
+
             // 走 Trace 通道，但级别为 Error
-            s?.LogTrace(AsakiLogLevel.Error, message, FormatPayload(payload), file, line);
+            s. LogTrace(AsakiLogLevel.Error, message, FormatPayload(payload), file, line);
         }
 
         /// <summary>
@@ -185,7 +279,13 @@ namespace Asaki.Core.Logging
                                  [CallerFilePath] string file = "", [CallerLineNumber] int line = 0)
         {
             IAsakiLoggingService s = Service;
-            if (s == null) return;
+            if (s == null)
+            {
+#if UNITY_EDITOR
+                FallbackToUnityDebug(AsakiLogLevel.Fatal, message, null, file, line, ex);
+#endif
+                return;
+            }
 
             if (ex != null)
                 s.LogException(message, ex, file, line);
@@ -212,9 +312,9 @@ namespace Asaki.Core.Logging
                 // 1. 基础类型直接转
                 case string s:
                     return s;
-                case int:
+                case int: 
                 case float:
-                case bool:
+                case bool: 
                     return payload.ToString();
                 // 2. Unity 向量类型特化 (常用)
                 case Vector3 v3:
@@ -224,19 +324,17 @@ namespace Asaki.Core.Logging
                 default:
                     try
                     {
-                        #if UNITY_EDITOR
+#if UNITY_EDITOR
                         return JsonUtility.ToJson(payload);
-                        #else
+#else
                         return null;
-                        #endif
+#endif
                     }
                     catch
                     {
                         return payload.ToString();
                     }
-                    break;
             }
-
         }
     }
 }

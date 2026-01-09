@@ -15,7 +15,6 @@ namespace Asaki.Unity.Services.Serialization
 		private int _indent;
 		private bool _skipNextComma;
 		private readonly Stack<ContainerContext> _contextStack;
-		private bool _isResetting;
 		private bool _isRented;
 		private class ContainerContext
 		{
@@ -51,7 +50,6 @@ namespace Asaki.Unity.Services.Serialization
 			_skipNextComma = false;
 			_contextStack = new Stack<ContainerContext>();
 			_contextStack.Push(new ContainerContext { IsArray = false });
-			_isResetting = false;
 		}
 
 		public string GetResult()
