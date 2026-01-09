@@ -18,11 +18,9 @@ namespace Asaki.Unity.Bootstrapper
 		/// </summary>
 		public static void Register(IAsakiInjector injector)
 		{
-			if (injector != null && !_injectors.Contains(injector))
-			{
-				_injectors.Add(injector);
-				ALog.Trace($"[Asaki] Registered injector: {injector.GetType().Name}");
-			}
+			if (injector == null || _injectors.Contains(injector)) return;
+			_injectors.Add(injector);
+			ALog.Info($"[Asaki] Registered injector: {injector.GetType().Name}");
 		}
 
 		/// <summary>
@@ -32,7 +30,7 @@ namespace Asaki.Unity.Bootstrapper
 		{
 			if (target == null) return;
 
-			foreach (var injector in _injectors)
+			foreach (IAsakiInjector injector in _injectors)
 			{
 				// 将 resolver 透传给具体生成的注入器
 				injector.Inject(target, resolver);

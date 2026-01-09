@@ -26,6 +26,9 @@
                 <!-- 动态渲染 Inspector -->
             </ui:VisualElement>
         </ui:ScrollView>
+        
+        <!-- 在 ScrollView 后面添加 -->
+        <ui:Button name="add-component-button" text="Add Component" class="add-component-button" />
 
     </ui:VisualElement>
 

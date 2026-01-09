@@ -1,3 +1,4 @@
+using Asaki.Core.Attributes;
 using Asaki.Core.Broker;
 using Asaki.Core.Configuration;
 using Asaki.Core.Logging;
@@ -6,8 +7,13 @@ using Asaki.Unity.Utils;
 using Cysharp.Threading.Tasks;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
+using System.Linq;
+using System.Reflection;
+using System.Threading;
 using System.Threading.Tasks;
+using UnityEditor;
 using UnityEngine;
 // 核心引用
 using Object = UnityEngine.Object;
@@ -16,18 +22,36 @@ namespace Asaki.Unity.Services.Configuration
 {
 	public class AsakiConfigService : IAsakiConfigService
 	{
-		// [Security] 系统级序列化口令
-		// 必须与 AsakiSaveGenerator 中的定义保持完全一致
-		// 只有持有此 Key 的服务才有权将 Config 写入二进制流
-		public const string SYSTEM_PERMISSION_KEY = "ASAKI_SYS_KEY_9482_ACCESS";
+		private const string SYSTEM_PERMISSION_KEY = "ASAKI_SYS_KEY_9482_ACCESS";
 
 		private readonly Dictionary<Type, Dictionary<int, IAsakiConfig>> _configStore = new Dictionary<Type, Dictionary<int, IAsakiConfig>>();
 		private readonly Dictionary<Type, object> _listStore = new Dictionary<Type, object>();
 
+		private readonly SemaphoreSlim _loadSemaphore = new SemaphoreSlim(1, 1);
 		private string _csvRootPath;
 		private string _binaryCachePath;
 		private bool _isEditor;
-		private IAsakiEventService _asakiEventService;
+		private readonly IAsakiEventService _asakiEventService;
+
+		private readonly Dictionary<Type, ConfigMetadata> _metadataCache = new();
+		private readonly Dictionary<Type, Task> _loadingTasks = new(); // 加载任务
+		private readonly Dictionary<Type, ConfigStats> _statsCache = new();
+		private class ConfigMetadata
+		{
+			public Type ConfigType;
+			public AsakiConfigLoadStrategy Strategy;
+			public int Priority;
+			public bool Unloadable;
+			public Type[] Dependencies;
+			public long EstimatedSize; // 预估大小（字节）
+		}
+
+		private class ConfigStats
+		{
+			public int AccessCount;         // 访问次数
+			public DateTime LastAccessTime; // 最后访问时间
+			public DateTime LoadTime;       // 加载时间
+		}
 		public AsakiConfigService(IAsakiEventService asakiEventService)
 		{
 			_asakiEventService = asakiEventService;
@@ -41,24 +65,44 @@ namespace Asaki.Unity.Services.Configuration
 
 			if (!Directory.Exists(_binaryCachePath)) Directory.CreateDirectory(_binaryCachePath);
 
-			if (_isEditor && Application.isPlaying)
-			{
-				GameObject go = new GameObject("[AsakiConfigHotReloader]");
-				go.AddComponent<AsakiConfigHotReloader>();
-				Object.DontDestroyOnLoad(go);
-			}
+			ScanConfigTypes();
+
+			if (!_isEditor || !Application.isPlaying) return;
+			GameObject go = new GameObject("[AsakiConfigHotReloader]");
+			go.AddComponent<AsakiConfigHotReloader>();
+			Object.DontDestroyOnLoad(go);
 		}
+
 
 		public async Task OnInitAsync()
 		{
-			await LoadAllAsync();
-			ALog.Info($"[AsakiConfig] Service Ready. Loaded {_configStore.Count} tables.");
+			var preloadTypes = _metadataCache
+			                   .Where(kvp => kvp.Value.Strategy == AsakiConfigLoadStrategy.Preload)
+			                   .OrderByDescending(kvp => kvp.Value.Priority) // 按优先级排序
+			                   .Select(kvp => kvp.Key)
+			                   .ToList();
+			if (preloadTypes.Count > 0)
+			{
+				ALog.Info($"[AsakiConfig] Preloading {preloadTypes.Count} core configs...");
+
+				var tasks = preloadTypes.Select(LoadConfigInternalAsync).ToList();
+
+				await Task.WhenAll(tasks);
+			}
+			ALog.Info($"[AsakiConfig] Service Ready.  Preloaded {_configStore.Count} tables.");
+			#if UNITY_EDITOR
+			if (_isEditor)
+			{
+				await ValidateAllConfigsAsync();
+			}
+			#endif
 		}
 
 		public void OnDispose()
 		{
 			_configStore.Clear();
 			_listStore.Clear();
+			_loadSemaphore?.Dispose();
 		}
 
 		// =========================================================
@@ -77,9 +121,31 @@ namespace Asaki.Unity.Services.Configuration
 
 		public T Get<T>(int id) where T : class, IAsakiConfig, new()
 		{
+			// 同步版本：检查是否已加载
+			if (!IsLoaded<T>())
+			{
+				var metadata = GetMetadata<T>();
+
+				// 检查加载策略
+				if (metadata.Strategy == AsakiConfigLoadStrategy.Manual)
+				{
+					ALog.Error($"[AsakiConfig] {typeof(T).Name} requires manual loading.  Call LoadAsync<{typeof(T).Name}>() first.");
+					return null;
+				}
+
+				// 自动加载（阻塞警告）
+				ALog.Warn($"[AsakiConfig] {typeof(T).Name} not loaded, blocking load on main thread.  Consider using GetAsync or Preload.");
+				LoadConfigInternalAsync(typeof(T)).GetAwaiter().GetResult();
+			}
+
+			// 记录访问统计
+			RecordAccess<T>();
+
+			// 正常查询
 			if (_configStore.TryGetValue(typeof(T), out var dict))
 			{
-				if (dict.TryGetValue(id, out IAsakiConfig val)) return (T)val.CloneConfig();
+				if (dict.TryGetValue(id, out IAsakiConfig val))
+					return (T)val.CloneConfig();
 			}
 			return null;
 		}
@@ -255,6 +321,11 @@ namespace Asaki.Unity.Services.Configuration
 			return _configStore.ContainsKey(typeof(T));
 		}
 
+		public bool IsLoaded(Type configType)
+		{
+			return _configStore.ContainsKey(configType);
+		}
+
 		public string GetSourcePath<T>() where T : class, IAsakiConfig, new()
 		{
 			string fileName = typeof(T).Name + ".csv";
@@ -276,6 +347,56 @@ namespace Asaki.Unity.Services.Configuration
 				return DateTime.MinValue;
 			}
 		}
+		public async Task<T> GetAsync<T>(int id) where T : class, IAsakiConfig, new()
+		{
+			await EnsureLoadedAsync<T>();
+			return Get<T>(id);
+		}
+		public async Task PreloadAsync<T>() where T : class, IAsakiConfig, new()
+		{
+			await LoadConfigInternalAsync(typeof(T));
+		}
+		public async Task PreloadBatchAsync(params Type[] configTypes)
+		{
+			var tasks = configTypes.Select(LoadConfigInternalAsync).ToArray();
+			await Task.WhenAll(tasks);
+		}
+		public void Unload<T>() where T : class, IAsakiConfig, new()
+		{
+			var type = typeof(T);
+			var metadata = GetMetadata<T>();
+
+			if (!metadata.Unloadable)
+			{
+				ALog.Warn($"[AsakiConfig] {type.Name} is marked as non-unloadable.");
+				return;
+			}
+
+			if (_configStore.Remove(type))
+			{
+				_listStore.Remove(type);
+				ALog.Info($"[AsakiConfig] Unloaded {type.Name}");
+			}
+		}
+		public AsakiConfigLoadInfo GetLoadInfo<T>() where T : class, IAsakiConfig, new()
+		{
+			var type = typeof(T);
+			var metadata = GetMetadata<T>();
+
+			return new AsakiConfigLoadInfo
+			{
+				ConfigName = type.Name,
+				IsLoaded = IsLoaded(type),
+				Strategy = metadata.Strategy,
+				Priority = metadata.Priority,
+				Unloadable = metadata.Unloadable,
+				EstimatedSize = metadata.EstimatedSize,
+				AccessCount = _statsCache.TryGetValue(type, out var stats) ? stats.AccessCount : 0,
+				LastAccessTime = stats?.LastAccessTime ?? DateTime.MinValue
+			};
+		}
+
+
 
 		// =========================================================
 		// 核心加载逻辑
@@ -457,52 +578,162 @@ namespace Asaki.Unity.Services.Configuration
 			}
 		}
 
+		private async Task EnsureLoadedAsync<T>() where T : class, IAsakiConfig, new()
+		{
+			if (IsLoaded<T>()) return;
+
+			var metadata = GetMetadata<T>();
+
+			// 检查策略
+			if (metadata.Strategy == AsakiConfigLoadStrategy.Manual)
+			{
+				throw new InvalidOperationException(
+					$"Config {typeof(T).Name} requires manual loading. Call LoadAsync<{typeof(T).Name}>() first.");
+			}
+
+			// 加载（包含依赖）
+			await LoadConfigInternalAsync(typeof(T));
+		}
+
+		private async Task LoadConfigInternalAsync(Type configType)
+		{
+			// 防止重复加载
+			if (IsLoaded(configType)) return;
+
+			Task loadTask;
+
+			await _loadSemaphore.WaitAsync();
+
+			try
+			{
+				// 双重检查
+				if (IsLoaded(configType)) return;
+
+				// GetOrAdd 模式
+				if (!_loadingTasks.TryGetValue(configType, out loadTask))
+				{
+					loadTask = LoadConfigCoreAsync(configType);
+					_loadingTasks[configType] = loadTask;
+				}
+			}
+			finally
+			{
+				_loadSemaphore.Release();
+			}
+
+			// 3. 等待加载完成（无锁）
+			await loadTask;
+		}
+
+		private async Task LoadConfigCoreAsync(Type configType)
+		{
+			try
+			{
+				// 1. 获取元数据
+				if (!_metadataCache.TryGetValue(configType, out var metadata))
+				{
+					throw new InvalidOperationException($"Config type {configType.Name} not registered.");
+				}
+
+				// 2. 加载依赖
+				if (metadata.Dependencies is { Length: > 0 })
+				{
+					ALog.Info($"[AsakiConfig] Loading dependencies for {configType.Name}.. .");
+
+					var depTasks = metadata.Dependencies
+					                       .Select(LoadConfigInternalAsync) // 递归调用，自动防重复
+					                       .ToArray();
+
+					await Task.WhenAll(depTasks);
+				}
+
+				// 3. 加载配置文件
+				string csvPath = Path.Combine(_csvRootPath, configType.Name + ".csv");
+				if (!File.Exists(csvPath))
+				{
+					throw new FileNotFoundException($"Config file not found: {csvPath}");
+				}
+
+				// 4. 调用注册的加载器
+				Task loadTask = AsakiConfigRegistry.GetLoader(this, configType.Name, csvPath);
+				if (loadTask == null)
+				{
+					throw new InvalidOperationException($"No loader registered for {configType.Name}");
+				}
+
+				await loadTask;
+
+				// 5. 记录统计信息
+				if (!_statsCache.ContainsKey(configType))
+				{
+					_statsCache[configType] = new ConfigStats();
+				}
+				_statsCache[configType].LoadTime = DateTime.Now;
+
+				ALog.Info($"[AsakiConfig] ✅ Loaded {configType.Name} ({metadata.Strategy})");
+			}
+			catch (Exception ex)
+			{
+				ALog.Error($"[AsakiConfig] ❌ Failed to load {configType.Name}: {ex.Message}", ex);
+				throw; // 重新抛出，让等待的任务也能收到异常
+			}
+			finally
+			{
+				// 6. 清理任务记录
+				await _loadSemaphore.WaitAsync();
+				try
+				{
+					_loadingTasks.Remove(configType);
+				}
+				finally
+				{
+					_loadSemaphore.Release();
+				}
+			}
+		}
+
 		// =========================================================
 		// 纯同步辅助方法
 		// =========================================================
 
 		private List<T> DeserializeBytes<T>(byte[] bytes) where T : class, IAsakiConfig, new()
 		{
-			using (MemoryStream ms = new MemoryStream(bytes))
+			using MemoryStream ms = new MemoryStream(bytes);
+			AsakiBinaryReader reader = new AsakiBinaryReader(ms);
+			int count = reader.ReadInt(null);
+			var list = new List<T>(count);
+			for (int i = 0; i < count; i++)
 			{
-				AsakiBinaryReader reader = new AsakiBinaryReader(ms);
-				int count = reader.ReadInt(null);
-				var list = new List<T>(count);
-				for (int i = 0; i < count; i++)
-				{
-					T obj = new T();
-					obj.Deserialize(reader);
-					list.Add(obj);
-				}
-				return list;
+				T obj = new T();
+				obj.Deserialize(reader);
+				list.Add(obj);
 			}
+			return list;
 		}
 
 		private byte[] SerializeBytes<T>(List<T> data) where T : class, IAsakiConfig
 		{
-			using (MemoryStream ms = new MemoryStream())
+			using MemoryStream ms = new MemoryStream();
+			AsakiBinaryWriter writer = new AsakiBinaryWriter(ms);
+			writer.WriteInt(null, data.Count);
+
+			// [Key Pattern Implementation]
+			// 遍历所有对象，解锁权限，然后序列化
+			foreach (T item in data)
 			{
-				AsakiBinaryWriter writer = new AsakiBinaryWriter(ms);
-				writer.WriteInt(null, data.Count);
+				// [Fix] 显式接口调用：直接调用生成器生成的 AllowConfigSerialization 方法
+				// 传递硬编码的 System Key。如果 Key 不对，item 内部会报错并拒绝解锁。
+				// 这种方式不需要反射，性能高，类型安全，且 IL2CPP 友好。
 
-				// [Key Pattern Implementation]
-				// 遍历所有对象，解锁权限，然后序列化
-				foreach (T item in data)
-				{
-					// [Fix] 显式接口调用：直接调用生成器生成的 AllowConfigSerialization 方法
-					// 传递硬编码的 System Key。如果 Key 不对，item 内部会报错并拒绝解锁。
-					// 这种方式不需要反射，性能高，类型安全，且 IL2CPP 友好。
+				// 注意：因为 T 已经约束为 IAsakiConfig，而我们在 IAsakiConfig 中新增了 AllowConfigSerialization
+				// 所以这里可以直接调用，非常干净。
+				item.AllowConfigSerialization(SYSTEM_PERMISSION_KEY);
 
-					// 注意：因为 T 已经约束为 IAsakiConfig，而我们在 IAsakiConfig 中新增了 AllowConfigSerialization
-					// 所以这里可以直接调用，非常干净。
-					item.AllowConfigSerialization(SYSTEM_PERMISSION_KEY);
-
-					// 执行序列化 (此时 item 内部 _allowConfigSerialization 已经为 true)
-					item.Serialize(writer);
-				}
-
-				return ms.ToArray();
+				// 执行序列化 (此时 item 内部 _allowConfigSerialization 已经为 true)
+				item.Serialize(writer);
 			}
+
+			return ms.ToArray();
 		}
 
 		private void BuildIndex<T>(List<T> list) where T : class, IAsakiConfig
@@ -510,10 +741,169 @@ namespace Asaki.Unity.Services.Configuration
 			var dict = new Dictionary<int, IAsakiConfig>(list.Count);
 			foreach (T item in list)
 			{
-				if (!dict.ContainsKey(item.Id)) dict.Add(item.Id, item);
+				dict.TryAdd(item.Id, item);
 			}
 			_configStore[typeof(T)] = dict;
 			_listStore[typeof(T)] = list;
+		}
+
+		private void ScanConfigTypes()
+		{
+			var allTypes = TypeCache.GetTypesDerivedFrom<IAsakiConfig>()
+			                        .Where(t => !t.IsAbstract && !t.IsInterface);
+
+			foreach (var type in allTypes)
+			{
+				AsakiConfigAttribute attr = type.GetCustomAttribute<AsakiConfigAttribute>();
+
+				ConfigMetadata metadata = new ConfigMetadata
+				{
+					ConfigType = type,
+					Strategy = attr?.LoadStrategy ?? AsakiConfigLoadStrategy.Auto,
+					Priority = attr?.Priority ?? 0,
+					Unloadable = attr?.Unloadable ?? true,
+					Dependencies = attr?.Dependencies ?? Array.Empty<Type>(),
+					EstimatedSize = EstimateConfigSize(type)
+				};
+
+				// Auto 策略：根据大小自动决策
+				if (metadata.Strategy == AsakiConfigLoadStrategy.Auto)
+				{
+					metadata.Strategy = metadata.EstimatedSize < 100 * 1024
+						? AsakiConfigLoadStrategy.Preload   // < 100KB 预加载
+						: AsakiConfigLoadStrategy.OnDemand; // >= 100KB 按需
+				}
+
+				_metadataCache[type] = metadata;
+			}
+		}
+
+		private long EstimateConfigSize(Type type)
+		{
+			string csvPath = Path.Combine(_csvRootPath, type.Name + ".csv");
+			if (File.Exists(csvPath))
+				return new FileInfo(csvPath).Length;
+
+			string binPath = Path.Combine(_binaryCachePath, type.Name + ".bin");
+			if (File.Exists(binPath))
+				return new FileInfo(binPath).Length;
+
+			return 0;
+		}
+
+		private ConfigMetadata GetMetadata<T>() where T : IAsakiConfig
+		{
+			if (_metadataCache.TryGetValue(typeof(T), out var metadata))
+				return metadata;
+
+			// 未标记的配置：使用默认策略
+			return new ConfigMetadata
+			{
+				ConfigType = typeof(T),
+				Strategy = AsakiConfigLoadStrategy.OnDemand,
+				Priority = 0,
+				Unloadable = true,
+				Dependencies = Array.Empty<Type>()
+			};
+		}
+
+		private void RecordAccess<T>()
+		{
+			var type = typeof(T);
+			if (!_statsCache.ContainsKey(type))
+			{
+				_statsCache[type] = new ConfigStats();
+			}
+
+			_statsCache[type].AccessCount++;
+			_statsCache[type].LastAccessTime = DateTime.Now;
+		}
+
+		private async Task ValidateAllConfigsAsync()
+		{
+			var sw = Stopwatch.StartNew();
+			ALog.Info("[AsakiConfig] 🔍 Validating all configs in editor mode...");
+
+			var allTypes = _metadataCache.Keys.ToList();
+
+			// 使用线程安全的集合收集错误
+			var errors = new System.Collections.Concurrent.ConcurrentBag<string>();
+			var warnings = new System.Collections.Concurrent.ConcurrentBag<string>();
+
+			// 并行验证（充分利用多核 CPU）
+			await Task.Run(() =>
+			{
+				Parallel.ForEach(allTypes, new ParallelOptions
+				{
+					MaxDegreeOfParallelism = Environment.ProcessorCount
+				}, type =>
+				{
+					try
+					{
+						// 1. 检查 CSV 文件是否存在
+						string csvPath = Path.Combine(_csvRootPath, type.Name + ".csv");
+						if (!File.Exists(csvPath))
+						{
+							warnings.Add($"Missing CSV: {type.Name}.csv");
+							return;
+						}
+
+						// 2. 检查文件大小（空文件警告）
+						var fileInfo = new FileInfo(csvPath);
+						if (fileInfo.Length < 10) // 小于 10 字节基本是空文件
+						{
+							warnings.Add($"{type.Name}. csv is too small ({fileInfo.Length} bytes), might be empty.");
+						}
+
+						// 3. 检查依赖
+						if (_metadataCache.TryGetValue(type, out var metadata))
+						{
+							if (metadata.Dependencies != null && metadata.Dependencies.Length > 0)
+							{
+								foreach (var depType in metadata.Dependencies)
+								{
+									string depCsvPath = Path.Combine(_csvRootPath, depType.Name + ". csv");
+									if (!File.Exists(depCsvPath))
+									{
+										errors.Add($"{type.Name} depends on {depType.Name}, but CSV not found!");
+									}
+								}
+							}
+						}
+					}
+					catch (Exception ex)
+					{
+						errors.Add($"Validation failed for {type.Name}: {ex.Message}");
+					}
+				});
+			});
+
+			sw.Stop();
+
+			// 输出错误和警告
+			foreach (var error in errors)
+			{
+				ALog.Error($"[AsakiConfig] ❌ {error}");
+			}
+
+			foreach (var warning in warnings)
+			{
+				ALog.Warn($"[AsakiConfig] ⚠️ {warning}");
+			}
+
+			// 输出验证结果
+			if (errors.Count > 0)
+			{
+				ALog.Error($"[AsakiConfig] ❌ Validation completed with {errors.Count} errors and {warnings.Count} warnings in {sw.ElapsedMilliseconds}ms.");
+			}
+			else if (warnings.Count > 0)
+			{
+				ALog.Warn($"[AsakiConfig] ⚠️ Validation completed with {warnings.Count} warnings in {sw.ElapsedMilliseconds}ms.");
+			}
+			else
+			{
+				ALog.Info($"[AsakiConfig] ✅ All {allTypes.Count} configs validated successfully in {sw.ElapsedMilliseconds}ms.");
+			}
 		}
 	}
 }

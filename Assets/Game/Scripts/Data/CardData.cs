@@ -1,10 +1,10 @@
-﻿using Asaki.Core;
-using Asaki.Core.Attributes;
+﻿using Asaki.Core.Attributes;
 using Asaki.Core.Configuration;
 
 namespace Game.Scripts.Data
 {
 	[AsakiSave]
+	[AsakiConfig(LoadStrategy = AsakiConfigLoadStrategy.Preload, Priority = 100)]
 	public partial class CardData : IAsakiConfig
 	{
 		[AsakiSaveMember(order: 0)] public int Id { get; private set; }
