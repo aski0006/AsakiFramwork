@@ -1,6 +1,5 @@
 ﻿using Asaki.Core.Logging;
 using Asaki.Core.Network;
-using Asaki.Unity.Services.Logging;
 using System;
 using UnityEngine.Networking;
 

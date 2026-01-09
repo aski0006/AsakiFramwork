@@ -3,7 +3,6 @@ using Asaki.Core.Configs;
 using Asaki.Core.Context;
 using Asaki.Core.Context.Resolvers;
 using Asaki. Core.Logging;
-using Asaki.Unity.Services. Logging;
 using System;
 using System. Linq;
 using UnityEngine;
@@ -375,18 +374,18 @@ namespace Asaki.Unity. Bootstrapper
 
 		private void OnDestroy()
 		{
-			if (_instance == this)
-			{
-				ALog. Info("Asaki Framework shutting down...");
+			if (_instance != this) return;
+			ALog. Info("Asaki Framework shutting down...");
 
-				// 取消场景事件监听
-				SceneManager.sceneLoaded -= OnSceneLoaded;
+			// 取消场景事件监听
+			SceneManager.sceneLoaded -= OnSceneLoaded;
 
-				// 清理上下文
-				AsakiContext.ClearAll();
+			// 清理上下文
+			AsakiContext.ClearAll();
+			
+			ALog.Reset(); // 重置日志
 
-				_instance = null;
-			}
+			_instance = null;
 		}
 	}
 }

@@ -1,7 +1,6 @@
 ﻿using Asaki.Core.Context;
 using Asaki.Core.Logging;
 using Asaki.Editor.Utilities.Extensions;
-using Asaki.Unity.Services.Logging;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;

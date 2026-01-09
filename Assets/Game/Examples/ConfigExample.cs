@@ -3,7 +3,6 @@ using Asaki.Core.Attributes;
 using Asaki.Core.Configuration;
 using Asaki.Core.Context;
 using Asaki.Core.Logging;
-using Asaki.Unity.Services.Logging;
 using UnityEngine;
 
 namespace Game.Test

@@ -6,7 +6,6 @@ using Asaki.Core.Attributes;
 using Asaki.Core.Logging;
 using Asaki.Core.Pooling;
 using Asaki.Core.Resources;
-using Asaki.Unity.Services.Logging;
 using Asaki.Unity.Services.Resources;
 using System.Threading.Tasks;
 using UnityEngine;

@@ -12,6 +12,10 @@ namespace Asaki.Core.Blackboard.Variables
     public class AsakiInt : AsakiValue<int>
     {
         public AsakiInt() : base(() => new AsakiInt()) { }
+        public AsakiInt(int value) : this()
+        {
+            Value = value;
+        }
     }
 
     /// <summary>
@@ -23,6 +27,10 @@ namespace Asaki.Core.Blackboard.Variables
     public class AsakiFloat : AsakiValue<float>
     {
         public AsakiFloat() : base(() => new AsakiFloat()) { }
+        public AsakiFloat(float value) : this()
+        {
+            Value = value;
+        }
     }
 
     /// <summary>
@@ -34,6 +42,10 @@ namespace Asaki.Core.Blackboard.Variables
     public class AsakiBool : AsakiValue<bool>
     {
         public AsakiBool() : base(() => new AsakiBool()) { }
+        public AsakiBool(bool value) : this()
+        {
+            Value = value;
+        }
     }
 
     /// <summary>
@@ -45,6 +57,10 @@ namespace Asaki.Core.Blackboard.Variables
     public class AsakiString : AsakiValue<string>
     {
         public AsakiString() : base(() => new AsakiString()) { }
+        public AsakiString(string value) : this()
+        {
+            Value = value;
+        }
     }
 
     /// <summary>
@@ -56,6 +72,10 @@ namespace Asaki.Core.Blackboard.Variables
     public class AsakiVector3 : AsakiValue<Vector3>
     {
         public AsakiVector3() : base(() => new AsakiVector3()) { }
+        public AsakiVector3(Vector3 value) : this()
+        {
+            Value = value;
+        }
     }
 
     /// <summary>
@@ -67,6 +87,10 @@ namespace Asaki.Core.Blackboard.Variables
     public class AsakiVector2 : AsakiValue<Vector2>
     {
         public AsakiVector2() : base(() => new AsakiVector2()) { }
+        public AsakiVector2(Vector2 value) : this()
+        {
+            Value = value;
+        }
     }
 
     /// <summary>
@@ -78,6 +102,10 @@ namespace Asaki.Core.Blackboard.Variables
     public class AsakiVector2Int : AsakiValue<Vector2Int>
     {
         public AsakiVector2Int() : base(() => new AsakiVector2Int()) { }
+        public AsakiVector2Int(Vector2Int value) : this()
+        {
+            Value = value;
+        }
     }
 
     /// <summary>
@@ -89,6 +117,10 @@ namespace Asaki.Core.Blackboard.Variables
     public class AsakiVector3Int : AsakiValue<Vector3Int>
     {
         public AsakiVector3Int() : base(() => new AsakiVector3Int()) { }
+        public AsakiVector3Int(Vector3Int value) : this()
+        {
+            Value = value;
+        }
     }
 
     /// <summary>
@@ -100,5 +132,24 @@ namespace Asaki.Core.Blackboard.Variables
     public class AsakiColor : AsakiValue<Color>
     {
         public AsakiColor() : base(() => new AsakiColor()) { }
+        public AsakiColor(Color value) : this()
+        {
+            Value = value;
+        }
+    }
+
+    /// <summary>
+    /// 表示游戏对象类型的黑板值。
+    /// 继承自 <see cref="AsakiValue{T}"/>，其中 <typeparamref name="T"/> 为 <see cref="GameObject"/>，
+    /// 用于在黑板系统中存储和处理游戏对象值。
+    /// </summary>
+    [Serializable]
+    public class AsakiGameObject : AsakiValue<GameObject>
+    {
+        public AsakiGameObject() : base(() => new AsakiGameObject()) { }
+        public AsakiGameObject(GameObject value) : this()
+        {
+            Value = value;
+        }
     }
 }

@@ -3,7 +3,6 @@
 using Asaki.Core.Async;
 using Asaki.Core.Logging;
 using Asaki.Core.Resources;
-using Asaki.Unity.Services.Logging;
 using System;
 using System.Threading;
 using System.Threading.Tasks;

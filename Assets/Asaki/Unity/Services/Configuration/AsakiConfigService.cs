@@ -1,7 +1,6 @@
 using Asaki.Core.Broker;
 using Asaki.Core.Configuration;
 using Asaki.Core.Logging;
-using Asaki.Unity.Services.Logging;
 using Asaki.Unity.Services.Serialization;
 using Asaki.Unity.Utils;
 using Cysharp.Threading.Tasks;

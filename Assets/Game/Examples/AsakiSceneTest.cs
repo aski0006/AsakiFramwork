@@ -2,7 +2,6 @@
 using Asaki.Core.Logging;
 using Asaki.Core.Scene;
 using Asaki.Unity.Services.Async;
-using Asaki.Unity.Services.Logging;
 using JetBrains.Annotations;
 using System;
 using UnityEngine;

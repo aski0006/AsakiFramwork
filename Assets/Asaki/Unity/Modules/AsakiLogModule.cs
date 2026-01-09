@@ -4,7 +4,6 @@ using Asaki.Core.Attributes;
 using Asaki.Core.Configs;
 using Asaki.Core.Context;
 using Asaki.Core.Logging;
-using Asaki.Unity.Services.Logging;
 
 namespace Asaki.Unity.Modules
 {
