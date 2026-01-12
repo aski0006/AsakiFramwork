@@ -1,0 +1,58 @@
+﻿using System.Collections.Generic;
+using System.Text;
+using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
+
+namespace Asaki.CodeGen.Generators
+{
+    public static class AsakiTypeRegistryGenerator
+    {
+        public static void Execute(GeneratorExecutionContext context, List<TypeDeclarationSyntax> candidates)
+        {
+            if (candidates.Count == 0) return;
+
+            // 获取当前程序集的名称，作为类名的一部分，防止多个 DLL 里的类名冲突
+            if (context.Compilation.AssemblyName != null)
+            {
+                string assemblyName = context.Compilation.AssemblyName.Replace(".", "_").Replace("-", "_");
+                string className = $"AsakiRegistry_{assemblyName}";
+
+                StringBuilder sb = new StringBuilder();
+            
+                sb.AppendLine("// <Auto Generated> Self-Registration Pattern");
+                sb.AppendLine("using UnityEngine;");
+                // 依然不引用 Asaki，使用全限定名最稳
+            
+                // 放在一个独特的命名空间，或者干脆放在 global namespace (如果不介意的话)
+                // 这里我们放在 Asaki.Generated.Local 以示区分
+                sb.AppendLine("namespace Asaki.Generated.Local"); 
+                sb.AppendLine("{");
+                sb.AppendLine($"    public static class {className}");
+                sb.AppendLine("    {");
+            
+                // 每个 DLL 里的这个方法都会在游戏启动时被 Unity 调用一次
+                sb.AppendLine("        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]");
+                sb.AppendLine("        public static void RegisterTypes()");
+                sb.AppendLine("        {");
+
+                foreach (var typeSyntax in candidates)
+                {
+                    var semanticModel = context.Compilation.GetSemanticModel(typeSyntax.SyntaxTree);
+                    var typeSymbol = semanticModel.GetDeclaredSymbol(typeSyntax);
+                    if (typeSymbol == null) continue;
+
+                    string fullTypeName = typeSymbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+
+                    // 调用 Core 的 Register<T>()
+                    sb.AppendLine($"            global::Asaki.Core.Blackboard.Variables.AsakiTypeBridge.Register<{fullTypeName}>();");
+                }
+            
+                sb.AppendLine("        }");
+                sb.AppendLine("    }");
+                sb.AppendLine("}");
+
+                context.AddSource($"{className}.g.cs", sb.ToString());
+            }
+        }
+    }
+}

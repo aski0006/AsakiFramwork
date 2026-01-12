@@ -1,7 +1,6 @@
 ﻿using Asaki.Core.Serialization;
 using System;
 using System.Collections.Generic;
-using System.Reflection;
 using UnityEngine;
 
 namespace Asaki.Unity.Extensions
@@ -124,7 +123,6 @@ namespace Asaki.Unity.Extensions
 	public class AsakiSaveHashSet<T> : HashSet<T>, IAsakiSavable
 		where T : new()
 	{
-		public AsakiSaveHashSet() : base() { }
 
 		public void Serialize(IAsakiWriter writer)
 		{

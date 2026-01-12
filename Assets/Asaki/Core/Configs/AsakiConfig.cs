@@ -44,6 +44,10 @@ namespace Asaki.Core.Configs
 		[SerializeField] private AsakiLogConfig logConfig = new AsakiLogConfig();
 		public AsakiLogConfig LogConfig => logConfig;
 
+		[Header("Modules: Localization")]
+		[SerializeField] private AsakiLocalizationConfig localizationConfig = new AsakiLocalizationConfig();
+		public AsakiLocalizationConfig LocalizationConfig => localizationConfig;
+		
 		// =========================================================
 		// 3. Runtime Initialization
 		// =========================================================
