@@ -1,6 +1,5 @@
 using Asaki.Core.Configuration;
 using Asaki.Core.Context;
-using Asaki.Unity;
 using Asaki.Unity.Services.Configuration;
 using System;
 using System.Collections;

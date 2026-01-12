@@ -180,11 +180,11 @@ namespace Asaki.Unity.Extensions
 		}
 
 
-		public static Task<T> OpenAsync<T>(this IAsakiUIService service, UIID id, object args = null, CancellationToken token = default(CancellationToken))
+		public static Task<T> OpenAsync<T>(this IAsakiUIService service, WindowAssetId assetId, object args = null, CancellationToken token = default(CancellationToken))
 			where T : class, IAsakiWindow
 		{
 			// 核心逻辑：在这里进行枚举到 int 的强转
-			return service.OpenAsync<T>((int)id, args, token);
+			return service.OpenAsync<T>((int)assetId, args, token);
 		}
 	}
 }

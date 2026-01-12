@@ -63,6 +63,8 @@ MonoBehaviour:
     MaxFileSizeKB: 10240
     MaxHistoryFiles: 10
     FilePrefix: GameLog
+  localizationConfig:
+    <FallbackLanguage>k__BackingField: en-US
   references:
     version: 2
     RefIds: []

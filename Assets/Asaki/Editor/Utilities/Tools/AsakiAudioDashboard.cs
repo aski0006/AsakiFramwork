@@ -12,7 +12,7 @@ namespace Asaki.Editor.Utilities.Tools
 		// === 路径配置 ===
 		// [修改] 指向唯一的 AsakiConfig
 		private const string CONFIG_PATH = "Assets/Resources/Asaki/Configuration/AsakiConfig.asset";
-		private const string CODE_GEN_PATH = "Assets/Asaki/Generated/AudioID.cs";
+		private const string CODE_GEN_PATH = "Assets/Asaki/Generated/AudioAsset_2_Id/AudioAssetID.cs";
 
 		// [修改] 持有主配置
 		private AsakiConfig _mainConfig;
@@ -468,7 +468,7 @@ namespace Asaki.Editor.Utilities.Tools
 			sb.AppendLine();
 			sb.AppendLine("namespace Asaki.Generated");
 			sb.AppendLine("{");
-			sb.AppendLine("    public enum AudioID");
+			sb.AppendLine("    public enum AudioAssetID");
 			sb.AppendLine("    {");
 			sb.AppendLine("        None = 0,");
 			foreach (AudioItem item in _audioConfig.Items.OrderBy(x => x.Key))

@@ -27,15 +27,12 @@ namespace Asaki.Core.Configuration
 		bool IsLoaded(Type type);
 		string GetSourcePath<T>() where T : class, IAsakiConfig, new();
 		DateTime GetLastModifiedTime<T>() where T : class, IAsakiConfig, new();
-		
 		Task<T> GetAsync<T>(int id) where T : class, IAsakiConfig, new();
-		
 		Task PreloadAsync<T>() where T : class, IAsakiConfig, new();
-		
+		Task PreloadAsync(Type type);
 		Task PreloadBatchAsync(params Type[] configTypes);
-		
 		void Unload<T>() where T : class, IAsakiConfig, new();
-		
+		void Unload(Type type);
 		AsakiConfigLoadInfo GetLoadInfo<T>() where T : class, IAsakiConfig, new();
 	}
 }

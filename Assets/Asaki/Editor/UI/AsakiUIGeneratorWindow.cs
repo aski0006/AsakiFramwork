@@ -1,18 +1,19 @@
 using Asaki.Core.Configs;
 using Asaki.Core.UI;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
 using UnityEditor;
 using UnityEngine;
+using Object = UnityEngine.Object;
 
 namespace Asaki.Editor.UI
 {
 	public class AsakiUIGeneratorWindow : EditorWindow
 	{
-		private const string CODE_GEN_PATH = "Assets/Asaki/Generated/UIID.cs";
-		// [修改] 指向统一的主配置
+		private const string CODE_GEN_PATH = "Assets/Asaki/Generated/UIAsset_2_Id/WindowAssetId.cs";
 		private const string CONFIG_ASSET_PATH = "Assets/Resources/Asaki/Configuration/AsakiConfig.asset";
 
 		[System.Serializable]
@@ -39,7 +40,7 @@ namespace Asaki.Editor.UI
 					if (rawPath.Contains("/Resources/"))
 					{
 						string ext = Path.GetExtension(rawPath);
-						int resIndex = rawPath.IndexOf("/Resources/") + 11;
+						int resIndex = rawPath.IndexOf("/Resources/", StringComparison.Ordinal) + 11;
 						LoadPath = rawPath.Substring(resIndex).Replace(ext, "");
 					}
 					else
@@ -60,7 +61,7 @@ namespace Asaki.Editor.UI
 		private Vector2 _scrollPos;
 		private bool _hasGlobalConflict = false;
 
-		[MenuItem("Asaki/UI/UI Generator Window")]
+		[MenuItem("Asaki/Asset ID Generator/UI Generator Window")]
 		public static void OpenWindow()
 		{
 			AsakiUIGeneratorWindow window = GetWindow<AsakiUIGeneratorWindow>("Asaki UI Gen");
@@ -258,7 +259,7 @@ namespace Asaki.Editor.UI
 			sb.AppendLine();
 			sb.AppendLine("namespace Asaki.Generated");
 			sb.AppendLine("{");
-			sb.AppendLine("    public enum UIID");
+			sb.AppendLine("    public enum WindowAssetId");
 			sb.AppendLine("    {");
 			sb.AppendLine("        None = 0,");
 			foreach (UIItem item in items.OrderBy(x => x.EnumName))
@@ -295,11 +296,13 @@ namespace Asaki.Editor.UI
 		private static AsakiConfig LoadOrCreateConfig()
 		{
 			AsakiConfig config = AssetDatabase.LoadAssetAtPath<AsakiConfig>(CONFIG_ASSET_PATH);
-			if (config == null)
+			if (!config)
 			{
 				config = CreateInstance<AsakiConfig>();
 				string dir = Path.GetDirectoryName(CONFIG_ASSET_PATH);
-				if (!Directory.Exists(dir)) Directory.CreateDirectory(dir);
+				if (!Directory.Exists(dir))
+					if (dir != null)
+						Directory.CreateDirectory(dir);
 				AssetDatabase.CreateAsset(config, CONFIG_ASSET_PATH);
 			}
 			return config;
@@ -350,14 +353,16 @@ namespace Asaki.Editor.UI
 		private static string SanitizeName(string rawName)
 		{
 			string name = rawName.Replace(" ", "_").Replace("-", "_").Replace(".", "_").Replace("(", "").Replace(")", "");
-			if (char.IsDigit(name[0])) name = "UI_" + name;
+			if (char.IsDigit(name[0])) name = "Window_" + name;
 			return name;
 		}
 
 		private static void WriteFile(string path, string content)
 		{
 			string dir = Path.GetDirectoryName(path);
-			if (!Directory.Exists(dir)) Directory.CreateDirectory(dir);
+			if (!Directory.Exists(dir))
+				if (dir != null)
+					Directory.CreateDirectory(dir);
 			File.WriteAllText(path, content, Encoding.UTF8);
 		}
 	}

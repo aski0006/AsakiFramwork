@@ -356,6 +356,12 @@ namespace Asaki.Unity.Services.Configuration
 		{
 			await LoadConfigInternalAsync(typeof(T));
 		}
+		public async Task PreloadAsync(Type configType)
+		{
+			// 直接调用核心加载逻辑，不做任何反射检查
+			// 调用方需确保: configType != null 且实现了 IAsakiConfig
+			await LoadConfigInternalAsync(configType);
+		}
 		public async Task PreloadBatchAsync(params Type[] configTypes)
 		{
 			var tasks = configTypes.Select(LoadConfigInternalAsync).ToArray();
@@ -376,6 +382,25 @@ namespace Asaki.Unity.Services.Configuration
 			{
 				_listStore.Remove(type);
 				ALog.Info($"[AsakiConfig] Unloaded {type.Name}");
+			}
+		}
+		public void Unload(Type configType)
+		{
+			// 直接查字典，不做接口类型检查
+			// 调用方需确保: configType != null 且实现了 IAsakiConfig
+    
+			var metadata = GetMetadata(configType); // 仅字典查找，无反射
+    
+			if (!metadata.Unloadable) 
+			{
+				ALog.Warn($"[AsakiConfig] {configType.Name} is non-unloadable.");
+				return;
+			}
+
+			if (_configStore.Remove(configType))
+			{
+				_listStore.Remove(configType);
+				ALog.Info($"[AsakiConfig] Unloaded {configType.Name}");
 			}
 		}
 		public AsakiConfigLoadInfo GetLoadInfo<T>() where T : class, IAsakiConfig, new()
@@ -818,7 +843,7 @@ namespace Asaki.Unity.Services.Configuration
 			_statsCache[type].AccessCount++;
 			_statsCache[type].LastAccessTime = DateTime.Now;
 		}
-
+		
 		private async Task ValidateAllConfigsAsync()
 		{
 			var sw = Stopwatch.StartNew();
@@ -904,6 +929,21 @@ namespace Asaki.Unity.Services.Configuration
 			{
 				ALog.Info($"[AsakiConfig] ✅ All {allTypes.Count} configs validated successfully in {sw.ElapsedMilliseconds}ms.");
 			}
+		}
+		
+		private ConfigMetadata GetMetadata(Type configType)
+		{
+			// 只从缓存字典读取，未注册则返回默认策略
+			return _metadataCache.TryGetValue(configType, out var metadata) 
+				? metadata 
+				: new ConfigMetadata
+				{
+					ConfigType = configType,
+					Strategy = AsakiConfigLoadStrategy.OnDemand,
+					Priority = 0,
+					Unloadable = true,
+					Dependencies = Array.Empty<Type>()
+				};
 		}
 	}
 }
