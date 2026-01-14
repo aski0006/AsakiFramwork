@@ -14,6 +14,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   tickRate: 60
   defaultPoolSize: 128
+  logConfig:
+    MinLogLevel: 1
+    MaxFileSizeKB: 10240
+    MaxHistoryFiles: 10
+    FilePrefix: GameLog
   resConfig:
     Mode: 1
     TimeoutSeconds: 60
@@ -58,13 +63,11 @@ MonoBehaviour:
     <BaseUrl>k__BackingField: 
     <TimeoutSeconds>k__BackingField: 3
     InitialInterceptors: []
-  logConfig:
-    MinLogLevel: 1
-    MaxFileSizeKB: 10240
-    MaxHistoryFiles: 10
-    FilePrefix: GameLog
   localizationConfig:
     <FallbackLanguage>k__BackingField: en-US
+    <RawCsvPath>k__BackingField: Assets/StreamingAssets/Configs/RawLocalization.csv
+    <OutputTableName>k__BackingField: LocalizationTable
+    <OutputRelativePath>k__BackingField: Configs
   references:
     version: 2
     RefIds: []

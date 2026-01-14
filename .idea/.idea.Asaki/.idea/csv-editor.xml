@@ -17,7 +17,14 @@
             </Attribute>
           </value>
         </entry>
-        <entry key="\Assets\StreamingAssets\Configs\LocalizationMaster.csv">
+        <entry key="\Assets\StreamingAssets\Configs\LocalizationTable.csv">
+          <value>
+            <Attribute>
+              <option name="separator" value="," />
+            </Attribute>
+          </value>
+        </entry>
+        <entry key="\Assets\StreamingAssets\Configs\RawLocalization.csv">
           <value>
             <Attribute>
               <option name="separator" value="," />

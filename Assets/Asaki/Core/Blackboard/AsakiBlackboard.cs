@@ -367,7 +367,6 @@ namespace Asaki.Core.Blackboard
         /// </summary>
         public void Dispose()
         {
-            // 清理本地数据，断开引用
             _typeRegistry.Clear();
             _intBucket?.Clear();
             _floatBucket?.Clear();
