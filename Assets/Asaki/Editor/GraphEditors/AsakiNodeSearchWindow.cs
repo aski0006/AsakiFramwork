@@ -14,11 +14,11 @@ namespace Asaki.Editor.GraphEditors
 	public class AsakiNodeSearchWindow : ScriptableObject, ISearchWindowProvider
 	{
 		private AsakiGraphView _graphView;
-		private AsakiGraphBase _graphAsset;
+		private AsakiGraphAsset _graphAsset;
 		private EditorWindow _window;
 		private Texture2D _indentationIcon;
 
-		public void Initialize(AsakiGraphView graphView, AsakiGraphBase graphAsset, EditorWindow window)
+		public void Initialize(AsakiGraphView graphView, AsakiGraphAsset graphAsset, EditorWindow window)
 		{
 			_graphView = graphView;
 			_graphAsset = graphAsset;

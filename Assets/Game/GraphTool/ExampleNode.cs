@@ -14,11 +14,11 @@ namespace Game.GraphTool
 	}
 	
 	[CreateAssetMenu(menuName = "Asaki/ExampleGraph")]
-	public class ExampleGraph : AsakiGraphBase{}
+	public class ExampleGraph : AsakiGraphAsset{}
 
 	[AsakiCustomGraphEditor(typeof(ExampleGraph))]
 	public class ExampleGraphController : GenericAsakiGraphController
 	{
-		public ExampleGraphController(AsakiGraphBase graph) : base(graph) { }
+		public ExampleGraphController(AsakiGraphAsset graph) : base(graph) { }
 	}
 }

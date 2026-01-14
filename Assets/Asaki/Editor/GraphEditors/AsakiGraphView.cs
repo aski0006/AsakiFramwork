@@ -11,12 +11,12 @@ namespace Asaki.Editor.GraphEditors
 {
 	public class AsakiGraphView : GraphView
 	{
-		private AsakiGraphBase _graph;
-		public AsakiGraphBase GraphAsset => _graph;
+		private AsakiGraphAsset _graph;
+		public AsakiGraphAsset GraphAsset => _graph;
 		private SerializedObject _serializedGraph; // 缓存 Graphs 的 SO
 		public AsakiBlackboardProvider BlackboardProvider;
 
-		public AsakiGraphView(AsakiGraphBase graph)
+		public AsakiGraphView(AsakiGraphAsset graph)
 		{
 			_graph = graph;
 			_serializedGraph = new SerializedObject(graph); // 初始化 SO

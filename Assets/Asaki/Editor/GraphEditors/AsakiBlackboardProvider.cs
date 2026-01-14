@@ -21,13 +21,13 @@ namespace Asaki.Editor.GraphEditors
 		public Blackboard Blackboard { get; private set; }
 
 		private readonly AsakiGraphView _graphView;
-		private readonly AsakiGraphBase _graphAsset;
+		private readonly AsakiGraphAsset _graphAsset;
 		private readonly SerializedObject _serializedGraph;
 
 		private AsakiGlobalBlackboardAsset _globalAsset;
 		private SerializedObject _serializedGlobal; // [New] 用于全局变量的 PropertyField 绘制
 
-		public AsakiBlackboardProvider(AsakiGraphView graphView, AsakiGraphBase graphAsset, SerializedObject serializedGraph)
+		public AsakiBlackboardProvider(AsakiGraphView graphView, AsakiGraphAsset graphAsset, SerializedObject serializedGraph)
 		{
 			_graphView = graphView;
 			_graphAsset = graphAsset;

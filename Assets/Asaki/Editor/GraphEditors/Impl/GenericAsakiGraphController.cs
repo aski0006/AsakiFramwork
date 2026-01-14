@@ -6,10 +6,10 @@ namespace Asaki.Editor.GraphEditors.Impl
 {
 	public class GenericAsakiGraphController : IAsakiGraphViewController
 	{
-		private readonly AsakiGraphBase _graph;
+		private readonly AsakiGraphAsset _graph;
 		private AsakiGraphView _graphView; // 持有引用
 
-		public GenericAsakiGraphController(AsakiGraphBase graph)
+		public GenericAsakiGraphController(AsakiGraphAsset graph)
 		{
 			_graph = graph;
 		}

@@ -4,7 +4,7 @@ using Asaki.Core.Configs;
 using Asaki.Core.Configuration;
 using Asaki.Core.Context;
 using Asaki.Core.Logging;
-using Asaki.Unity.Services.Localization;
+using Asaki.Unity.Plugins.Localization;
 using System.Threading.Tasks;
 
 namespace Asaki.Unity.Modules

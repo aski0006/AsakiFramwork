@@ -14,11 +14,11 @@ namespace Asaki.Editor.GraphEditors
 	{
 		private IAsakiGraphViewController _controller;
 		private AsakiGraphDebugger _debugger;
-		private static Dictionary<Type, Func<AsakiGraphBase, IAsakiGraphViewController>> _registry
-			= new Dictionary<Type, Func<AsakiGraphBase, IAsakiGraphViewController>>();
+		private static Dictionary<Type, Func<AsakiGraphAsset, IAsakiGraphViewController>> _registry
+			= new Dictionary<Type, Func<AsakiGraphAsset, IAsakiGraphViewController>>();
 
 		public static void Register<TGraph>(Func<TGraph, IAsakiGraphViewController> factory)
-			where TGraph : AsakiGraphBase
+			where TGraph : AsakiGraphAsset
 		{
 			Type type = typeof(TGraph);
 			if (_registry.ContainsKey(type)) _registry[type] = (asset) => factory((TGraph)asset);
@@ -29,7 +29,7 @@ namespace Asaki.Editor.GraphEditors
 		public static bool OnOpenAsset(int instanceId, int line)
 		{
 			Object obj = EditorUtility.InstanceIDToObject(instanceId);
-			if (obj is not AsakiGraphBase graphAsset) return false;
+			if (obj is not AsakiGraphAsset graphAsset) return false;
 
 			Type type = graphAsset.GetType();
 			if (!_registry.ContainsKey(type))
@@ -44,7 +44,7 @@ namespace Asaki.Editor.GraphEditors
 		}
 
 		// 支持打开内存实例
-		public static void OpenInstance(AsakiGraphBase graph)
+		public static void OpenInstance(AsakiGraphAsset graph)
 		{
 			if (graph == null) return;
 			Type type = graph.GetType();

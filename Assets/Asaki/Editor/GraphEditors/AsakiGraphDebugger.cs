@@ -60,7 +60,7 @@ namespace Asaki.Editor.GraphEditors
 
 				if (assetField != null)
 				{
-					AsakiGraphBase asset = assetField.GetValue(runner) as AsakiGraphBase;
+					AsakiGraphAsset asset = assetField.GetValue(runner) as AsakiGraphAsset;
 
 					// 3. 只有当选中的 Runner 运行的是当前编辑器打开的 Graph 时，才连接
 					// (对比 Asset 引用是否一致，或者 GUID 是否一致)

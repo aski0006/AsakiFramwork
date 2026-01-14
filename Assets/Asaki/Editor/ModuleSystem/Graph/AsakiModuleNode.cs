@@ -27,7 +27,7 @@ namespace Asaki.Editor.ModuleSystem.Graph
 	}
 
 	// 这是一个虚拟的图类型，用于区分上下文
-	public class AsakiModuleGraph : AsakiGraphBase { }
+	public class AsakiModuleGraph : AsakiGraphAsset { }
 
 	[Serializable] public struct AsakiFlowPort { }
 }

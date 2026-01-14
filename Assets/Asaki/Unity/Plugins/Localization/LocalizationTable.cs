@@ -1,7 +1,7 @@
 ﻿using Asaki.Core.Attributes;
 using Asaki.Core.Configuration;
 
-namespace Asaki.Core.Localization
+namespace Asaki.Unity.Plugins.Localization
 {
 	[AsakiSave]
 	[AsakiConfig(LoadStrategy = AsakiConfigLoadStrategy.OnDemand)]

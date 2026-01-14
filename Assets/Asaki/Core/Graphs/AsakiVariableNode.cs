@@ -28,7 +28,7 @@ namespace Asaki.Core.Graphs
     /// </code>
     /// </example>
     [Serializable]
-    [AsakiGraphContext(typeof(AsakiGraphBase), "Variable/Get")]
+    [AsakiGraphContext(typeof(AsakiGraphAsset), "Variable/Get")]
     public class AsakiGetVariableNode : AsakiNodeBase
     {
         /// <summary>
@@ -113,7 +113,7 @@ namespace Asaki.Core.Graphs
     /// </code>
     /// </example>
     [Serializable]
-    [AsakiGraphContext(typeof(AsakiGraphBase), "Variable/Set")]
+    [AsakiGraphContext(typeof(AsakiGraphAsset), "Variable/Set")]
     public class AsakiSetVariableNode : AsakiNodeBase
     {
         /// <summary>

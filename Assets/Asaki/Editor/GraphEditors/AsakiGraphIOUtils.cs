@@ -7,7 +7,7 @@ namespace Asaki.Editor.GraphEditors
 	public static class AsakiGraphIOUtils
 	{
 		// ★ T 必须有无参构造函数 (new())，不再是 ScriptableObject
-		public static T AddNode<T>(AsakiGraphBase graph, Vector2 pos) where T : AsakiNodeBase, new()
+		public static T AddNode<T>(AsakiGraphAsset graph, Vector2 pos) where T : AsakiNodeBase, new()
 		{
 			// 1. 记录 Graphs 的状态 (因为节点是 Graphs 的一部分)
 			Undo.RecordObject(graph, "Add Node");
@@ -29,7 +29,7 @@ namespace Asaki.Editor.GraphEditors
 			return node;
 		}
 
-		public static void DeleteNode(AsakiGraphBase graph, AsakiNodeBase node)
+		public static void DeleteNode(AsakiGraphAsset graph, AsakiNodeBase node)
 		{
 			Undo.RecordObject(graph, "Delete Node");
 
@@ -45,7 +45,7 @@ namespace Asaki.Editor.GraphEditors
 			EditorUtility.SetDirty(graph);
 		}
 
-		public static void AddEdge(AsakiGraphBase graph, AsakiEdgeData edgeData)
+		public static void AddEdge(AsakiGraphAsset graph, AsakiEdgeData edgeData)
 		{
 			Undo.RecordObject(graph, "Add Edge");
 			// 简单的去重检查
@@ -62,7 +62,7 @@ namespace Asaki.Editor.GraphEditors
 			EditorUtility.SetDirty(graph);
 		}
 
-		public static void RemoveEdge(AsakiGraphBase graph, AsakiEdgeData edgeData)
+		public static void RemoveEdge(AsakiGraphAsset graph, AsakiEdgeData edgeData)
 		{
 			Undo.RecordObject(graph, "Remove Edge");
 			graph.Edges.RemoveAll(e =>

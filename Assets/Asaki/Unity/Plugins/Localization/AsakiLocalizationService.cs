@@ -2,12 +2,11 @@
 using Asaki.Core.Configs;
 using Asaki.Core.Configuration;
 using Asaki.Core.Context;
-using Asaki.Core.Localization;
 using Asaki.Core.Logging;
 using System;
 using System.Collections.Generic;
 
-namespace Asaki.Unity.Services.Localization
+namespace Asaki.Unity.Plugins.Localization
 {
 	public struct OnAsakiLanguageChangedEvent : IAsakiEvent
 	{

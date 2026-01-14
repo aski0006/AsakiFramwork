@@ -12,7 +12,7 @@ namespace Asaki.Core.Graphs
 	/// <summary>
 	/// 图执行器的抽象基类，提供图实例化、黑板作用域链构建、节点执行和变量管理的完整运行时支持。
 	/// </summary>
-	/// <typeparam name="TGraph">图资源类型，必须继承自 <see cref="AsakiGraphBase"/>。</typeparam>
+	/// <typeparam name="TGraph">图资源类型，必须继承自 <see cref="AsakiGraphAsset"/>。</typeparam>
 	/// <remarks>
 	/// <para>核心职责：</para>
 	/// <list type="bullet">
@@ -116,7 +116,7 @@ namespace Asaki.Core.Graphs
 	/// </code>
 	/// </example>
 	public abstract class AsakiGraphRunner<TGraph> : MonoBehaviour
-		where TGraph : AsakiGraphBase
+		where TGraph : AsakiGraphAsset
 	{
 		/// <summary>
 		/// 关联的图资源资产，在Inspector中赋值。
@@ -149,7 +149,7 @@ namespace Asaki.Core.Graphs
 		/// <para>标准初始化流程：</para>
 		/// <list type="number">
 		///     <item>验证 <see cref="GraphAsset"/> 不为空</item>
-		///     <item>调用 <see cref="AsakiGraphBase.InitializeRuntime"/> 构建拓扑缓存</item>
+		///     <item>调用 <see cref="AsakiGraphAsset.InitializeRuntime"/> 构建拓扑缓存</item>
 		///     <item>调用 <see cref="InitializeContext"/> 创建运行时上下文</item>
 		///     <item>调用 <see cref="InitializeBlackboardValues"/> 初始化黑板变量</item>
 		///     <item>触发 <see cref="OnGraphInitialized"/> 子类钩子</item>
@@ -218,7 +218,7 @@ namespace Asaki.Core.Graphs
 		/// <remarks>
 		/// <para>加载顺序（优先级从高到低）：</para>
 		/// <list type="number">
-		///     <item>图资源的局部变量（<see cref="AsakiGraphBase.Variables"/>）</item>
+		///     <item>图资源的局部变量（<see cref="AsakiGraphAsset.Variables"/>）</item>
 		///     <item>全局黑板变量（<see cref="AsakiGlobalBlackboardAsset"/>），仅当局部无同名变量时加载</item>
 		/// </list>
 		/// <para>实现机制：遍历变量列表，调用 <see cref="WriteVariableToRuntime"/> 将 <see cref="AsakiVariableDef.ValueData"/> 应用到黑板。</para>
@@ -361,9 +361,9 @@ namespace Asaki.Core.Graphs
 		/// <remarks>
 		/// <para>值解析流程：</para>
 		/// <list type="number">
-		///     <item>查询 <see cref="AsakiGraphBase.GetInputConnection"/> 获取连接到此端口的边</item>
+		///     <item>查询 <see cref="AsakiGraphAsset.GetInputConnection"/> 获取连接到此端口的边</item>
 		///     <item>若无连接，返回 <paramref name="fallback"/></item>
-		///     <item>通过 <see cref="AsakiGraphBase.GetNodeByGUID"/> 获取上游源节点</item>
+		///     <item>通过 <see cref="AsakiGraphAsset.GetNodeByGUID"/> 获取上游源节点</item>
 		///     <item>调用 <see cref="ResolveNodeValue{T}"/> 计算源节点的输出值</item>
 		/// </list>
 		/// <para>懒加载求值：仅在需要时计算上游节点，支持复杂的依赖链。</para>
