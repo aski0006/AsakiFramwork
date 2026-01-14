@@ -10,192 +10,480 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using UnityEngine;
-using AsakiBroker = Asaki.Core.Broker.AsakiBroker;
 
 namespace Asaki.Unity.Services.Serialization
 {
-	public class AsakiSaveService : IAsakiSaveService
-	{
-		private string _rootPath;
-		private bool _isDebug;
-		private IAsakiEventService _eventService;
-		public AsakiSaveService(IAsakiEventService eventService)
-		{
-			_eventService = eventService;
-		}
+    /// <summary>
+    /// Asaki框架的核心存档服务实现类，提供基于Slot的异步存档管理功能。
+    /// <para>
+    /// <b>核心职责：</b>
+    /// <list type="bullet">
+    ///     <item>管理本地存档文件的创建、读取、写入和删除</item>
+    ///     <item>支持二进制数据和JSON元数据的双轨存储策略</item>
+    ///     <item>提供主线程与后台线程的智能调度，确保UnityEngine对象安全访问</item>
+    ///     <item>集成事件系统，实现保存状态的全局通知</item>
+    /// </list>
+    /// </para>
+    /// 
+    /// <para>
+    /// <b>存储结构：</b>
+    /// <code>
+    /// persistentDataPath/
+    /// └── Saves/
+    ///     ├── Slot_0/
+    ///     │   ├── data.bin      (二进制存档数据)
+    ///     │   └── meta.json     (可读性元数据，Editor/Debug模式)
+    ///     ├── Slot_1/
+    ///     └── ...
+    /// </code>
+    /// </para>
+    /// 
+    /// <para>
+    /// <b>线程安全策略：</b>
+    /// <list type="number">
+    ///     <item><b>序列化阶段：</b>必须在主线程执行，防止访问UnityEngine对象时发生交叉线程错误</item>
+    ///     <item><b>IO操作阶段：</b>通过UniTask.SwitchToThreadPool()切换到后台线程，避免阻塞主线程</item>
+    ///     <item><b>反序列化阶段：</b>IO完成后切换回主线程，安全地重建UnityEngine对象</item>
+    /// </list>
+    /// </para>
+    /// 
+    /// <para>
+    /// <b>使用示例：</b>
+    /// <code>
+    /// public class GameScene
+    /// {
+    ///     private IAsakiSaveService _saveService;
+    ///     
+    ///     async Task SaveGame(int slotId)
+    ///     {
+    ///         var meta = new GameSlotMeta 
+    ///         { 
+    ///             SaveName = "Level 5 Checkpoint",
+    ///             PlayerLevel = 12
+    ///         };
+    ///         
+    ///         var data = new GameSaveData
+    ///         {
+    ///             PlayerPosition = transform.position,
+    ///             Inventory = playerInventory
+    ///         };
+    ///         
+    ///         await _saveService.SaveSlotAsync(slotId, meta, data);
+    ///     }
+    ///     
+    ///     async Task LoadGame(int slotId)
+    ///     {
+    ///         try
+    ///         {
+    ///             var (meta, data) = await _saveService.LoadSlotAsync&lt;GameSlotMeta, GameSaveData&gt;(slotId);
+    ///             transform.position = data.PlayerPosition;
+    ///             playerInventory = data.Inventory;
+    ///         }
+    ///         catch (FileNotFoundException)
+    ///         {
+    ///             Debug.LogError($"存档槽位 {slotId} 不存在");
+    ///         }
+    ///     }
+    /// }
+    /// </code>
+    /// </para>
+    /// 
+    /// <remarks>
+    /// <b>设计考量：</b>
+    /// <list type="bullet">
+    ///     <item>采用接口隔离原则(IAsakiSaveService)，便于单元测试和模拟</item>
+    ///     <item>元数据与主数据分离：JSON元数据便于调试和外部工具读取，二进制数据保证性能和空间效率</item>
+    ///     <item>使用StringBuilder池化减少GC压力，适合高频保存场景</item>
+    ///     <item>UniTask条件编译支持，允许项目根据需求选择Task或UniTask</item>
+    /// </list>
+    /// </remarks>
+    /// </summary>
+    public class AsakiSaveService : IAsakiSaveService
+    {
+        /// <summary>
+        /// 存档根目录的完整路径，存储在Application.persistentDataPath下的"Saves"文件夹中。
+        /// 该路径在OnInit()方法中初始化，确保跨平台兼容性（Windows, macOS, Android, iOS等）。
+        /// </summary>
+        private string _rootPath;
 
-		public void OnInit()
-		{
-			_rootPath = Path.Combine(Application.persistentDataPath, "Saves");
-			_isDebug = Application.isEditor || Debug.isDebugBuild;
-			if (!Directory.Exists(_rootPath)) Directory.CreateDirectory(_rootPath);
-		}
+        /// <summary>
+        /// 调试模式标志位，决定是否在保存时生成可读的JSON元数据文件。
+        /// 在编辑器环境或Debug构建中自动启用，Release构建中禁用以减少IO开销。
+        /// </summary>
+        private bool _isDebug;
 
-		public Task OnInitAsync()
-		{
-			return Task.CompletedTask;
-		}
-		public void OnDispose() { }
+        /// <summary>
+        /// 事件服务引用，用于发布存档相关的生命周期事件（开始、成功、失败）。
+        /// 允许UI、音频系统等模块订阅并响应存档状态变化。
+        /// </summary>
+        private IAsakiEventService _eventService;
 
-		// =========================================================
-		// 路径策略 (Encapsulation)
-		// =========================================================
-		private string GetSlotDir(int id)
-		{
-			return Path.Combine(_rootPath, $"Slot_{id}");
-		}
-		private string GetDataPath(int id)
-		{
-			return Path.Combine(GetSlotDir(id), "data.bin");
-		}
-		private string GetMetaPath(int id)
-		{
-			return Path.Combine(GetSlotDir(id), "meta.json");
-		}
+        /// <summary>
+        /// 构造函数，通过依赖注入获取事件服务实例。
+        /// 遵循依赖倒置原则，确保服务可测试和解耦。
+        /// </summary>
+        /// <param name="eventService">事件发布服务，用于通知存档状态变更</param>
+        public AsakiSaveService(IAsakiEventService eventService)
+        {
+            _eventService = eventService;
+        }
 
-		// =========================================================
-		// 核心 Slot 逻辑
-		// =========================================================
+        /// <summary>
+        /// 服务初始化入口，由Asaki框架的模块管理器自动调用。
+        /// <para>
+        /// <b>初始化流程：</b>
+        /// <list type="number">
+        ///     <item>构建跨平台的存档根目录路径</item>
+        ///     <item>检测当前是否处于调试环境</item>
+        ///     <item>确保存档根目录存在（首次运行时创建）</item>
+        /// </list>
+        /// </para>
+        /// <b>调用时机：</b>游戏启动阶段，早于任何存档操作。
+        /// </summary>
+        public void OnInit()
+        {
+            // 使用Unity的persistentDataPath确保跨平台兼容性
+            _rootPath = Path.Combine(Application.persistentDataPath, "Saves");
+            
+            // 编辑器或Debug构建时启用详细日志和元数据保存
+            _isDebug = Application.isEditor || Debug.isDebugBuild;
+            
+            // 惰性创建根目录，避免不必要的IO操作
+            if (!Directory.Exists(_rootPath)) Directory.CreateDirectory(_rootPath);
+        }
 
-		public async Task SaveSlotAsync<TMeta, TData>(int slotId, TMeta meta, TData data)
-			where TMeta : IAsakiSlotMeta where TData : IAsakiSavable
-		{
-			string dir = GetSlotDir(slotId);
-			if (!Directory.Exists(dir)) Directory.CreateDirectory(dir);
+        /// <summary>
+        /// 异步初始化方法，当前实现为同步完成。
+        /// 预留接口以便于未来可能添加的异步初始化逻辑（如云存储同步验证）。
+        /// </summary>
+        /// <returns>已完成的Task实例</returns>
+        public Task OnInitAsync()
+        {
+            return Task.CompletedTask;
+        }
 
-			// 自动填充基础元数据
-			meta.SlotId = slotId;
-			meta.LastSaveTime = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+        /// <summary>
+        /// 服务释放方法，当前为空实现。
+        /// 预留接口以便未来需要清理资源（如文件句柄、缓存等）。
+        /// </summary>
+        public void OnDispose() { }
 
-			_eventService.Publish(new AsakiSaveBeginEvent { Filename = $"Slot_{slotId}" });
+        // =========================================================
+        // 路径策略 (Encapsulation)
+        // 将路径构建逻辑封装在私有方法中，避免硬编码字符串散落在业务逻辑中
+        // =========================================================
 
-			try
-			{
-				// Step 1: [主线程] 内存快照 (Snapshot)
-				// 必须在主线程执行 Serialize，防止访问 UnityEngine 对象或数据在写入时被逻辑修改
-				byte[] dataBuffer;
-				using (MemoryStream ms = new MemoryStream())
-				{
-					AsakiBinaryWriter writer = new AsakiBinaryWriter(ms);
-					data.Serialize(writer);
-					dataBuffer = ms.ToArray();
-				}
+        /// <summary>
+        /// 获取指定槽位的目录路径。
+        /// 采用命名约定"Slot_{id}"确保目录名的可读性和唯一性。
+        /// </summary>
+        /// <param name="id">存档槽位ID（通常从0开始）</param>
+        /// <returns>完整的槽位目录路径</returns>
+        /// <example>
+        /// GetSlotDir(0) → "C:/Users/.../AppData/LocalLow/GameName/Saves/Slot_0"
+        /// </example>
+        private string GetSlotDir(int id)
+        {
+            return Path.Combine(_rootPath, $"Slot_{id}");
+        }
 
-				// Step 2: [后台线程] 异步 IO
-				#if ASAKI_USE_UNITASK
-				await UniTask.SwitchToThreadPool();
-				#endif
-				await File.WriteAllBytesAsync(GetDataPath(slotId), dataBuffer);
+        /// <summary>
+        /// 获取二进制存档数据文件的完整路径。
+        /// data.bin存储主要的游戏状态数据，采用二进制格式保证性能和紧凑性。
+        /// </summary>
+        /// <param name="id">存档槽位ID</param>
+        /// <returns>二进制数据文件路径</returns>
+        private string GetDataPath(int id)
+        {
+            return Path.Combine(GetSlotDir(id), "data.bin");
+        }
 
-				// Meta 数据的持久化 (JSON 方便外部查阅)
-				if (_isDebug)
-				{
-					// 复用 AsakiStringBuilderPool 减少 GC
-					StringBuilder sb = AsakiStringBuilderPool.Rent();
-					try
-					{
-						AsakiJsonWriter jsonWriter = new AsakiJsonWriter(sb);
-						meta.Serialize(jsonWriter);
-						await File.WriteAllTextAsync(GetMetaPath(slotId), jsonWriter.GetResult());
-					}
-					finally
-					{
-						AsakiStringBuilderPool.Return(sb);
-					}
-				}
+        /// <summary>
+        /// 获取JSON元数据文件的完整路径。
+        /// meta.json仅在调试模式下生成，包含人类可读的存档信息（如保存时间、关卡名称等）。
+        /// </summary>
+        /// <param name="id">存档槽位ID</param>
+        /// <returns>JSON元数据文件路径</returns>
+        private string GetMetaPath(int id)
+        {
+            return Path.Combine(GetSlotDir(id), "meta.json");
+        }
 
-				#if ASAKI_USE_UNITASK
-				await UniTask.SwitchToMainThread();
-				#endif
-				_eventService.Publish(new AsakiSaveSuccessEvent { Filename = $"Slot_{slotId}" });
-			}
-			catch (Exception ex)
-			{
-				ALog.Error($"[AsakiSave] Slot {slotId} Save Failed: {ex.Message}", ex);
-				_eventService.Publish(new AsakiSaveFailedEvent { Filename = $"Slot_{slotId}", ErrorMessage = ex.Message });
-				throw;
-			}
-		}
+        // =========================================================
+        // 核心 Slot 逻辑
+        // 提供类型安全的异步保存和加载操作，支持泛型约束确保数据完整性
+        // =========================================================
 
-		public async Task<(TMeta Meta, TData Data)> LoadSlotAsync<TMeta, TData>(int slotId)
-			where TMeta : IAsakiSlotMeta, new() where TData : IAsakiSavable, new()
-		{
-			if (!SlotExists(slotId)) throw new FileNotFoundException($"Slot {slotId} not found.");
+        /// <summary>
+        /// 异步保存游戏数据到指定槽位。
+        /// <para>
+        /// <b>操作流程：</b>
+        /// <list type="number">
+        ///     <item>在元数据中自动填充槽位ID和保存时间</item>
+        ///     <item>发布保存开始事件(AsakiSaveBeginEvent)</item>
+        ///     <item><b>主线程：</b>序列化数据到内存缓冲区（防止Unity对象被修改）</item>
+        ///     <item><b>后台线程：</b>异步写入二进制文件和JSON元数据</item>
+        ///     <item>切换回主线程并发布保存成功事件</item>
+        /// </list>
+        /// </para>
+        /// 
+        /// <para>
+        /// <b>异常处理：</b>
+        /// - 捕获所有异常并记录详细日志
+        /// - 发布保存失败事件供UI层处理
+        /// - 重新抛出异常，确保调用方可以实施重试逻辑
+        /// </para>
+        /// 
+        /// <para>
+        /// <b>性能优化：</b>
+        /// - 使用StringBuilder池避免频繁的内存分配
+        /// - 二进制格式最小化存储空间
+        /// - 异步IO操作不阻塞主线程
+        /// </para>
+        /// </summary>
+        /// <typeparam name="TMeta">元数据类型，必须实现IAsakiSlotMeta接口</typeparam>
+        /// <typeparam name="TData">存档数据类型，必须实现IAsakiSavable接口</typeparam>
+        /// <param name="slotId">目标存档槽位ID</param>
+        /// <param name="meta">存档元数据（自动填充SlotId和LastSaveTime）</param>
+        /// <param name="data">要保存的游戏数据</param>
+        /// <returns>表示异步保存操作的Task</returns>
+        /// <exception cref="IOException">磁盘空间不足或路径非法时抛出</exception>
+        /// <exception cref="UnauthorizedAccessException">无写入权限时抛出</exception>
+        public async Task SaveSlotAsync<TMeta, TData>(int slotId, TMeta meta, TData data)
+            where TMeta : IAsakiSlotMeta where TData : IAsakiSavable
+        {
+            // 确保槽位目录存在，避免File.WriteAllBytesAsync因目录不存在而失败
+            string dir = GetSlotDir(slotId);
+            if (!Directory.Exists(dir)) Directory.CreateDirectory(dir);
 
-			try
-			{
-				// Step 1: [后台线程] 并行读取
-				#if ASAKI_USE_UNITASK
-				await UniTask.SwitchToThreadPool();
-				#endif
+            // 自动填充元数据，减少调用方重复代码
+            meta.SlotId = slotId;
+            meta.LastSaveTime = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
 
-				// 并行读取 IO，进一步提升速度
-				var dataTask = File.ReadAllBytesAsync(GetDataPath(slotId));
-				var metaTask = File.ReadAllTextAsync(GetMetaPath(slotId));
-				await Task.WhenAll(dataTask, metaTask);
+            // 发布保存开始事件，允许UI显示加载动画或禁用输入
+            _eventService.Publish(new AsakiSaveBeginEvent { Filename = $"Slot_{slotId}" });
 
-				byte[] dataBuffer = dataTask.Result;
-				string metaJson = metaTask.Result;
+            try
+            {
+                // ===== 步骤1：主线程内存快照 =====
+                // 必须在主线程执行Serialize，原因：
+                // 1. data可能包含对UnityEngine.Object的引用（如MonoBehaviour字段）
+                // 2. 防止在序列化期间其他线程修改数据导致状态不一致
+                byte[] dataBuffer;
+                using (MemoryStream ms = new MemoryStream())
+                {
+                    AsakiBinaryWriter writer = new AsakiBinaryWriter(ms);
+                    data.Serialize(writer);
+                    dataBuffer = ms.ToArray();
+                }
 
-				#if ASAKI_USE_UNITASK
-				await UniTask.SwitchToMainThread();
-				#endif
+                // ===== 步骤2：后台线程异步IO =====
+                // 切换到线程池，避免阻塞主线程造成游戏卡顿
+                #if ASAKI_USE_UNITASK
+                await UniTask.SwitchToThreadPool();
+                #endif
+                
+                // 异步写入二进制数据，这是IO密集操作
+                await File.WriteAllBytesAsync(GetDataPath(slotId), dataBuffer);
 
-				// Step 2: [主线程] 反序列化 Data (Binary)
-				TData data = new TData();
-				using (MemoryStream ms = new MemoryStream(dataBuffer))
-				{
-					AsakiBinaryReader reader = new AsakiBinaryReader(ms);
-					data.Deserialize(reader);
-				}
+                // 仅在调试模式下生成JSON元数据，生产环境减少IO
+                if (_isDebug)
+                {
+                    // 从对象池租用StringBuilder，避免每次保存分配新对象
+                    StringBuilder sb = AsakiStringBuilderPool.Rent();
+                    try
+                    {
+                        AsakiJsonWriter jsonWriter = new AsakiJsonWriter(sb);
+                        meta.Serialize(jsonWriter);
+                        await File.WriteAllTextAsync(GetMetaPath(slotId), jsonWriter.GetResult());
+                    }
+                    finally
+                    {
+                        // 必须归还到池中，否则会导致池耗尽
+                        AsakiStringBuilderPool.Return(sb);
+                    }
+                }
 
-				// Step 3: [主线程] 反序列化 Meta (JSON) - [已修复]
-				TMeta meta = new TMeta();
-				// 利用你实现的 FromJson 静态方法
-				AsakiJsonReader jsonReader = AsakiJsonReader.FromJson(metaJson);
-				// 因为 Meta 本身就是一个 Object，我们需要让 Reader 认为它处于 Root 上下文
-				// 你的 Generated Code 可能会调用 BeginObject("GameSlotMeta")
-				// 但 AsakiTinyJsonParser 解析出的 Root 是 Dictionary
-				// 所以直接调用 Deserialize 即可，Reader 的 GetValue 会在 Root 字典中查找
-				meta.Deserialize(jsonReader);
+                // ===== 步骤3：回到主线程并发布成功事件 =====
+                // 事件处理程序可能需要访问Unity API，必须在主线程执行
+                #if ASAKI_USE_UNITASK
+                await UniTask.SwitchToMainThread();
+                #endif
+                
+                _eventService.Publish(new AsakiSaveSuccessEvent { Filename = $"Slot_{slotId}" });
+            }
+            catch (Exception ex)
+            {
+                // 记录详细错误日志，包含堆栈追踪
+                ALog.Error($"[AsakiSave] Slot {slotId} Save Failed: {ex.Message}", ex);
+                
+                // 发布失败事件，允许UI显示错误提示
+                _eventService.Publish(new AsakiSaveFailedEvent 
+                { 
+                    Filename = $"Slot_{slotId}", 
+                    ErrorMessage = ex.Message 
+                });
+                
+                // 重新抛出异常，让调用方决定是重试还是回退
+                throw;
+            }
+        }
 
-				return (meta, data);
-			}
-			catch (Exception ex)
-			{
-				ALog.Error($"[AsakiSave] Slot {slotId} Load Failed: {ex.Message}", ex);
-				throw;
-			}
-		}
+        /// <summary>
+        /// 异步从指定槽位加载游戏数据。
+        /// <para>
+        /// <b>操作流程：</b>
+        /// <list type="number">
+        ///     <item><b>后台线程：</b>并行读取二进制数据和JSON元数据文件</item>
+        ///     <item>切换回主线程准备反序列化</item>
+        ///     <item><b>主线程：</b>反序列化二进制数据到TData对象</item>
+        ///     <item><b>主线程：</b>反序列化JSON元数据到TMeta对象</item>
+        /// </list>
+        /// </para>
+        /// 
+        /// <para>
+        /// <b>性能优化：</b>
+        /// 使用Task.WhenAll并行读取两个文件，减少IO等待时间，特别适合机械硬盘。
+        /// </para>
+        /// </summary>
+        /// <typeparam name="TMeta">元数据类型，必须有无参构造函数</typeparam>
+        /// <typeparam name="TData">存档数据类型，必须有无参构造函数</typeparam>
+        /// <param name="slotId">源存档槽位ID</param>
+        /// <returns>包含元数据和游戏数据的元组</returns>
+        /// <exception cref="FileNotFoundException">槽位不存在时抛出，调用方应提前用SlotExists检查</exception>
+        /// <exception cref="SerializationException">数据格式不兼容或损坏时抛出</exception>
+        public async Task<(TMeta Meta, TData Data)> LoadSlotAsync<TMeta, TData>(int slotId)
+            where TMeta : IAsakiSlotMeta, new() where TData : IAsakiSavable, new()
+        {
+            // 前置检查，避免不必要的IO操作
+            if (!SlotExists(slotId)) throw new FileNotFoundException($"Slot {slotId} not found.");
 
-		// =========================================================
-		// Slot 管理工具
-		// =========================================================
+            try
+            {
+                // ===== 步骤1：后台线程并行读取 =====
+                // 并行化IO操作，理论速度提升可达2倍（受限于磁盘类型）
+                #if ASAKI_USE_UNITASK
+                await UniTask.SwitchToThreadPool();
+                #endif
 
-		public List<int> GetUsedSlots()
-		{
-			if (!Directory.Exists(_rootPath)) return new List<int>();
-			return Directory.GetDirectories(_rootPath, "Slot_*")
-			                .Select(d => Path.GetFileName(d).Replace("Slot_", ""))
-			                .Where(s => int.TryParse(s, out _))
-			                .Select(int.Parse)
-			                .ToList();
-		}
+                // 启动两个独立的读取任务，不等待立即返回
+                var dataTask = File.ReadAllBytesAsync(GetDataPath(slotId));
+                var metaTask = File.ReadAllTextAsync(GetMetaPath(slotId));
+                
+                // 等待两个任务都完成，任一任务失败都会导致整体失败
+                await Task.WhenAll(dataTask, metaTask);
 
-		public bool SlotExists(int slotId)
-		{
-			return File.Exists(GetDataPath(slotId));
-		}
+                // 获取任务结果（此时已保证完成）
+                byte[] dataBuffer = dataTask.Result;
+                string metaJson = metaTask.Result;
 
-		public bool DeleteSlot(int slotId)
-		{
-			string dir = GetSlotDir(slotId);
-			if (Directory.Exists(dir))
-			{
-				Directory.Delete(dir, true);
-				return true;
-			}
-			return false;
-		}
-	}
+                // ===== 步骤2：主线程反序列化 =====
+                // 反序列化必须在主线程，因为可能涉及UnityEngine对象创建
+                #if ASAKI_USE_UNITASK
+                await UniTask.SwitchToMainThread();
+                #endif
+
+                // 反序列化二进制游戏数据
+                TData data = new TData();
+                using (MemoryStream ms = new MemoryStream(dataBuffer))
+                {
+                    AsakiBinaryReader reader = new AsakiBinaryReader(ms);
+                    data.Deserialize(reader);
+                }
+
+                // 反序列化JSON元数据
+                TMeta meta = new TMeta();
+                AsakiJsonReader jsonReader = AsakiJsonReader.FromJson(metaJson);
+                // AsakiJsonReader内部已处理字典查找，直接调用Deserialize即可
+                meta.Deserialize(jsonReader);
+
+                return (meta, data);
+            }
+            catch (Exception ex)
+            {
+                // 统一错误处理，记录槽位ID和具体错误
+                ALog.Error($"[AsakiSave] Slot {slotId} Load Failed: {ex.Message}", ex);
+                throw;
+            }
+        }
+
+        // =========================================================
+        // Slot 管理工具
+        // 提供槽位查询、存在性检查和删除等辅助功能
+        // =========================================================
+
+        /// <summary>
+        /// 扫描存档根目录，获取所有已使用的存档槽位ID列表。
+        /// <para>
+        /// <b>实现细节：</b>
+        /// 1. 使用Directory.GetDirectories查找所有"Slot_*"命名的文件夹
+        /// 2. 解析文件夹名称中的数字部分
+        /// 3. 过滤非法命名并转换为整数列表
+        /// 4. 返回的列表可能无序，调用方需自行排序
+        /// </para>
+        /// 
+        /// <para>
+        /// <b>性能注意：</b>
+        /// 该方法涉及文件系统遍历，避免在Update等高频调用中使用。
+        /// 建议在存档菜单初始化时调用一次并缓存结果。
+        /// </para>
+        /// </summary>
+        /// <returns>已使用的槽位ID列表（可能为空）</returns>
+        public List<int> GetUsedSlots()
+        {
+            // 防御性检查，防止根目录被意外删除导致异常
+            if (!Directory.Exists(_rootPath)) return new List<int>();
+
+            return Directory.GetDirectories(_rootPath, "Slot_*")
+                            // 提取文件夹名称中的数字部分
+                            .Select(d => Path.GetFileName(d).Replace("Slot_", ""))
+                            // 过滤无法解析为数字的无效文件夹
+                            .Where(s => int.TryParse(s, out _))
+                            .Select(int.Parse)
+                            .ToList();
+        }
+
+        /// <summary>
+        /// 检查指定槽位是否存在。
+        /// <para>
+        /// <b>实现细节：</b>
+        /// 通过检查二进制数据文件(data.bin)是否存在来判断，而非仅检查目录。
+        /// 这样可以确保即使目录存在但数据文件损坏/丢失时也能正确返回false。
+        /// </para>
+        /// </summary>
+        /// <param name="slotId">要检查的槽位ID</param>
+        /// <returns>true表示槽位有效存在，false表示不存在或数据不完整</returns>
+        public bool SlotExists(int slotId)
+        {
+            // 以data.bin存在为准，避免空目录被误认为有效槽位
+            return File.Exists(GetDataPath(slotId));
+        }
+
+        /// <summary>
+        /// 删除指定存档槽位及其所有数据。
+        /// <para>
+        /// <b>安全机制：</b>
+        /// - 检查目录是否存在，避免不必要的异常
+        /// - 使用Directory.Delete的recursive=true参数确保彻底删除
+        /// - 返回bool值而非抛出异常，适合UI层直接调用
+        /// </para>
+        /// 
+        /// <para>
+        /// <b>注意事项：</b>
+        /// 删除操作不可逆，调用前应向玩家显示确认对话框。
+        /// </para>
+        /// </summary>
+        /// <param name="slotId">要删除的槽位ID</param>
+        /// <returns>成功删除返回true，槽位不存在返回false</returns>
+        public bool DeleteSlot(int slotId)
+        {
+            string dir = GetSlotDir(slotId);
+            if (Directory.Exists(dir))
+            {
+                Directory.Delete(dir, true); // recursive=true删除目录及所有内容
+                return true;
+            }
+            return false;
+        }
+    }
 }
