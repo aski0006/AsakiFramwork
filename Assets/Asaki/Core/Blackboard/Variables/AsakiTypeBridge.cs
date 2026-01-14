@@ -22,6 +22,14 @@ namespace Asaki.Core.Blackboard.Variables
 		private static readonly List<Action<IAsakiBlackboard, string, object>> _setters = new List<Action<IAsakiBlackboard, string, object>>();
 
 		/// <summary>
+		/// 存储所有设置值的尝试逻辑的列表。从名称到委托的映射中查找。
+		/// 每个 <see cref="Action"/> 接受 <see cref="IAsakiBlackboard"/>、键和值作为参数，
+		/// 用于尝试在黑板中设置对应的值。
+		/// </summary>
+		private static readonly Dictionary<string, Action<IAsakiBlackboard, string, object>> _nameLookup
+			= new Dictionary<string, Action<IAsakiBlackboard, string, object>>();
+		
+		/// <summary>
 		/// 在 <see cref="IAsakiBlackboard"/> 中设置值的核心入口方法。
 		/// 此方法首先尝试通过硬编码的基本类型路径快速设置值，
 		/// 如果失败，则遍历所有注册的设置器来处理该值。
@@ -34,12 +42,10 @@ namespace Asaki.Core.Blackboard.Variables
 			// 1. Fast Path (Hardcoded Primitives)
 			switch (value)
 			{
-				case int v:
-					bb.SetValue(key, v);
-					return;
-				case float v:
-					bb.SetValue(key, v);
-					return;
+				case int v:    bb.SetValue(key, v); return;
+				case float v:  bb.SetValue(key, v); return;
+				case bool v:   bb.SetValue(key, v); return;
+				case string v: bb.SetValue(key, v); return;
 
 			}
 
@@ -52,6 +58,13 @@ namespace Asaki.Core.Blackboard.Variables
 			ALog.Warn($"[Asaki Blackboard] Unknown type: {type.Name}");
 		}
 
+		public static bool TrySetValue(IAsakiBlackboard bb, string key, string typeName, object value)
+		{
+			if (!_nameLookup.TryGetValue(typeName, out var setter)) return false;
+			setter(bb, key, value);
+			return true;
+		}
+		
 		// 注册表
 		/// <summary>
 		/// 用于存储类型与对应设置值逻辑的字典。
@@ -70,13 +83,22 @@ namespace Asaki.Core.Blackboard.Variables
 		public static void Register<T>()
 		{
 			Type t = typeof(T);
-			if (!_typeLookup.ContainsKey(t))
+            
+			// 构造强类型闭包，这里通过泛型 T 生成了最高效的调用代码
+			Action<IAsakiBlackboard, string, object> action = (bb, key, value) =>
 			{
-				// 生成一个强类型的闭包委托
-				_typeLookup.Add(t, (bb, key, value) =>
-				{
-					bb.SetValue(key, (T)value);
-				});
+				// 这里的 (T)value 是显式强转，速度极快
+				bb.SetValue(key, (T)value);
+			};
+
+			// 注册 Type 索引
+			_typeLookup.TryAdd(t, action);
+
+			
+			string name = t.FullName; 
+			if (!string.IsNullOrEmpty(name))
+			{
+				_nameLookup.TryAdd(name, action);
 			}
 		}
 	}
