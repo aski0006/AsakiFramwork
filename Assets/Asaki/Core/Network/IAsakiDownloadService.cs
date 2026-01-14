@@ -70,15 +70,16 @@ namespace Asaki.Core.Network
    	/// <exception cref="System.IO.IOException">文件写入失败时抛出</exception>
    	Task DownloadAsync(string url, string localPath, IProgress<AsakiDownloadProgress> progress = null, CancellationToken token = default(CancellationToken));
 
-   	/// <summary>
-   	/// 异步获取远程文件的大小（通过HTTP HEAD请求）
-   	/// </summary>
-   	/// <param name="url">目标文件的URL地址</param>
-   	/// <returns>文件大小（字节数）</returns>
-   	/// <exception cref="AsakiWebException">请求失败或服务器不支持时抛出</exception>
-   	/// <remarks>
-   	/// 该方法通常发送HTTP HEAD请求以高效获取文件元信息，不会下载实际内容
-   	/// </remarks>
-   	Task<long> GetFileSizeAsync(string url);
+    /// <summary>
+    /// 异步获取远程文件的大小（通过HTTP HEAD请求）
+    /// </summary>
+    /// <param name="url">目标文件的URL地址</param>
+    /// <param name="token">取消请求的 <see cref="CancellationToken"/></param>
+    /// <returns>文件大小（字节数）</returns>
+    /// <exception cref="AsakiWebException">请求失败或服务器不支持时抛出</exception>
+    /// <remarks>
+    /// 该方法通常发送HTTP HEAD请求以高效获取文件元信息，不会下载实际内容
+    /// </remarks>
+    Task<long> GetFileSizeAsync(string url, CancellationToken token = default(CancellationToken));
    }
 }

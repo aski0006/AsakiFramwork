@@ -221,6 +221,7 @@ namespace Asaki.Unity.Services.Network
 		/// 异步获取远程文件大小（通过HTTP HEAD）
 		/// </summary>
 		/// <param name="url">目标文件URL</param>
+		/// <param name="token">取消令牌（可选）</param>
 		/// <returns>文件大小（字节），失败返回-1</returns>
 		/// <remarks>
 		/// <b>设计权衡：</b>
@@ -230,23 +231,19 @@ namespace Asaki.Unity.Services.Network
 		/// 
 		/// <b>注意：</b>当前实现未接入cancellationToken，长时间阻塞可能导致ANR
 		/// </remarks>
-		public async Task<long> GetFileSizeAsync(string url)
+		public async Task<long> GetFileSizeAsync(string url, CancellationToken token = default(CancellationToken))
 		{
-			using (UnityWebRequest uwr = UnityWebRequest.Head(url))
-			{
-				// 注意：未使用cancellationToken，存在潜在风险
-				await uwr.SendWebRequest();
+			using UnityWebRequest uwr = UnityWebRequest.Head(url);
+			if(token.IsCancellationRequested) return -1;
+			await uwr.SendWebRequest();
 
-				if (uwr.result == UnityWebRequest.Result.Success)
-				{
-					string lenHeader = uwr.GetResponseHeader("Content-Length");
-					if (long.TryParse(lenHeader, out long size))
-					{
-						return size;
-					}
-				}
-				return -1;
+			if (uwr.result != UnityWebRequest.Result.Success) return -1;
+			string lenHeader = uwr.GetResponseHeader("Content-Length");
+			if (long.TryParse(lenHeader, out long size))
+			{
+				return size;
 			}
+			return -1;
 		}
 
 		/// <summary>
