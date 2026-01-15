@@ -1,5 +1,6 @@
 using Asaki.Core.Broker;
 using Asaki.Core.Async;
+using Asaki.Core.Logging;
 using Asaki.Core.Resources; // 引用 Phase 1 定义的资源模块
 using System;
 using System.Collections.Generic;
@@ -213,12 +214,12 @@ namespace Asaki.Core.Pooling
 
 		public void Despawn(GameObject go, string key)
 		{
-			if (_isDisposed || go == null) return;
+			if (_isDisposed || !go) return;
 
 			// 1. 查找池
 			if (!_pools.TryGetValue(key, out PoolData poolData))
 			{
-				Debug.LogWarning($"[AsakiPool] Despawn target pool '{key}' not found. Destroying object directly.");
+				ALog.Warn($"[AsakiPool] Despawn target pool '{key}' not found. Destroying object directly.");
 				Object.Destroy(go);
 				return;
 			}
@@ -235,7 +236,7 @@ namespace Asaki.Core.Pooling
 
 			// 4. 归位
 			// 将对象重新挂载到该池的 Root 下，保持 Hierarchy 干净
-			if (poolData.Root != null)
+			if (poolData.Root)
 			{
 				go.transform.SetParent(poolData.Root);
 			}

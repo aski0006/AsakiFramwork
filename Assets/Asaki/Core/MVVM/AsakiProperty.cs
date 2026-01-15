@@ -42,8 +42,9 @@ namespace Asaki.Core.MVVM
 	/// </example>
 	/// <seealso cref="IAsakiObserver{T}"/>
 	[Serializable]
-	public class AsakiProperty<T> : IEquatable<AsakiProperty<T>>
+	public class AsakiProperty<T> : IEquatable<AsakiProperty<T>>, IAsakiPropertyBase
 	{
+		public Type ValueType => typeof(T);
 		/// <summary>
 		/// 存储属性的实际值。
 		/// </summary>
@@ -246,6 +247,23 @@ namespace Asaki.Core.MVVM
 				_observers[i].OnValueChange(_value);
 			}
 		}
+		
+		public void InvokeCallback(object value)
+		{
+			if (value is not T typedValue) return;
+			_onValueChangedAction?.Invoke(typedValue);
+			for (int i = _observers.Count - 1; i >= 0; i--)
+			{
+				_observers[i].OnValueChange(typedValue);
+			}
+		}
+
+		public void Dispose()
+		{
+			_onValueChangedAction = null;
+			_observers.Clear();
+		}
+
 
 		// ========================================================================
 		// 相等性实现
