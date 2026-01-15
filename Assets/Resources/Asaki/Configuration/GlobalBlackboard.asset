@@ -12,7 +12,29 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5d867fcf213740058bc0c37af66895db, type: 3}
   m_Name: GlobalBlackboard
   m_EditorClassIdentifier: 
-  GlobalVariables: []
+  GlobalVariables:
+  - rid: 4176737161088598024
+  - rid: 4176737161088598026
   references:
     version: 2
-    RefIds: []
+    RefIds:
+    - rid: 4176737161088598024
+      type: {class: AsakiVariableDef, ns: Asaki.Core.Blackboard, asm: Asaki.Core}
+      data:
+        Name: True
+        ValueData:
+          rid: 4176737161088598025
+    - rid: 4176737161088598025
+      type: {class: AsakiBool, ns: Asaki.Core.Blackboard.Variables, asm: Asaki.Core}
+      data:
+        Value: 1
+    - rid: 4176737161088598026
+      type: {class: AsakiVariableDef, ns: Asaki.Core.Blackboard, asm: Asaki.Core}
+      data:
+        Name: False
+        ValueData:
+          rid: 4176737161088598027
+    - rid: 4176737161088598027
+      type: {class: AsakiBool, ns: Asaki.Core.Blackboard.Variables, asm: Asaki.Core}
+      data:
+        Value: 0

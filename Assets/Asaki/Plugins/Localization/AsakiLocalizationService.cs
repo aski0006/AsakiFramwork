@@ -6,7 +6,7 @@ using Asaki.Core.Logging;
 using System;
 using System.Collections.Generic;
 
-namespace Asaki.Unity.Plugins.Localization
+namespace Asaki.Plugins.Localization
 {
 	public struct OnAsakiLanguageChangedEvent : IAsakiEvent
 	{

@@ -5,7 +5,7 @@ using System.Text;
 using UnityEditor;
 using UnityEngine;
 
-namespace Asaki.Editor.Utilities.Tools
+namespace Asaki.Plugins.Editors
 {
     public static class AsakiLocalizationBuilder
     {

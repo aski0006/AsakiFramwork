@@ -4,10 +4,11 @@ using Asaki.Core.Configs;
 using Asaki.Core.Configuration;
 using Asaki.Core.Context;
 using Asaki.Core.Logging;
-using Asaki.Unity.Plugins.Localization;
+using Asaki.Plugins.Localization;
+using Asaki.Unity.Modules;
 using System.Threading.Tasks;
 
-namespace Asaki.Unity.Modules
+namespace Asaki.Plugins.Modules
 {
 	[AsakiModule(400, typeof(AsakiEventBusModule), typeof(AsakiConfigModule))]
 	public class AsakiLocalizationModule : IAsakiModule, IAsakiInit<IAsakiEventService, IAsakiConfigService>
